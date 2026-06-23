@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flip Stopwatch</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="watch-panel" aria-label="Stopwatch">
+        <div class="status-row" aria-live="polite">
+          <span class="awake-indicator" data-wake-status="idle">Screen Awake: Off</span>
+        </div>
+
+        <div class="mode-row" role="tablist" aria-label="Timer mode">
+          <button class="mode-button active" type="button" data-mode="stopwatch">Stopwatch</button>
+          <button class="mode-button" type="button" data-mode="clock">Clock</button>
+        </div>
+
+        <div class="display" aria-live="polite">
+          <div class="tick-group">
+            <div class="digit-pair" data-unit="hours">
+              <div class="flip-card">
+                <span class="card-value">0</span>
+              </div>
+              <div class="flip-card">
+                <span class="card-value">0</span>
+              </div>
+            </div>
+            <span class="unit-label">HH</span>
+          </div>
+
+          <span class="time-separator">:</span>
+
+          <div class="tick-group">
+            <div class="digit-pair" data-unit="minutes">
+              <div class="flip-card">
+                <span class="card-value">0</span>
+              </div>
+              <div class="flip-card">
+                <span class="card-value">0</span>
+              </div>
+            </div>
+            <span class="unit-label">MM</span>
+          </div>
+
+          <span class="time-separator">:</span>
+
+          <div class="tick-group">
+            <div class="digit-pair" data-unit="seconds">
+              <div class="flip-card">
+                <span class="card-value">0</span>
+              </div>
+              <div class="flip-card">
+                <span class="card-value">0</span>
+              </div>
+            </div>
+            <span class="unit-label">SS</span>
+          </div>
+
+          <span class="time-separator">:</span>
+
+          <div class="tick-group millis-group">
+            <div class="millis-text" data-unit="milliseconds">00</div>
+            <span class="unit-label">MS</span>
+          </div>
+        </div>
+
+        <div class="clock-display" hidden>
+          <div class="clock-time">00:00:00</div>
+          <div class="clock-date">Tuesday, 23 June 2026</div>
+        </div>
+
+        <div class="controls" data-controls>
+          <button class="control-button primary" type="button" data-action="start">Start</button>
+          <button class="control-button primary" type="button" data-action="stop" hidden>Stop</button>
+          <button class="control-button" type="button" data-action="reset">Reset</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
