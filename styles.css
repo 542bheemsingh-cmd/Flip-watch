@@ -128,7 +128,7 @@ button {
 
 .mode-row {
   display: inline-grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   padding: 4px;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 8px;
@@ -155,6 +155,79 @@ button {
   color: #16210f;
   background: linear-gradient(180deg, #e4ff99, var(--accent));
   box-shadow: 0 8px 18px rgba(210, 255, 114, 0.14);
+}
+
+.timer-options {
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.preset-button,
+.custom-time,
+.awake-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  color: var(--muted);
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.preset-button {
+  min-width: 76px;
+  min-height: 38px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.preset-button.active {
+  color: var(--accent-dark);
+  border-color: rgba(210, 255, 114, 0.32);
+  background: linear-gradient(180deg, #e4ff99, var(--accent));
+}
+
+.custom-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 12px;
+  font-weight: 700;
+}
+
+.custom-time input {
+  width: 84px;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  text-align: center;
+  font: inherit;
+}
+
+.awake-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 12px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.awake-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
 }
 
 .display {
@@ -630,5 +703,14 @@ button {
   .mode-button,
   .control-button {
     min-width: 98px;
+  }
+
+  .mode-row {
+    width: 100%;
+  }
+
+  .mode-button {
+    min-width: 0;
+    padding: 0 8px;
   }
 }

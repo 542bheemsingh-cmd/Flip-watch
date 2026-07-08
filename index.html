@@ -16,8 +16,29 @@
 
         <div class="mode-row" role="tablist" aria-label="Timer mode">
           <button class="mode-button active" type="button" data-mode="stopwatch">Stopwatch</button>
+          <button class="mode-button" type="button" data-mode="timer">Timer</button>
           <button class="mode-button" type="button" data-mode="clock">Clock</button>
         </div>
+
+        <div class="timer-options" data-timer-options hidden>
+          <div class="preset-row" aria-label="Timer presets">
+            <button class="preset-button active" type="button" data-minutes="5">5 min</button>
+            <button class="preset-button" type="button" data-minutes="10">10 min</button>
+            <button class="preset-button" type="button" data-minutes="15">15 min</button>
+            <button class="preset-button" type="button" data-minutes="20">20 min</button>
+          </div>
+
+          <label class="custom-time">
+            <span>Custom</span>
+            <input type="number" min="1" max="5999" step="1" value="5" data-custom-minutes />
+            <span>min</span>
+          </label>
+        </div>
+
+        <label class="awake-toggle">
+          <input type="checkbox" data-awake-toggle checked />
+          <span>Screen Awake On Start</span>
+        </label>
 
         <div class="display" aria-live="polite">
           <div class="tick-group">

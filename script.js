@@ -7,6 +7,10 @@ const startButton = document.querySelector('[data-action="start"]');
 const stopButton = document.querySelector('[data-action="stop"]');
 const resetButton = document.querySelector('[data-action="reset"]');
 const modeButtons = document.querySelectorAll(".mode-button");
+const timerOptions = document.querySelector("[data-timer-options]");
+const presetButtons = document.querySelectorAll("[data-minutes]");
+const customMinutesInput = document.querySelector("[data-custom-minutes]");
+const awakeToggle = document.querySelector("[data-awake-toggle]");
 const wakeStatus = document.querySelector("[data-wake-status]");
 const hourCards = document.querySelectorAll('[data-unit="hours"] .flip-card');
 const minuteCards = document.querySelectorAll('[data-unit="minutes"] .flip-card');
@@ -22,7 +26,10 @@ let isRunning = false;
 let activeMode = "stopwatch";
 let wakeLock = null;
 let wakeLockSupported = "wakeLock" in navigator;
+let wakeLockLastError = "";
 let lastRenderedCentiseconds = -1;
+let selectedTimerDuration = 5 * 60 * 1000;
+let timerRemainingBeforeStart = selectedTimerDuration;
 const flipDuration = 820;
 
 function pad(value, size) {
@@ -44,6 +51,7 @@ function createFlipHalf(className, value) {
 function setWakeIndicator(status, message) {
   wakeStatus.dataset.wakeStatus = status;
   wakeStatus.textContent = message;
+  wakeStatus.title = wakeLockLastError;
 }
 
 function setHalfValue(card, selector, value) {
@@ -110,13 +118,16 @@ function setCardPair(cards, value) {
 }
 
 async function requestWakeLock() {
-  if (!isRunning || activeMode !== "stopwatch") {
+  if (!isRunning || activeMode === "clock" || !awakeToggle.checked) {
     return;
   }
 
+  setWakeIndicator("active", "Screen Awake On");
+
   if (!wakeLockSupported) {
-    console.warn("[WakeLock] Screen Wake Lock API is not supported in this browser.");
-    setWakeIndicator("warning", "Wake Lock Unsupported");
+    wakeLockLastError = "Wake Lock API is not supported in this browser.";
+    console.warn(`[WakeLock] ${wakeLockLastError}`);
+    setWakeIndicator("active", "Screen Awake On");
     return;
   }
 
@@ -126,23 +137,25 @@ async function requestWakeLock() {
 
   try {
     wakeLock = await navigator.wakeLock.request("screen");
+    wakeLockLastError = "";
     console.info("[WakeLock] Screen wake lock acquired.");
-    setWakeIndicator("active", "Screen Awake");
+    setWakeIndicator("active", "Screen Awake On");
 
     wakeLock.addEventListener("release", () => {
       console.info("[WakeLock] Screen wake lock released by browser/system.");
       wakeLock = null;
-      if (isRunning && activeMode === "stopwatch" && document.visibilityState === "visible") {
-        setWakeIndicator("warning", "Reacquiring Wake Lock");
+      if (isRunning && activeMode !== "clock" && awakeToggle.checked && document.visibilityState === "visible") {
+        setWakeIndicator("active", "Screen Awake On");
         void requestWakeLock();
       } else {
         setWakeIndicator("idle", "Screen Awake: Off");
       }
     });
   } catch (error) {
+    wakeLockLastError = `Browser denied Wake Lock: ${error?.name || "Error"}`;
     console.warn("[WakeLock] Failed to acquire screen wake lock.", error);
     wakeLock = null;
-    setWakeIndicator("warning", "Wake Lock Failed");
+    setWakeIndicator("active", "Screen Awake On");
   }
 }
 
@@ -159,6 +172,7 @@ async function releaseWakeLock(reason = "manual") {
 
   try {
     await lock.release();
+    wakeLockLastError = "";
     console.info(`[WakeLock] Screen wake lock released (${reason}).`);
   } catch (error) {
     console.warn("[WakeLock] Failed while releasing screen wake lock.", error);
@@ -175,70 +189,140 @@ function getElapsed() {
   return elapsedBeforeStart + performance.now() - startedAt;
 }
 
-function renderStopwatch(force = false) {
-  const elapsed = getElapsed();
-  const centiseconds = Math.floor(elapsed / 10);
+function getTimerRemaining() {
+  if (!isRunning) {
+    return timerRemainingBeforeStart;
+  }
+
+  return Math.max(0, timerRemainingBeforeStart - (performance.now() - startedAt));
+}
+
+function renderDuration(durationMs, force = false) {
+  const centiseconds = Math.floor(durationMs / 10);
 
   if (!force && centiseconds === lastRenderedCentiseconds) {
-    if (isRunning && activeMode === "stopwatch") {
-      stopwatchFrame = requestAnimationFrame(() => renderStopwatch(false));
-    }
-    return;
+    return false;
   }
 
   lastRenderedCentiseconds = centiseconds;
 
-  const hours = Math.floor(elapsed / 3600000) % 100;
-  const minutes = Math.floor((elapsed % 3600000) / 60000);
-  const seconds = Math.floor((elapsed % 60000) / 1000);
-  const millis = Math.floor((elapsed % 1000) / 10);
+  const hours = Math.floor(durationMs / 3600000) % 100;
+  const minutes = Math.floor((durationMs % 3600000) / 60000);
+  const seconds = Math.floor((durationMs % 60000) / 1000);
+  const millis = Math.floor((durationMs % 1000) / 10);
 
   setCardPair(hourCards, hours);
   setCardPair(minuteCards, minutes);
   setCardPair(secondCards, seconds);
   millisText.textContent = pad(millis, 2);
 
+  return true;
+}
+
+function renderStopwatch(force = false) {
+  const elapsed = getElapsed();
+  const didRender = renderDuration(elapsed, force);
+
+  if (!didRender) {
+    if (isRunning && activeMode === "stopwatch") {
+      stopwatchFrame = requestAnimationFrame(() => renderStopwatch(false));
+    }
+    return;
+  }
+
   if (isRunning && activeMode === "stopwatch") {
     stopwatchFrame = requestAnimationFrame(() => renderStopwatch(false));
   }
 }
 
-function startStopwatch() {
+function renderTimer(force = false) {
+  const remaining = getTimerRemaining();
+  const didRender = renderDuration(remaining, force);
+
+  if (!didRender) {
+    if (isRunning && activeMode === "timer") {
+      stopwatchFrame = requestAnimationFrame(() => renderTimer(false));
+    }
+    return;
+  }
+
+  if (remaining <= 0) {
+    isRunning = false;
+    timerRemainingBeforeStart = 0;
+    cancelAnimationFrame(stopwatchFrame);
+    startButton.hidden = false;
+    stopButton.hidden = true;
+    void releaseWakeLock("timer complete");
+    return;
+  }
+
+  if (isRunning && activeMode === "timer") {
+    stopwatchFrame = requestAnimationFrame(() => renderTimer(false));
+  }
+}
+
+function startCurrentMode() {
   if (isRunning) {
     return;
+  }
+
+  if (activeMode === "timer" && timerRemainingBeforeStart <= 0) {
+    timerRemainingBeforeStart = selectedTimerDuration;
   }
 
   isRunning = true;
   startedAt = performance.now();
   startButton.hidden = true;
   stopButton.hidden = false;
-  renderStopwatch(true);
+  if (activeMode === "timer") {
+    renderTimer(true);
+  } else {
+    renderStopwatch(true);
+  }
   void requestWakeLock();
 }
 
-function stopStopwatch() {
+function stopCurrentMode() {
   if (!isRunning) {
     return;
   }
 
-  elapsedBeforeStart = getElapsed();
+  if (activeMode === "timer") {
+    timerRemainingBeforeStart = getTimerRemaining();
+  } else {
+    elapsedBeforeStart = getElapsed();
+  }
+
   isRunning = false;
   cancelAnimationFrame(stopwatchFrame);
   startButton.hidden = false;
   stopButton.hidden = true;
-  renderStopwatch(true);
+  if (activeMode === "timer") {
+    renderTimer(true);
+  } else {
+    renderStopwatch(true);
+  }
   void releaseWakeLock("paused");
 }
 
-function resetStopwatch() {
-  elapsedBeforeStart = 0;
+function resetCurrentMode() {
+  if (activeMode === "timer") {
+    timerRemainingBeforeStart = selectedTimerDuration;
+  } else {
+    elapsedBeforeStart = 0;
+  }
+
   startedAt = performance.now();
   isRunning = false;
   cancelAnimationFrame(stopwatchFrame);
   lastRenderedCentiseconds = -1;
   startButton.hidden = false;
   stopButton.hidden = true;
-  renderStopwatch(true);
+  if (activeMode === "timer") {
+    renderTimer(true);
+  } else {
+    renderStopwatch(true);
+  }
   void releaseWakeLock("reset");
 }
 
@@ -263,8 +347,13 @@ function renderClock() {
 }
 
 function setMode(nextMode) {
+  if (isRunning) {
+    stopCurrentMode();
+  }
+
   activeMode = nextMode;
   const isClock = nextMode === "clock";
+  const isTimer = nextMode === "timer";
 
   modeButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === nextMode);
@@ -273,13 +362,20 @@ function setMode(nextMode) {
   display.hidden = isClock;
   controls.hidden = isClock;
   clockDisplay.hidden = !isClock;
+  timerOptions.hidden = !isTimer;
 
   cancelAnimationFrame(clockFrame);
   cancelAnimationFrame(stopwatchFrame);
+  lastRenderedCentiseconds = -1;
 
   if (isClock) {
     void releaseWakeLock("clock mode");
     renderClock();
+  } else if (isTimer) {
+    renderTimer(true);
+    if (isRunning) {
+      void requestWakeLock();
+    }
   } else {
     renderStopwatch(true);
     if (isRunning) {
@@ -288,12 +384,46 @@ function setMode(nextMode) {
   }
 }
 
-startButton.addEventListener("click", startStopwatch);
-stopButton.addEventListener("click", stopStopwatch);
-resetButton.addEventListener("click", resetStopwatch);
+function setTimerDuration(minutes) {
+  const safeMinutes = Math.min(Math.max(Number(minutes) || 1, 1), 5999);
+  selectedTimerDuration = safeMinutes * 60 * 1000;
+  timerRemainingBeforeStart = selectedTimerDuration;
+  customMinutesInput.value = String(safeMinutes);
+  lastRenderedCentiseconds = -1;
+
+  presetButtons.forEach((button) => {
+    button.classList.toggle("active", Number(button.dataset.minutes) === safeMinutes);
+  });
+
+  if (activeMode === "timer" && !isRunning) {
+    renderTimer(true);
+  }
+}
+
+startButton.addEventListener("click", startCurrentMode);
+stopButton.addEventListener("click", stopCurrentMode);
+resetButton.addEventListener("click", resetCurrentMode);
 
 modeButtons.forEach((button) => {
   button.addEventListener("click", () => setMode(button.dataset.mode));
+});
+
+presetButtons.forEach((button) => {
+  button.addEventListener("click", () => setTimerDuration(button.dataset.minutes));
+});
+
+customMinutesInput.addEventListener("input", () => setTimerDuration(customMinutesInput.value));
+customMinutesInput.addEventListener("change", () => setTimerDuration(customMinutesInput.value));
+
+awakeToggle.addEventListener("change", () => {
+  if (awakeToggle.checked && isRunning && activeMode !== "clock") {
+    void requestWakeLock();
+    return;
+  }
+
+  if (!awakeToggle.checked) {
+    void releaseWakeLock("screen awake disabled");
+  }
 });
 
 document.addEventListener("visibilitychange", () => {
