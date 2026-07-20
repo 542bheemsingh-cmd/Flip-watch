@@ -28,8 +28,9 @@ export class ToolbarController {
 
   handleKeys(event) {
     if (event.target.matches("input, select")) return;
-    if (event.key === "ArrowRight" || event.key === "PageDown") void this.viewer.nextPage();
-    if (event.key === "ArrowLeft" || event.key === "PageUp") void this.viewer.prevPage();
+    const reverse = this.viewer.settings.direction === "rtl";
+    if (event.key === "ArrowRight" || event.key === "PageDown") void (reverse ? this.viewer.prevPage() : this.viewer.nextPage());
+    if (event.key === "ArrowLeft" || event.key === "PageUp") void (reverse ? this.viewer.nextPage() : this.viewer.prevPage());
     if (event.key === "+") void this.viewer.zoomBy(0.15);
     if (event.key === "-") void this.viewer.zoomBy(-0.15);
     if (event.key.toLowerCase() === "f") document.dispatchEvent(new CustomEvent("reader:fullscreen"));

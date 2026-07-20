@@ -30,11 +30,15 @@ export class PDFViewer {
     this.rendering = new Set();
     this.textCache = new Map();
     this.startedAt = Date.now();
+    this.flipState = null;
+    this.dragState = null;
+    this.suppressFlipClickUntil = 0;
     this.visibleObserver = new IntersectionObserver((entries) => this.onVisible(entries), {
       root: this.shell,
       rootMargin: "900px 0px",
       threshold: 0.01,
     });
+    this.bindPageFlipInteractions();
   }
 
   async loadFile(file) {
@@ -110,7 +114,9 @@ export class PDFViewer {
   }
 
   applyMode() {
-    this.track.className = `page-track ${this.settings.scrollMode}`;
+    const bookMode = this.settings.pageFlip === "realistic";
+    this.track.className = `page-track ${this.settings.scrollMode}${bookMode ? " book-layout" : ""}`;
+    this.shell.classList.toggle("book-reader", bookMode);
     this.shell.style.direction = this.settings.direction === "rtl" ? "rtl" : "ltr";
     this.zoomLabel.textContent = `${Math.round(this.scale * 100)}%`;
   }
@@ -159,6 +165,11 @@ export class PDFViewer {
     } finally {
       this.rendering.delete(pageNumber);
     }
+  }
+
+  async getRenderedCanvas(pageNumber) {
+    await this.renderPage(pageNumber);
+    return this.rendered.get(pageNumber) || null;
   }
 
   computeFitScale(viewport) {
@@ -218,11 +229,245 @@ export class PDFViewer {
   }
 
   async nextPage() {
-    await this.goToPage(this.currentPage + 1);
+    await this.turnPage(1);
   }
 
   async prevPage() {
-    await this.goToPage(this.currentPage - 1);
+    await this.turnPage(-1);
+  }
+
+  async turnPage(direction, options = {}) {
+    const targetPage = clamp(this.currentPage + direction, 1, this.total);
+    if (!this.pdf || targetPage === this.currentPage) return;
+
+    const canAnimate = this.settings.pageFlip === "realistic" && !this.flipState && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!canAnimate) {
+      await this.goToPage(targetPage);
+      return;
+    }
+
+    const prepared = await this.preparePageFlip(direction, targetPage);
+    if (!prepared) {
+      await this.goToPage(targetPage);
+      return;
+    }
+
+    await this.animatePageFlip(prepared, {
+      from: options.from ?? 0,
+      to: 1,
+      velocity: options.velocity ?? 0,
+    });
+    await this.goToPage(targetPage, false);
+  }
+
+  async preparePageFlip(direction, targetPage) {
+    const currentCard = this.track.querySelector(`[data-page="${this.currentPage}"]`);
+    if (!currentCard) return null;
+
+    const [frontCanvas, backCanvas] = await Promise.all([
+      this.getRenderedCanvas(this.currentPage),
+      this.getRenderedCanvas(targetPage),
+    ]);
+    if (!frontCanvas || !backCanvas) return null;
+
+    const shellRect = this.shell.getBoundingClientRect();
+    const cardRect = currentCard.getBoundingClientRect();
+    const layer = document.createElement("div");
+    layer.className = `page-flip-layer ${direction > 0 ? "flip-next" : "flip-prev"}`;
+    layer.style.left = `${cardRect.left - shellRect.left + this.shell.scrollLeft}px`;
+    layer.style.top = `${cardRect.top - shellRect.top + this.shell.scrollTop}px`;
+    layer.style.width = `${cardRect.width}px`;
+    layer.style.height = `${cardRect.height}px`;
+
+    const under = document.createElement("div");
+    under.className = "flip-under-page";
+    under.append(this.cloneCanvas(backCanvas));
+
+    const sheet = document.createElement("div");
+    sheet.className = "flip-sheet";
+    const front = document.createElement("div");
+    front.className = "flip-face flip-front";
+    front.append(this.cloneCanvas(frontCanvas));
+    const back = document.createElement("div");
+    back.className = "flip-face flip-back";
+    back.append(this.cloneCanvas(backCanvas));
+    sheet.append(front, back);
+
+    const spine = document.createElement("div");
+    spine.className = "flip-spine-shadow";
+    const shadow = document.createElement("div");
+    shadow.className = "flip-drop-shadow";
+    const highlight = document.createElement("div");
+    highlight.className = "flip-fold-highlight";
+    const curl = document.createElement("div");
+    curl.className = "flip-curl";
+    sheet.append(highlight, curl);
+    layer.append(under, shadow, sheet, spine);
+    this.shell.append(layer);
+    currentCard.classList.add("page-is-flipping");
+
+    this.flipState = { layer, sheet, shadow, highlight, curl, currentCard, direction };
+    this.updateFlipProgress(0, direction);
+    return this.flipState;
+  }
+
+  cloneCanvas(source) {
+    const canvas = document.createElement("canvas");
+    canvas.width = source.width;
+    canvas.height = source.height;
+    canvas.style.width = source.style.width;
+    canvas.style.height = source.style.height;
+    const context = canvas.getContext("2d", { alpha: false });
+    context.drawImage(source, 0, 0);
+    return canvas;
+  }
+
+  updateFlipProgress(progress, direction) {
+    if (!this.flipState) return;
+    const eased = clamp(progress, 0, 1);
+    const angle = direction > 0 ? -180 * eased : 180 * eased;
+    const curve = Math.sin(eased * Math.PI);
+    const lift = curve * 16;
+    const skew = (direction > 0 ? -1 : 1) * curve * 5.5;
+    const shadowStrength = 0.14 + curve * 0.48;
+    const blur = 12 + curve * 32;
+    this.flipState.layer.style.setProperty("--flip-progress", String(eased));
+    this.flipState.layer.style.setProperty("--flip-shadow", String(shadowStrength));
+    this.flipState.layer.style.setProperty("--flip-blur", `${blur}px`);
+    this.flipState.sheet.style.transform = `translate3d(0, ${-lift}px, 0) rotateY(${angle}deg) skewY(${skew}deg)`;
+    this.flipState.highlight.style.opacity = String(0.18 + curve * 0.5);
+    this.flipState.curl.style.opacity = String(0.18 + curve * 0.42);
+    this.flipState.shadow.style.opacity = String(shadowStrength);
+    this.flipState.shadow.style.transform = `translateY(${lift * 0.45}px) scaleX(${1 - curve * 0.18})`;
+  }
+
+  animatePageFlip(state, { from, to, velocity = 0 }) {
+    return new Promise((resolve) => {
+      const distance = Math.abs(to - from);
+      const velocityBoost = Math.min(Math.abs(velocity) / 1600, 0.45);
+      const duration = clamp((520 - velocityBoost * 240) * distance, 260, 700) / (this.settings.animationSpeed / 100);
+      const started = performance.now();
+      const direction = state.direction;
+
+      const step = (now) => {
+        const elapsed = now - started;
+        const t = clamp(elapsed / duration, 0, 1);
+        const spring = 1 - Math.pow(1 - t, 3) + Math.sin(t * Math.PI) * 0.035;
+        const progress = from + (to - from) * clamp(spring, 0, 1);
+        this.updateFlipProgress(progress, direction);
+        if (t < 1) {
+          requestAnimationFrame(step);
+        } else {
+          this.finishFlipLayer();
+          resolve();
+        }
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
+  finishFlipLayer() {
+    if (!this.flipState) return;
+    this.flipState.currentCard.classList.remove("page-is-flipping");
+    this.flipState.layer.remove();
+    this.flipState = null;
+  }
+
+  async cancelFlip(state, progress, velocity = 0) {
+    await this.animatePageFlip(state, { from: progress, to: 0, velocity });
+  }
+
+  bindPageFlipInteractions() {
+    this.shell.addEventListener("click", (event) => {
+      if (!this.shouldUseBookFlip(event) || this.dragState) return;
+      const card = event.target.closest?.(".page-card");
+      if (!card) return;
+      const rect = card.getBoundingClientRect();
+      const edge = Math.min(96, rect.width * 0.22);
+      if (event.clientX > rect.right - edge) void this.turnPage(1);
+      if (event.clientX < rect.left + edge) void this.turnPage(-1);
+    });
+
+    this.shell.addEventListener("pointerdown", (event) => {
+      if (!this.shouldUseBookFlip(event) || event.pointerType === "touch" && event.isPrimary === false) return;
+      const card = event.target.closest?.(".page-card");
+      if (!card) return;
+      const rect = card.getBoundingClientRect();
+      const edge = Math.min(120, rect.width * 0.28);
+      const nearRight = event.clientX > rect.right - edge;
+      const nearLeft = event.clientX < rect.left + edge;
+      const nearCorner = event.clientY < rect.top + rect.height * 0.3 || event.clientY > rect.bottom - rect.height * 0.3;
+      if (!nearCorner && !nearLeft && !nearRight) return;
+      const direction = nearRight ? 1 : -1;
+      const targetPage = clamp(this.currentPage + direction, 1, this.total);
+      if (targetPage === this.currentPage) return;
+      event.preventDefault();
+      this.startFlipDrag(event, direction, targetPage, rect);
+    }, { passive: false });
+  }
+
+  shouldUseBookFlip(event) {
+    return this.pdf && this.settings.pageFlip === "realistic" && !this.flipState && Date.now() > this.suppressFlipClickUntil && !(event.ctrlKey || event.metaKey);
+  }
+
+  async startFlipDrag(event, direction, targetPage, rect) {
+    const state = await this.preparePageFlip(direction, targetPage);
+    if (!state) return;
+    this.dragState = {
+      direction,
+      targetPage,
+      startX: event.clientX,
+      lastX: event.clientX,
+      lastTime: performance.now(),
+      velocity: 0,
+      width: Math.max(1, rect.width),
+      progress: 0,
+      pointerId: event.pointerId,
+    };
+    this.shell.setPointerCapture?.(event.pointerId);
+
+    const move = (moveEvent) => this.updateFlipDrag(moveEvent);
+    const finish = (upEvent) => {
+      this.shell.removeEventListener("pointermove", move);
+      this.shell.removeEventListener("pointerup", finish);
+      this.shell.removeEventListener("pointercancel", finish);
+      void this.finishFlipDrag(upEvent);
+    };
+
+    this.shell.addEventListener("pointermove", move, { passive: false });
+    this.shell.addEventListener("pointerup", finish);
+    this.shell.addEventListener("pointercancel", finish);
+  }
+
+  updateFlipDrag(event) {
+    if (!this.dragState) return;
+    event.preventDefault();
+    const now = performance.now();
+    const deltaX = event.clientX - this.dragState.lastX;
+    const elapsed = Math.max(1, now - this.dragState.lastTime);
+    this.dragState.velocity = deltaX / elapsed * 1000;
+    this.dragState.lastX = event.clientX;
+    this.dragState.lastTime = now;
+    const travel = this.dragState.direction > 0 ? this.dragState.startX - event.clientX : event.clientX - this.dragState.startX;
+    const progress = clamp(travel / (this.dragState.width * 0.72), 0, 1);
+    this.dragState.progress = progress;
+    this.updateFlipProgress(progress, this.dragState.direction);
+  }
+
+  async finishFlipDrag(event) {
+    if (!this.dragState || !this.flipState) return;
+    const drag = this.dragState;
+    this.dragState = null;
+    this.suppressFlipClickUntil = Date.now() + 450;
+    this.shell.releasePointerCapture?.(drag.pointerId);
+    const momentum = drag.direction > 0 ? -drag.velocity : drag.velocity;
+    const shouldComplete = drag.progress > 0.5 || momentum > 650;
+    if (shouldComplete) {
+      await this.animatePageFlip(this.flipState, { from: drag.progress, to: 1, velocity: momentum });
+      await this.goToPage(drag.targetPage, false);
+    } else {
+      await this.cancelFlip(this.flipState, drag.progress, momentum);
+    }
   }
 
   async zoomBy(delta) {

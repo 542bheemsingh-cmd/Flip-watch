@@ -78,11 +78,15 @@
 }
 
 .viewer-shell {
+  position: relative;
   overflow: auto;
   overscroll-behavior: contain;
   padding: 22px;
   scroll-behavior: smooth;
   scrollbar-gutter: stable both-edges;
+  perspective: 1800px;
+  transform-style: preserve-3d;
+  touch-action: pan-y pinch-zoom;
 }
 
 .page-track {
@@ -104,6 +108,50 @@
   display: flex;
   align-items: center;
   gap: 22px;
+}
+
+.book-reader {
+  background:
+    radial-gradient(circle at center, rgba(210, 255, 114, 0.08), transparent 42%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.28), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.28));
+}
+
+.book-reader .page-track.horizontal,
+.book-reader .page-track.single {
+  gap: 0;
+  justify-content: center;
+  align-items: center;
+}
+
+.book-layout .page-card {
+  border-radius: 4px;
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.42),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.book-layout .page-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.16), transparent 7%, transparent 93%, rgba(0, 0, 0, 0.1)),
+    repeating-linear-gradient(0deg, rgba(30, 22, 12, 0.025) 0 1px, transparent 1px 4px);
+  mix-blend-mode: multiply;
+}
+
+.book-layout .page-card:nth-child(odd) {
+  transform-origin: right center;
+}
+
+.book-layout .page-card:nth-child(even) {
+  transform-origin: left center;
+}
+
+.page-is-flipping {
+  opacity: 0.08;
 }
 
 .page-card {
@@ -138,6 +186,146 @@
   color: #fff;
   background: rgba(0, 0, 0, 0.58);
   font-size: 0.78rem;
+}
+
+.page-flip-layer {
+  --flip-progress: 0;
+  --flip-shadow: 0.2;
+  --flip-blur: 18px;
+  position: absolute;
+  z-index: 30;
+  pointer-events: none;
+  perspective: 1800px;
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 32px 70px rgba(0, 0, 0, 0.45));
+  will-change: transform;
+}
+
+.flip-under-page,
+.flip-sheet,
+.flip-face,
+.flip-drop-shadow,
+.flip-spine-shadow {
+  position: absolute;
+  inset: 0;
+}
+
+.flip-under-page {
+  border-radius: 4px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.38);
+  transform: translateZ(-6px);
+}
+
+.flip-sheet {
+  border-radius: 4px;
+  transform-style: preserve-3d;
+  transform-origin: left center;
+  will-change: transform;
+}
+
+.flip-prev .flip-sheet {
+  transform-origin: right center;
+}
+
+.flip-face {
+  overflow: hidden;
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent 16%, transparent 84%, rgba(0, 0, 0, 0.08)),
+    #fff;
+  backface-visibility: hidden;
+  transform: translateZ(1px);
+}
+
+.flip-back {
+  transform: rotateY(180deg) translateZ(1px);
+}
+
+.flip-face canvas,
+.flip-under-page canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: auto;
+}
+
+.flip-face::after,
+.flip-under-page::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 28% 18%, rgba(255, 255, 255, 0.22), transparent 26%),
+    repeating-linear-gradient(0deg, rgba(70, 48, 28, 0.025) 0 1px, transparent 1px 5px);
+  mix-blend-mode: multiply;
+}
+
+.flip-fold-highlight,
+.flip-curl {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 4px;
+  backface-visibility: hidden;
+}
+
+.flip-fold-highlight {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.5), transparent 18%, rgba(0, 0, 0, 0.2) 56%, transparent 100%);
+  mix-blend-mode: overlay;
+  opacity: 0.2;
+}
+
+.flip-prev .flip-fold-highlight {
+  background:
+    linear-gradient(270deg, rgba(255, 255, 255, 0.5), transparent 18%, rgba(0, 0, 0, 0.2) 56%, transparent 100%);
+}
+
+.flip-curl {
+  background:
+    radial-gradient(ellipse at right center, rgba(0, 0, 0, 0.32), transparent 9%),
+    linear-gradient(90deg, transparent 70%, rgba(255, 255, 255, 0.5) 82%, rgba(0, 0, 0, 0.2));
+  opacity: 0.22;
+  transform: translateZ(2px);
+}
+
+.flip-prev .flip-curl {
+  background:
+    radial-gradient(ellipse at left center, rgba(0, 0, 0, 0.32), transparent 9%),
+    linear-gradient(270deg, transparent 70%, rgba(255, 255, 255, 0.5) 82%, rgba(0, 0, 0, 0.2));
+}
+
+.flip-drop-shadow {
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, var(--flip-shadow)), transparent 67%);
+  filter: blur(var(--flip-blur));
+  transform-origin: center bottom;
+  will-change: opacity, transform;
+}
+
+.flip-spine-shadow {
+  top: 0;
+  bottom: 0;
+  right: auto;
+  width: 18px;
+  opacity: calc(0.15 + var(--flip-progress) * 0.48);
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.36), transparent);
+  filter: blur(1px);
+  transform: translateZ(4px);
+}
+
+.flip-next .flip-spine-shadow {
+  left: 0;
+}
+
+.flip-prev .flip-spine-shadow {
+  left: auto;
+  right: 0;
+  background: linear-gradient(270deg, rgba(0, 0, 0, 0.36), transparent);
 }
 
 .textLayer {
@@ -306,6 +494,11 @@
 @media (max-width: 740px) {
   .viewer-shell {
     padding: 12px 8px;
+    perspective: 1200px;
+  }
+
+  .book-reader .page-track.horizontal {
+    justify-content: flex-start;
   }
 
   .side-panel,

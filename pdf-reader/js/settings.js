@@ -7,7 +7,7 @@ export const defaultSettings = {
   scrollMode: "continuous",
   fitMode: "width",
   direction: "ltr",
-  pageFlip: "slide",
+  pageFlip: "realistic",
   fontSize: 100,
   animationSpeed: 100,
   highContrast: false,
@@ -22,6 +22,9 @@ export class SettingsController {
   async load() {
     const saved = await storage.get("settings", "reader");
     this.settings = { ...defaultSettings, ...(saved || {}) };
+    if (!saved?.pageFlip || saved.pageFlip === "slide") {
+      this.settings.pageFlip = "realistic";
+    }
     this.apply();
     return this.settings;
   }
