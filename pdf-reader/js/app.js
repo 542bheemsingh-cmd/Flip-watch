@@ -44,6 +44,7 @@ const app = $("[data-app]");
 const sidebar = $("[data-sidebar]");
 const searchPanel = $("[data-search-panel]");
 const settingsPanel = $("[data-settings-panel]");
+const panelBackdrop = $("[data-action='close-panels']");
 const recentList = $("[data-recent]");
 let resizeTimer = 0;
 
@@ -59,10 +60,11 @@ toolbar.bind({
   open: () => fileInput.click(),
   "open-empty": () => fileInput.click(),
   search: () => togglePanel(searchPanel),
-  "close-search": () => searchPanel.hidden = true,
+  "close-search": () => closePanels(),
   settings: () => togglePanel(settingsPanel),
-  "close-settings": () => settingsPanel.hidden = true,
+  "close-settings": () => closePanels(),
   sidebar: () => togglePanel(sidebar),
+  "close-panels": () => closePanels(),
   prev: () => viewer.prevPage(),
   next: () => viewer.nextPage(),
   "zoom-out": () => viewer.zoomBy(-0.15),
@@ -88,6 +90,9 @@ document.addEventListener("reader:fullscreen", () => {
   void toggleFullscreen();
 });
 document.addEventListener("reader:toggle-ui", () => toggleReaderUi());
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closePanels();
+});
 
 fileInput.addEventListener("change", async () => {
   const file = fileInput.files?.[0];
@@ -138,8 +143,21 @@ async function openFile(file) {
 }
 
 function togglePanel(panel) {
-  panel.hidden = !panel.hidden;
-  if (!panel.hidden) panel.classList.add("material-enter");
+  const shouldOpen = panel.hidden;
+  closePanels();
+  if (!shouldOpen) return;
+  panel.hidden = false;
+  panelBackdrop.hidden = false;
+  panel.classList.remove("material-enter");
+  void panel.offsetWidth;
+  panel.classList.add("material-enter");
+}
+
+function closePanels() {
+  sidebar.hidden = true;
+  searchPanel.hidden = true;
+  settingsPanel.hidden = true;
+  panelBackdrop.hidden = true;
 }
 
 async function toggleFullscreen() {
@@ -159,9 +177,7 @@ async function toggleFullscreen() {
 function toggleReaderUi(force) {
   const hideUi = typeof force === "boolean" ? force : !app.classList.contains("reader-ui-hidden");
   app.classList.toggle("reader-ui-hidden", hideUi);
-  sidebar.hidden = true;
-  searchPanel.hidden = true;
-  settingsPanel.hidden = true;
+  closePanels();
   document.querySelectorAll('[data-action="toggle-ui"]').forEach((button) => {
     button.setAttribute("aria-label", hideUi ? "Show reader interface" : "Hide reader interface");
   });

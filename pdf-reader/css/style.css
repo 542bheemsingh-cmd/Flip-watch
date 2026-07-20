@@ -18,6 +18,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   min-height: 100%;
@@ -238,7 +242,8 @@ button {
 .reader-ui-hidden .bottom-nav,
 .reader-ui-hidden .fab-stack,
 .reader-ui-hidden .side-panel,
-.reader-ui-hidden .settings-sheet {
+.reader-ui-hidden .settings-sheet,
+.reader-ui-hidden .panel-backdrop {
   display: none !important;
 }
 

@@ -153,6 +153,15 @@
   background: rgba(210, 255, 114, 0.24);
 }
 
+.panel-backdrop {
+  position: fixed;
+  inset: 68px 0 68px;
+  z-index: 16;
+  border: 0;
+  background: rgba(0, 0, 0, 0.18);
+  cursor: default;
+}
+
 .side-panel,
 .settings-sheet {
   position: fixed;
@@ -164,6 +173,7 @@
   grid-template-rows: auto 1fr;
   border-radius: var(--radius);
   overflow: hidden;
+  animation: panel-slide-in 180ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
 }
 
 .left-panel {
