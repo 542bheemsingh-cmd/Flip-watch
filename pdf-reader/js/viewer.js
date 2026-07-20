@@ -32,6 +32,8 @@ export class PDFViewer {
     this.startedAt = Date.now();
     this.flipState = null;
     this.dragState = null;
+    this.animationActive = false;
+    this.deferredRenderPages = new Set();
     this.suppressFlipClickUntil = 0;
     this.bookPageRatio = null;
     this.bookPageBaseWidth = null;
@@ -150,6 +152,10 @@ export class PDFViewer {
 
   async renderPage(pageNumber) {
     if (!this.pdf || this.rendered.has(pageNumber) || this.rendering.has(pageNumber)) return;
+    if (this.animationActive && this.settings.pageFlip === "realistic") {
+      this.deferredRenderPages.add(pageNumber);
+      return;
+    }
     const container = this.track.querySelector(`[data-page="${pageNumber}"]`);
     if (!container) return;
 
@@ -193,6 +199,10 @@ export class PDFViewer {
   async getRenderedCanvas(pageNumber) {
     await this.renderPage(pageNumber);
     return this.rendered.get(pageNumber) || null;
+  }
+
+  hasRenderedSpread(spreadStart) {
+    return this.rendered.has(spreadStart) && (spreadStart >= this.total || this.rendered.has(spreadStart + 1));
   }
 
   async renderBookPage(page, baseViewport, container, pageNumber) {
@@ -324,6 +334,14 @@ export class PDFViewer {
   }
 
   async renderNearby() {
+    if (this.animationActive && this.settings.pageFlip === "realistic") {
+      const spreadStart = this.getSpreadStart(this.currentPage);
+      for (let page = Math.max(1, spreadStart - 2); page <= Math.min(this.total, spreadStart + 5); page += 1) {
+        this.deferredRenderPages.add(page);
+      }
+      return;
+    }
+
     if (this.settings.pageFlip === "realistic") {
       const spreadStart = this.getSpreadStart(this.currentPage);
       const start = Math.max(1, spreadStart - 2);
@@ -392,12 +410,18 @@ export class PDFViewer {
       return;
     }
 
-    await this.animatePageFlip(prepared, {
-      from: options.from ?? 0,
-      to: 1,
-      velocity: options.velocity ?? 0,
-    });
-    await this.commitSpreadAfterFlip(targetPage);
+    this.animationActive = true;
+    try {
+      await this.animatePageFlip(prepared, {
+        from: options.from ?? 0,
+        to: 1,
+        velocity: options.velocity ?? 0,
+      });
+      await this.commitSpreadAfterFlip(targetPage);
+    } finally {
+      this.animationActive = false;
+      this.flushDeferredRenders();
+    }
   }
 
   async preparePageFlip(direction, targetPage) {
@@ -584,13 +608,29 @@ export class PDFViewer {
     this.pageInput.value = String(this.currentPage);
     this.pageSlider.value = String(this.currentPage);
     this.updateSpreadVisibility();
-    await this.renderCurrentSpread();
+    if (!this.hasRenderedSpread(this.currentPage)) {
+      await this.renderCurrentSpread();
+    }
     const target = this.track.querySelector(`[data-page="${this.currentPage}"]`);
     if (target && this.settings.pageFlip !== "realistic") target.scrollIntoView({ behavior: "auto", block: "center", inline: "center" });
     this.status.textContent = `${this.pageStatus()} • ${this.readingTime()}`;
     this.dispatch("pagechange");
     this.renderNearbyInBackground();
     void this.saveProgress();
+  }
+
+  flushDeferredRenders() {
+    if (!this.deferredRenderPages.size || !this.pdf) return;
+    const pages = Array.from(this.deferredRenderPages).filter((page) => !this.rendered.has(page));
+    this.deferredRenderPages.clear();
+    const renderNext = () => {
+      const page = pages.shift();
+      if (!page) return;
+      void this.renderPage(page).finally(() => {
+        window.requestIdleCallback?.(renderNext) ?? window.setTimeout(renderNext, 40);
+      });
+    };
+    window.requestIdleCallback?.(renderNext) ?? window.setTimeout(renderNext, 40);
   }
 
   nextFrame() {
@@ -609,8 +649,14 @@ export class PDFViewer {
   }
 
   async cancelFlip(state, progress, velocity = 0) {
-    await this.animatePageFlip(state, { from: progress, to: 0, velocity });
-    this.finishFlipLayer();
+    this.animationActive = true;
+    try {
+      await this.animatePageFlip(state, { from: progress, to: 0, velocity });
+      this.finishFlipLayer();
+    } finally {
+      this.animationActive = false;
+      this.flushDeferredRenders();
+    }
   }
 
   bindPageFlipInteractions() {
@@ -654,6 +700,7 @@ export class PDFViewer {
   async startFlipDrag(event, direction, targetPage, rect) {
     const state = await this.preparePageFlip(direction, targetPage);
     if (!state) return;
+    this.animationActive = true;
     this.dragState = {
       direction,
       targetPage,
@@ -704,8 +751,14 @@ export class PDFViewer {
     const momentum = drag.direction > 0 ? -drag.velocity : drag.velocity;
     const shouldComplete = drag.progress > 0.5 || momentum > 650;
     if (shouldComplete) {
-      await this.animatePageFlip(this.flipState, { from: drag.progress, to: 1, velocity: momentum });
-      await this.commitSpreadAfterFlip(drag.targetPage);
+      this.animationActive = true;
+      try {
+        await this.animatePageFlip(this.flipState, { from: drag.progress, to: 1, velocity: momentum });
+        await this.commitSpreadAfterFlip(drag.targetPage);
+      } finally {
+        this.animationActive = false;
+        this.flushDeferredRenders();
+      }
     } else {
       await this.cancelFlip(this.flipState, drag.progress, momentum);
     }
