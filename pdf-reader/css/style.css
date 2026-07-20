@@ -1,0 +1,238 @@
+:root {
+  color-scheme: dark;
+  --bg: #0c1a16;
+  --surface: rgba(20, 38, 33, 0.82);
+  --surface-strong: rgba(12, 25, 22, 0.96);
+  --line: rgba(255, 255, 255, 0.12);
+  --text: #f6f8f4;
+  --muted: #9ba49d;
+  --accent: #d2ff72;
+  --accent-ink: #15200d;
+  --danger: #ffb38a;
+  --shadow: 0 22px 70px rgba(0, 0, 0, 0.42);
+  --radius: 8px;
+  --ui-scale: 1;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 34%),
+    linear-gradient(145deg, #07120f, var(--bg) 52%, #06100d);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: calc(16px * var(--ui-scale));
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  filter: brightness(var(--brightness, 1));
+}
+
+.top-app-bar,
+.bottom-nav,
+.side-panel,
+.settings-sheet {
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.top-app-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-width: 0 0 1px;
+}
+
+.title-block {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  flex: 1;
+}
+
+.title-block strong,
+.title-block span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title-block span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.toolbar-actions,
+.search-nav,
+.fab-stack {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-button,
+.fab,
+.soft-button,
+.filled-button,
+.panel-tab {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: transform 160ms ease, filter 160ms ease, border-color 160ms ease;
+}
+
+.icon-button {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+}
+
+.icon-button:hover,
+.fab:hover,
+.soft-button:hover,
+.filled-button:hover,
+.panel-tab:hover {
+  filter: brightness(1.08);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+}
+
+.icon-button:active,
+.fab:active,
+.soft-button:active,
+.filled-button:active,
+.panel-tab:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.filled-button {
+  min-height: 44px;
+  padding: 0 18px;
+  border-color: transparent;
+  color: var(--accent-ink);
+  background: linear-gradient(180deg, #e4ff99, var(--accent));
+  font-weight: 800;
+}
+
+.soft-button {
+  min-height: 36px;
+  padding: 0 12px;
+}
+
+.bottom-nav {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-width: 1px 0 0;
+}
+
+.page-jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.page-jump input {
+  width: 66px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  text-align: center;
+}
+
+.page-slider {
+  min-width: 120px;
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.zoom-label {
+  min-width: 56px;
+  color: var(--muted);
+  text-align: center;
+  font-weight: 700;
+}
+
+.fab-stack {
+  position: fixed;
+  right: 18px;
+  bottom: 88px;
+  z-index: 19;
+  flex-direction: column;
+}
+
+.fab {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--accent-ink);
+  background: linear-gradient(180deg, #e4ff99, var(--accent));
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.32);
+  font-weight: 900;
+}
+
+@media (max-width: 740px) {
+  .top-app-bar {
+    min-height: 62px;
+    padding: 8px 10px;
+  }
+
+  .toolbar-actions .icon-button:nth-child(n + 4) {
+    display: none;
+  }
+
+  .bottom-nav {
+    gap: 6px;
+    padding: 8px;
+    overflow-x: auto;
+  }
+
+  .page-slider {
+    min-width: 90px;
+  }
+
+  .fab-stack {
+    right: 12px;
+    bottom: 76px;
+  }
+}

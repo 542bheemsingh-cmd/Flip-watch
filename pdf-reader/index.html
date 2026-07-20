@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flip Watch PDF Reader</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/reader.css" />
+    <link rel="stylesheet" href="css/animations.css" />
+  </head>
+  <body data-theme="dark">
+    <div class="app" data-app>
+      <header class="top-app-bar" data-toolbar>
+        <button class="icon-button" data-action="home" aria-label="Back to dashboard">⌂</button>
+        <div class="title-block">
+          <strong data-doc-title>PDF Reader</strong>
+          <span data-reading-status>Open a PDF to begin</span>
+        </div>
+        <div class="toolbar-actions">
+          <button class="icon-button" data-action="open" aria-label="Open PDF">＋</button>
+          <button class="icon-button" data-action="search" aria-label="Search">⌕</button>
+          <button class="icon-button" data-action="bookmark" aria-label="Bookmark current page">☆</button>
+          <button class="icon-button" data-action="settings" aria-label="Reader settings">⚙</button>
+          <button class="icon-button" data-action="fullscreen" aria-label="Fullscreen">⛶</button>
+        </div>
+      </header>
+
+      <input type="file" accept="application/pdf" data-file-input hidden />
+
+      <aside class="side-panel left-panel" data-sidebar>
+        <div class="panel-tabs">
+          <button class="panel-tab active" data-panel-tab="thumbs">Pages</button>
+          <button class="panel-tab" data-panel-tab="toc">Contents</button>
+          <button class="panel-tab" data-panel-tab="bookmarks">Marks</button>
+          <button class="panel-tab" data-panel-tab="recent">Recent</button>
+        </div>
+        <div class="panel-section active" data-panel="thumbs"><div class="thumb-list" data-thumbnails></div></div>
+        <div class="panel-section" data-panel="toc"><div class="toc-list" data-toc></div></div>
+        <div class="panel-section" data-panel="bookmarks"><div class="bookmark-list" data-bookmarks></div></div>
+        <div class="panel-section" data-panel="recent"><div class="recent-list" data-recent></div></div>
+      </aside>
+
+      <main class="reader-stage" data-reader-stage>
+        <div class="drop-zone" data-drop-zone>
+          <div class="empty-state">
+            <div class="empty-icon">PDF</div>
+            <h1>Open a book-like PDF reader</h1>
+            <p>Drag a PDF here, choose a local file, or continue from recent documents.</p>
+            <button class="filled-button" data-action="open-empty">Open PDF</button>
+          </div>
+        </div>
+
+        <div class="progress-bar"><span data-load-progress></span></div>
+        <div class="viewer-shell" data-viewer-shell hidden>
+          <div class="page-track continuous" data-page-track aria-live="polite"></div>
+        </div>
+      </main>
+
+      <aside class="side-panel right-panel" data-search-panel hidden>
+        <div class="panel-header">
+          <strong>Search</strong>
+          <button class="icon-button" data-action="close-search" aria-label="Close search">×</button>
+        </div>
+        <input class="search-input" type="search" placeholder="Search in PDF" data-search-input />
+        <div class="search-nav">
+          <button class="soft-button" data-action="prev-result">Previous</button>
+          <button class="soft-button" data-action="next-result">Next</button>
+        </div>
+        <div class="search-count" data-search-count>No search yet</div>
+        <div class="search-results" data-search-results></div>
+      </aside>
+
+      <aside class="settings-sheet" data-settings-panel hidden>
+        <div class="panel-header">
+          <strong>Reader Settings</strong>
+          <button class="icon-button" data-action="close-settings" aria-label="Close settings">×</button>
+        </div>
+        <label>Theme
+          <select data-setting="theme">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="sepia">Sepia</option>
+          </select>
+        </label>
+        <label>Brightness <input type="range" min="60" max="120" value="100" data-setting="brightness" /></label>
+        <label>Scroll mode
+          <select data-setting="scrollMode">
+            <option value="continuous">Continuous Scroll</option>
+            <option value="single">Single Page</option>
+            <option value="horizontal">Horizontal</option>
+          </select>
+        </label>
+        <label>Fit mode
+          <select data-setting="fitMode">
+            <option value="width">Fit Width</option>
+            <option value="page">Fit Page</option>
+            <option value="free">Free Zoom</option>
+          </select>
+        </label>
+        <label>Reading direction
+          <select data-setting="direction">
+            <option value="ltr">Left to Right</option>
+            <option value="rtl">Right to Left</option>
+          </select>
+        </label>
+        <label>Page flip mode
+          <select data-setting="pageFlip">
+            <option value="slide">Slide</option>
+            <option value="fade">Fade</option>
+            <option value="none">None</option>
+          </select>
+        </label>
+        <label>UI font size <input type="range" min="85" max="125" value="100" data-setting="fontSize" /></label>
+        <label>Animation speed <input type="range" min="60" max="140" value="100" data-setting="animationSpeed" /></label>
+        <label class="switch-row"><input type="checkbox" data-setting="highContrast" /> High contrast</label>
+      </aside>
+
+      <nav class="bottom-nav" data-bottom-nav>
+        <button class="icon-button" data-action="sidebar" aria-label="Toggle sidebar">☰</button>
+        <button class="icon-button" data-action="prev" aria-label="Previous page">‹</button>
+        <label class="page-jump"><input type="number" min="1" value="1" data-page-input /> <span data-total-pages>/ 0</span></label>
+        <button class="icon-button" data-action="next" aria-label="Next page">›</button>
+        <input class="page-slider" type="range" min="1" value="1" data-page-slider />
+        <button class="icon-button" data-action="zoom-out" aria-label="Zoom out">−</button>
+        <span class="zoom-label" data-zoom-label>100%</span>
+        <button class="icon-button" data-action="zoom-in" aria-label="Zoom in">＋</button>
+      </nav>
+
+      <div class="fab-stack">
+        <button class="fab" data-action="fit-width" aria-label="Fit width">↔</button>
+        <button class="fab" data-action="rotate" aria-label="Rotate page">⟳</button>
+        <button class="fab" data-action="print" aria-label="Print">⎙</button>
+        <button class="fab" data-action="download" aria-label="Download">⇩</button>
+      </div>
+    </div>
+
+    <script src="vendor/gsap.min.js"></script>
+    <script src="vendor/hammer.min.js"></script>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

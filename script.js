@@ -410,6 +410,11 @@ function setMode(nextMode) {
 }
 
 function openTool(mode) {
+  if (mode === "pdf") {
+    window.location.href = "pdf-reader/index.html";
+    return;
+  }
+
   dashboard.hidden = true;
   toolPanel.hidden = false;
   setMode(mode);
