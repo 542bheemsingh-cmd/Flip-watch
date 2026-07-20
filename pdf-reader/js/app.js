@@ -1,4 +1,4 @@
-import { PDFViewer } from "./viewer.js?v=book-size-lock-4";
+import { PDFViewer } from "./viewer.js?v=book-smooth-1";
 import { SettingsController } from "./settings.js";
 import { SearchController } from "./search.js";
 import { BookmarkController } from "./bookmarks.js";

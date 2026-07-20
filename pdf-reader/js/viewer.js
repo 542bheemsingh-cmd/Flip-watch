@@ -469,37 +469,47 @@ export class PDFViewer {
     const eased = clamp(progress, 0, 1);
     const angle = direction > 0 ? -180 * eased : 180 * eased;
     const curve = Math.sin(eased * Math.PI);
-    const lift = curve * 16;
-    const skew = (direction > 0 ? -1 : 1) * curve * 5.5;
-    const shadowStrength = 0.14 + curve * 0.48;
-    const blur = 12 + curve * 32;
+    const lift = curve * 18;
+    const drift = (direction > 0 ? -1 : 1) * curve * 5;
+    const skew = (direction > 0 ? -1 : 1) * curve * 4.2;
+    const shadowStrength = 0.12 + curve * 0.5;
+    const blur = 10 + curve * 34;
     this.flipState.layer.style.setProperty("--flip-progress", String(eased));
     this.flipState.layer.style.setProperty("--flip-shadow", String(shadowStrength));
     this.flipState.layer.style.setProperty("--flip-blur", `${blur}px`);
-    this.flipState.sheet.style.transform = `translate3d(0, ${-lift}px, 0) rotateY(${angle}deg) skewY(${skew}deg)`;
+    this.flipState.sheet.style.transform = `translate3d(${drift}px, ${-lift}px, 0) rotateY(${angle}deg) skewY(${skew}deg)`;
     this.flipState.highlight.style.opacity = String(0.18 + curve * 0.5);
     this.flipState.curl.style.opacity = String(0.18 + curve * 0.42);
     this.flipState.shadow.style.opacity = String(shadowStrength);
     this.flipState.shadow.style.transform = `translateY(${lift * 0.45}px) scaleX(${1 - curve * 0.18})`;
   }
 
+  easePageTurn(t, completing) {
+    const smooth = t * t * (3 - 2 * t);
+    const gravity = completing ? 1 - Math.pow(1 - t, 2.65) : Math.pow(t, 2.1);
+    return clamp(gravity * 0.74 + smooth * 0.26, 0, 1);
+  }
+
   animatePageFlip(state, { from, to, velocity = 0 }) {
     return new Promise((resolve) => {
       const distance = Math.abs(to - from);
       const velocityBoost = Math.min(Math.abs(velocity) / 1600, 0.45);
-      const duration = clamp((520 - velocityBoost * 240) * distance, 260, 700) / (this.settings.animationSpeed / 100);
+      const duration = clamp((620 - velocityBoost * 260) * distance, 300, 760) / (this.settings.animationSpeed / 100);
       const started = performance.now();
       const direction = state.direction;
+      const completing = to > from;
 
       const step = (now) => {
         const elapsed = now - started;
         const t = clamp(elapsed / duration, 0, 1);
-        const spring = 1 - Math.pow(1 - t, 3) + Math.sin(t * Math.PI) * 0.035;
-        const progress = from + (to - from) * clamp(spring, 0, 1);
+        const eased = this.easePageTurn(t, completing);
+        const microFlex = Math.sin(t * Math.PI) * 0.012;
+        const progress = from + (to - from) * clamp(eased + microFlex, 0, 1);
         this.updateFlipProgress(progress, direction);
         if (t < 1) {
           requestAnimationFrame(step);
         } else {
+          this.updateFlipProgress(to, direction);
           resolve();
         }
       };
@@ -518,9 +528,12 @@ export class PDFViewer {
     this.shell.classList.add("spread-switching");
     await this.showPageAfterFlip(targetPage);
     await this.nextFrame();
-    this.shell.classList.remove("spread-switching");
     await this.nextFrame();
-    this.finishFlipLayer();
+    this.shell.classList.remove("spread-switching");
+    this.shell.classList.add("spread-revealing");
+    await this.wait(70);
+    await this.fadeOutFlipLayer();
+    this.shell.classList.remove("spread-revealing");
   }
 
   async showPageAfterFlip(pageNumber) {
@@ -538,6 +551,17 @@ export class PDFViewer {
 
   nextFrame() {
     return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  }
+
+  wait(ms) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+  }
+
+  async fadeOutFlipLayer() {
+    if (!this.flipState) return;
+    this.flipState.layer.classList.add("flip-settling");
+    await this.wait(150);
+    this.finishFlipLayer();
   }
 
   async cancelFlip(state, progress, velocity = 0) {
