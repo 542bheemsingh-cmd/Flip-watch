@@ -115,10 +115,12 @@ export class PDFViewer {
 
   applyMode() {
     const bookMode = this.settings.pageFlip === "realistic";
-    this.track.className = `page-track ${this.settings.scrollMode}${bookMode ? " book-layout" : ""}`;
+    const layoutMode = bookMode ? "horizontal" : this.settings.scrollMode;
+    this.track.className = `page-track ${layoutMode}${bookMode ? " book-layout" : ""}`;
     this.shell.classList.toggle("book-reader", bookMode);
     this.shell.style.direction = this.settings.direction === "rtl" ? "rtl" : "ltr";
     this.zoomLabel.textContent = `${Math.round(this.scale * 100)}%`;
+    this.updateSpreadVisibility();
   }
 
   async onVisible(entries) {
@@ -174,7 +176,8 @@ export class PDFViewer {
 
   computeFitScale(viewport) {
     const shellRect = this.shell.getBoundingClientRect();
-    const availableWidth = Math.max(220, shellRect.width - 36);
+    const spreadWidth = this.settings.pageFlip === "realistic" ? (shellRect.width - 64) / 2 : shellRect.width - 36;
+    const availableWidth = Math.max(180, spreadWidth);
     const availableHeight = Math.max(260, shellRect.height - 36);
     if (this.settings.fitMode === "page") {
       return Math.max(0.2, Math.min(availableWidth / viewport.width, availableHeight / viewport.height));
@@ -200,6 +203,7 @@ export class PDFViewer {
       card.className = "page-card loading";
       card.replaceChildren(this.makePagePill(Number(card.dataset.page)));
     });
+    this.updateSpreadVisibility();
     await this.renderNearby();
   }
 
@@ -210,6 +214,14 @@ export class PDFViewer {
   }
 
   async renderNearby() {
+    if (this.settings.pageFlip === "realistic") {
+      const spreadStart = this.getSpreadStart(this.currentPage);
+      const start = Math.max(1, spreadStart - 2);
+      const end = Math.min(this.total, spreadStart + 5);
+      await Promise.all(Array.from({ length: end - start + 1 }, (_, index) => this.renderPage(start + index)));
+      return;
+    }
+
     const start = Math.max(1, this.currentPage - 2);
     const end = Math.min(this.total, this.currentPage + 3);
     await Promise.all(Array.from({ length: end - start + 1 }, (_, index) => this.renderPage(start + index)));
@@ -217,14 +229,16 @@ export class PDFViewer {
 
   async goToPage(pageNumber, smooth = true) {
     if (!this.pdf) return;
-    this.currentPage = clamp(Number(pageNumber) || 1, 1, this.total);
+    const requestedPage = clamp(Number(pageNumber) || 1, 1, this.total);
+    this.currentPage = this.settings.pageFlip === "realistic" ? this.getSpreadStart(requestedPage) : requestedPage;
     this.pageInput.value = String(this.currentPage);
     this.pageSlider.value = String(this.currentPage);
+    this.updateSpreadVisibility();
     await this.renderNearby();
     const target = this.track.querySelector(`[data-page="${this.currentPage}"]`);
     if (target) target.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "center", inline: "center" });
     await this.saveProgress();
-    this.status.textContent = `Page ${this.currentPage} of ${this.total} • ${this.readingTime()}`;
+    this.status.textContent = `${this.pageStatus()} • ${this.readingTime()}`;
     this.dispatch("pagechange");
   }
 
@@ -237,7 +251,10 @@ export class PDFViewer {
   }
 
   async turnPage(direction, options = {}) {
-    const targetPage = clamp(this.currentPage + direction, 1, this.total);
+    const step = this.settings.pageFlip === "realistic" ? 2 : 1;
+    const targetPage = this.settings.pageFlip === "realistic"
+      ? this.getSpreadStart(this.currentPage + direction * step)
+      : clamp(this.currentPage + direction, 1, this.total);
     if (!this.pdf || targetPage === this.currentPage) return;
 
     const canAnimate = this.settings.pageFlip === "realistic" && !this.flipState && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -261,14 +278,25 @@ export class PDFViewer {
   }
 
   async preparePageFlip(direction, targetPage) {
-    const currentCard = this.track.querySelector(`[data-page="${this.currentPage}"]`);
+    const spreadStart = this.getSpreadStart(this.currentPage);
+    const flipPage = this.settings.pageFlip === "realistic"
+      ? (direction > 0 ? Math.min(spreadStart + 1, this.total) : spreadStart)
+      : this.currentPage;
+    const backPage = this.settings.pageFlip === "realistic"
+      ? (direction > 0 ? targetPage : Math.min(targetPage + 1, this.total))
+      : targetPage;
+    const underPage = this.settings.pageFlip === "realistic"
+      ? (direction > 0 ? Math.min(targetPage + 1, this.total) : targetPage)
+      : targetPage;
+    const currentCard = this.track.querySelector(`[data-page="${flipPage}"]`);
     if (!currentCard) return null;
 
-    const [frontCanvas, backCanvas] = await Promise.all([
-      this.getRenderedCanvas(this.currentPage),
-      this.getRenderedCanvas(targetPage),
+    const [frontCanvas, backCanvas, underCanvas] = await Promise.all([
+      this.getRenderedCanvas(flipPage),
+      this.getRenderedCanvas(backPage),
+      this.getRenderedCanvas(underPage),
     ]);
-    if (!frontCanvas || !backCanvas) return null;
+    if (!frontCanvas || !backCanvas || !underCanvas) return null;
 
     const shellRect = this.shell.getBoundingClientRect();
     const cardRect = currentCard.getBoundingClientRect();
@@ -281,7 +309,7 @@ export class PDFViewer {
 
     const under = document.createElement("div");
     under.className = "flip-under-page";
-    under.append(this.cloneCanvas(backCanvas));
+    under.append(this.cloneCanvas(underCanvas));
 
     const sheet = document.createElement("div");
     sheet.className = "flip-sheet";
@@ -382,24 +410,29 @@ export class PDFViewer {
       if (!this.shouldUseBookFlip(event) || this.dragState) return;
       const card = event.target.closest?.(".page-card");
       if (!card) return;
+      const pageNumber = Number(card.dataset.page);
+      if (this.settings.pageFlip === "realistic" && !this.isSpreadPage(pageNumber)) return;
       const rect = card.getBoundingClientRect();
       const edge = Math.min(96, rect.width * 0.22);
-      if (event.clientX > rect.right - edge) void this.turnPage(1);
-      if (event.clientX < rect.left + edge) void this.turnPage(-1);
+      if (event.clientX > rect.right - edge && pageNumber === Math.min(this.currentPage + 1, this.total)) void this.turnPage(1);
+      if (event.clientX < rect.left + edge && pageNumber === this.currentPage) void this.turnPage(-1);
     });
 
     this.shell.addEventListener("pointerdown", (event) => {
       if (!this.shouldUseBookFlip(event) || event.pointerType === "touch" && event.isPrimary === false) return;
       const card = event.target.closest?.(".page-card");
       if (!card) return;
+      const pageNumber = Number(card.dataset.page);
+      if (this.settings.pageFlip === "realistic" && !this.isSpreadPage(pageNumber)) return;
       const rect = card.getBoundingClientRect();
       const edge = Math.min(120, rect.width * 0.28);
       const nearRight = event.clientX > rect.right - edge;
       const nearLeft = event.clientX < rect.left + edge;
       const nearCorner = event.clientY < rect.top + rect.height * 0.3 || event.clientY > rect.bottom - rect.height * 0.3;
       if (!nearCorner && !nearLeft && !nearRight) return;
-      const direction = nearRight ? 1 : -1;
-      const targetPage = clamp(this.currentPage + direction, 1, this.total);
+      const direction = nearRight && pageNumber === Math.min(this.currentPage + 1, this.total) ? 1 : nearLeft && pageNumber === this.currentPage ? -1 : 0;
+      if (!direction) return;
+      const targetPage = this.getSpreadStart(this.currentPage + direction * 2);
       if (targetPage === this.currentPage) return;
       event.preventDefault();
       this.startFlipDrag(event, direction, targetPage, rect);
@@ -563,6 +596,34 @@ export class PDFViewer {
     const elapsed = Date.now() - this.startedAt;
     const minutes = Math.max(1, Math.round(elapsed / 60000));
     return `${minutes} min reading`;
+  }
+
+  getSpreadStart(pageNumber) {
+    const page = clamp(Number(pageNumber) || 1, 1, this.total);
+    return page % 2 === 0 ? Math.max(1, page - 1) : page;
+  }
+
+  isSpreadPage(pageNumber) {
+    return pageNumber === this.currentPage || pageNumber === Math.min(this.currentPage + 1, this.total);
+  }
+
+  updateSpreadVisibility() {
+    const bookMode = this.settings.pageFlip === "realistic";
+    this.track.querySelectorAll(".page-card").forEach((card) => {
+      const pageNumber = Number(card.dataset.page);
+      const visible = !bookMode || this.isSpreadPage(pageNumber);
+      card.classList.toggle("spread-visible", visible);
+      card.setAttribute("aria-hidden", visible ? "false" : "true");
+    });
+  }
+
+  pageStatus() {
+    if (this.settings.pageFlip !== "realistic") {
+      return `Page ${this.currentPage} of ${this.total}`;
+    }
+    const rightPage = Math.min(this.currentPage + 1, this.total);
+    const label = rightPage === this.currentPage ? `Page ${this.currentPage}` : `Pages ${this.currentPage}-${rightPage}`;
+    return `${label} of ${this.total}`;
   }
 
   dispatch(name) {

@@ -61,7 +61,7 @@ export class ToolbarController {
     window.clearInterval(this.readingTimer);
     this.readingTimer = window.setInterval(() => {
       if (this.viewer.pdf) {
-        this.viewer.status.textContent = `Page ${this.viewer.currentPage} of ${this.viewer.total} • ${this.viewer.readingTime()}`;
+        this.viewer.status.textContent = `${this.viewer.pageStatus()} • ${this.viewer.readingTime()}`;
       }
     }, 30000);
   }

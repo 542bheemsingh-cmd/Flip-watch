@@ -121,6 +121,9 @@
   gap: 0;
   justify-content: center;
   align-items: center;
+  min-width: 100%;
+  width: 100%;
+  overflow: visible;
 }
 
 .book-layout .page-card {
@@ -128,6 +131,48 @@
   box-shadow:
     0 28px 80px rgba(0, 0, 0, 0.42),
     inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.book-layout .page-card:not(.spread-visible):not(.page-is-flipping) {
+  display: none;
+}
+
+.book-layout .page-card.spread-visible {
+  flex: 0 0 auto;
+}
+
+.book-layout .page-card.spread-visible:nth-child(odd) {
+  border-radius: 4px 0 0 4px;
+}
+
+.book-layout .page-card.spread-visible:nth-child(even) {
+  border-radius: 0 4px 4px 0;
+}
+
+.book-layout .page-card.spread-visible:nth-child(odd)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -1px;
+  bottom: 0;
+  z-index: 2;
+  width: 28px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.28));
+  filter: blur(0.4px);
+}
+
+.book-layout .page-card.spread-visible:nth-child(even)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -1px;
+  bottom: 0;
+  z-index: 2;
+  width: 28px;
+  pointer-events: none;
+  background: linear-gradient(270deg, transparent, rgba(0, 0, 0, 0.24));
+  filter: blur(0.4px);
 }
 
 .book-layout .page-card::before {
