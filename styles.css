@@ -45,6 +45,131 @@ button {
   padding: 24px;
 }
 
+.dashboard {
+  width: min(980px, 100%);
+  display: grid;
+  gap: 28px;
+  padding: clamp(22px, 5vw, 48px);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 34%),
+    var(--panel);
+  box-shadow:
+    0 28px 86px rgba(0, 0, 0, 0.46),
+    inset 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 -1px rgba(0, 0, 0, 0.36);
+  backdrop-filter: blur(18px);
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.dashboard-kicker {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.dashboard h1 {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(2.2rem, 7vw, 4.8rem);
+  line-height: 0.95;
+}
+
+.dashboard-badge {
+  flex: 0 0 auto;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid rgba(210, 255, 114, 0.24);
+  border-radius: 999px;
+  color: var(--accent);
+  background: rgba(210, 255, 114, 0.08);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.tool-card {
+  min-height: 190px;
+  display: grid;
+  align-content: end;
+  justify-items: start;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  color: var(--text);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 45%),
+    rgba(0, 0, 0, 0.24);
+  box-shadow:
+    0 18px 36px rgba(0, 0, 0, 0.28),
+    inset 0 1px rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    filter 160ms ease,
+    transform 160ms ease;
+}
+
+.tool-card:hover {
+  border-color: rgba(210, 255, 114, 0.28);
+  filter: brightness(1.06);
+  transform: translateY(-2px);
+}
+
+.tool-card:active {
+  transform: translateY(0);
+}
+
+.primary-tool {
+  background:
+    linear-gradient(180deg, rgba(210, 255, 114, 0.12), transparent 48%),
+    rgba(0, 0, 0, 0.28);
+}
+
+.tool-icon {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--accent-dark);
+  background: linear-gradient(180deg, #e4ff99, var(--accent));
+  box-shadow: 0 14px 24px rgba(210, 255, 114, 0.15);
+  font-size: 1.6rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.tool-name {
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.tool-meta {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
 .watch-panel {
   position: relative;
   width: min(1120px, 100%);
@@ -62,6 +187,22 @@ button {
     inset 0 1px rgba(255, 255, 255, 0.06),
     inset 0 -1px rgba(0, 0, 0, 0.36);
   backdrop-filter: blur(18px);
+}
+
+.back-button {
+  justify-self: start;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: var(--muted);
+  background: rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+}
+
+.back-button:hover {
+  color: var(--text);
+  border-color: rgba(210, 255, 114, 0.24);
 }
 
 .watch-panel::before {
@@ -686,6 +827,24 @@ button {
   .watch-panel {
     gap: 28px;
     padding: 24px 16px;
+  }
+
+  .dashboard {
+    gap: 22px;
+    padding: 24px 16px;
+  }
+
+  .dashboard-header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .tool-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tool-card {
+    min-height: 132px;
   }
 
   .display {

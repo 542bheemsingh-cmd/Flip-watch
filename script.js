@@ -1,4 +1,8 @@
 const display = document.querySelector(".display");
+const dashboard = document.querySelector("[data-dashboard]");
+const toolPanel = document.querySelector("[data-tool-panel]");
+const toolCards = document.querySelectorAll("[data-open-tool]");
+const backDashboardButton = document.querySelector("[data-back-dashboard]");
 const clockDisplay = document.querySelector(".clock-display");
 const clockTime = document.querySelector(".clock-time");
 const clockDate = document.querySelector(".clock-date");
@@ -52,6 +56,21 @@ function setWakeIndicator(status, message) {
   wakeStatus.dataset.wakeStatus = status;
   wakeStatus.textContent = message;
   wakeStatus.title = wakeLockLastError;
+}
+
+function setNativeKeepScreenOn(enabled) {
+  if (!window.AndroidBridge?.setKeepScreenOn) {
+    return false;
+  }
+
+  try {
+    window.AndroidBridge.setKeepScreenOn(enabled);
+    console.info(`[WakeLock] Android native keep-screen-on ${enabled ? "enabled" : "disabled"}.`);
+    return true;
+  } catch (error) {
+    console.warn("[WakeLock] Android native keep-screen-on bridge failed.", error);
+    return false;
+  }
 }
 
 function setHalfValue(card, selector, value) {
@@ -123,6 +142,7 @@ async function requestWakeLock() {
   }
 
   setWakeIndicator("active", "Screen Awake On");
+  const nativeWakeEnabled = setNativeKeepScreenOn(true);
 
   if (!wakeLockSupported) {
     wakeLockLastError = "Wake Lock API is not supported in this browser.";
@@ -154,12 +174,17 @@ async function requestWakeLock() {
   } catch (error) {
     wakeLockLastError = `Browser denied Wake Lock: ${error?.name || "Error"}`;
     console.warn("[WakeLock] Failed to acquire screen wake lock.", error);
+    if (nativeWakeEnabled) {
+      console.info("[WakeLock] Browser Wake Lock failed, Android native keep-screen-on remains active.");
+    }
     wakeLock = null;
     setWakeIndicator("active", "Screen Awake On");
   }
 }
 
 async function releaseWakeLock(reason = "manual") {
+  setNativeKeepScreenOn(false);
+
   if (!wakeLock) {
     if (!isRunning) {
       setWakeIndicator("idle", "Screen Awake: Off");
@@ -384,6 +409,23 @@ function setMode(nextMode) {
   }
 }
 
+function openTool(mode) {
+  dashboard.hidden = true;
+  toolPanel.hidden = false;
+  setMode(mode);
+}
+
+function showDashboard() {
+  if (isRunning) {
+    stopCurrentMode();
+  }
+
+  cancelAnimationFrame(clockFrame);
+  cancelAnimationFrame(stopwatchFrame);
+  toolPanel.hidden = true;
+  dashboard.hidden = false;
+}
+
 function setTimerDuration(minutes) {
   const safeMinutes = Math.min(Math.max(Number(minutes) || 1, 1), 5999);
   selectedTimerDuration = safeMinutes * 60 * 1000;
@@ -407,6 +449,12 @@ resetButton.addEventListener("click", resetCurrentMode);
 modeButtons.forEach((button) => {
   button.addEventListener("click", () => setMode(button.dataset.mode));
 });
+
+toolCards.forEach((card) => {
+  card.addEventListener("click", () => openTool(card.dataset.openTool));
+});
+
+backDashboardButton.addEventListener("click", showDashboard);
 
 presetButtons.forEach((button) => {
   button.addEventListener("click", () => setTimerDuration(button.dataset.minutes));

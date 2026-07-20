@@ -9,7 +9,39 @@
   </head>
   <body>
     <main class="app-shell">
-      <section class="watch-panel" aria-label="Stopwatch">
+      <section class="dashboard" data-dashboard aria-label="Tools dashboard">
+        <div class="dashboard-header">
+          <div>
+            <p class="dashboard-kicker">Flip Watch</p>
+            <h1>Time Tools</h1>
+          </div>
+          <span class="dashboard-badge">3 Tools</span>
+        </div>
+
+        <div class="tool-grid">
+          <button class="tool-card primary-tool" type="button" data-open-tool="stopwatch">
+            <span class="tool-icon">00</span>
+            <span class="tool-name">Stopwatch</span>
+            <span class="tool-meta">Count up with flip cards</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="timer">
+            <span class="tool-icon">05</span>
+            <span class="tool-name">Timer</span>
+            <span class="tool-meta">5, 10, 15, 20 min and custom</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="clock">
+            <span class="tool-icon">24</span>
+            <span class="tool-name">Clock</span>
+            <span class="tool-meta">Live local time</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="watch-panel" data-tool-panel aria-label="Time tool" hidden>
+        <button class="back-button" type="button" data-back-dashboard>Dashboard</button>
+
         <div class="status-row" aria-live="polite">
           <span class="awake-indicator" data-wake-status="idle">Screen Awake: Off</span>
         </div>
