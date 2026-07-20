@@ -136,7 +136,11 @@
 }
 
 .book-layout .page-card:not(.spread-visible):not(.page-is-flipping) {
-  display: none;
+  position: absolute;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate3d(-120vw, 0, 0);
 }
 
 .book-layout .page-card.spread-visible {
@@ -168,7 +172,6 @@
   width: 28px;
   pointer-events: none;
   background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.28));
-  filter: blur(0.4px);
 }
 
 .book-layout .page-card.spread-visible:nth-child(even)::after {
@@ -181,7 +184,6 @@
   width: 28px;
   pointer-events: none;
   background: linear-gradient(270deg, transparent, rgba(0, 0, 0, 0.24));
-  filter: blur(0.4px);
 }
 
 .book-layout .page-card::before {
@@ -193,7 +195,7 @@
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.16), transparent 7%, transparent 93%, rgba(0, 0, 0, 0.1)),
     repeating-linear-gradient(0deg, rgba(30, 22, 12, 0.025) 0 1px, transparent 1px 4px);
-  mix-blend-mode: multiply;
+  opacity: 0.4;
 }
 
 .book-layout .page-card:nth-child(odd) {
@@ -243,80 +245,25 @@
 }
 
 .page-flip-layer {
-  --flip-progress: 0;
-  --flip-shadow: 0.2;
-  --flip-blur: 18px;
   position: absolute;
   z-index: 30;
   pointer-events: none;
   perspective: 1800px;
   transform-style: preserve-3d;
-  filter: drop-shadow(0 32px 70px rgba(0, 0, 0, 0.45));
-  will-change: transform;
+  contain: layout paint size style;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+.page-flip-layer.is-idle {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .page-flip-layer.flip-settling {
   opacity: 0;
-  filter: drop-shadow(0 18px 38px rgba(0, 0, 0, 0.24));
-  transition:
-    opacity 150ms ease-out,
-    filter 150ms ease-out;
-}
-
-.flip-spread-shield {
-  position: absolute;
-  z-index: 32;
-  display: flex;
-  opacity: 0;
-  pointer-events: none;
-  filter: drop-shadow(0 26px 64px rgba(0, 0, 0, 0.36));
-  transform: translateZ(24px);
-  transition:
-    opacity 90ms ease-out,
-    filter 170ms ease-out;
-}
-
-.flip-spread-shield.shield-active {
-  opacity: 1;
-}
-
-.flip-spread-shield.shield-settling {
-  opacity: 0;
-  filter: drop-shadow(0 16px 32px rgba(0, 0, 0, 0.2));
-}
-
-.shield-page {
-  position: relative;
-  width: var(--book-page-width, 340px);
-  height: var(--book-page-height, 480px);
-  overflow: hidden;
-  background: #fff;
-}
-
-.shield-left {
-  border-radius: 4px 0 0 4px;
-}
-
-.shield-right {
-  border-radius: 0 4px 4px 0;
-}
-
-.shield-page canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background: #fff;
-}
-
-.shield-page::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(0, 0, 0, 0.1), transparent 9%, transparent 91%, rgba(0, 0, 0, 0.12)),
-    repeating-linear-gradient(0deg, rgba(30, 22, 12, 0.02) 0 1px, transparent 1px 4px);
-  mix-blend-mode: multiply;
+  transition: opacity 150ms ease-out;
 }
 
 .flip-under-page,
@@ -341,6 +288,7 @@
   transform-style: preserve-3d;
   transform-origin: left center;
   will-change: transform;
+  transform: translateZ(0);
 }
 
 .flip-prev .flip-sheet {
@@ -378,7 +326,7 @@
   background:
     radial-gradient(circle at 28% 18%, rgba(255, 255, 255, 0.22), transparent 26%),
     repeating-linear-gradient(0deg, rgba(70, 48, 28, 0.025) 0 1px, transparent 1px 5px);
-  mix-blend-mode: multiply;
+  opacity: 0.3;
 }
 
 .flip-fold-highlight,
@@ -388,12 +336,13 @@
   pointer-events: none;
   border-radius: 4px;
   backface-visibility: hidden;
+  will-change: opacity;
+  transform: translateZ(2px);
 }
 
 .flip-fold-highlight {
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.5), transparent 18%, rgba(0, 0, 0, 0.2) 56%, transparent 100%);
-  mix-blend-mode: overlay;
   opacity: 0.2;
 }
 
@@ -407,7 +356,6 @@
     radial-gradient(ellipse at right center, rgba(0, 0, 0, 0.32), transparent 9%),
     linear-gradient(90deg, transparent 70%, rgba(255, 255, 255, 0.5) 82%, rgba(0, 0, 0, 0.2));
   opacity: 0.22;
-  transform: translateZ(2px);
 }
 
 .flip-prev .flip-curl {
@@ -419,10 +367,10 @@
 .flip-drop-shadow {
   z-index: -1;
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, var(--flip-shadow)), transparent 67%);
-  filter: blur(var(--flip-blur));
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.42), transparent 67%);
   transform-origin: center bottom;
   will-change: opacity, transform;
+  opacity: 0.28;
 }
 
 .flip-spine-shadow {
@@ -430,9 +378,8 @@
   bottom: 0;
   right: auto;
   width: 18px;
-  opacity: calc(0.15 + var(--flip-progress) * 0.48);
+  opacity: 0.36;
   background: linear-gradient(90deg, rgba(0, 0, 0, 0.36), transparent);
-  filter: blur(1px);
   transform: translateZ(4px);
 }
 

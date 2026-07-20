@@ -39,11 +39,13 @@ export class PDFViewer {
     this.bookPageBaseWidth = null;
     this.bookPageBox = null;
     this.bookPageBoxKey = "";
+    this.visibleSpreadPages = new Set();
     this.visibleObserver = new IntersectionObserver((entries) => this.onVisible(entries), {
       root: this.shell,
       rootMargin: "900px 0px",
       threshold: 0.01,
     });
+    this.createReusableFlipLayer();
     this.bindPageFlipInteractions();
   }
 
@@ -117,18 +119,57 @@ export class PDFViewer {
 
   buildPlaceholders() {
     this.track.textContent = "";
+    this.visibleSpreadPages.clear();
     for (let pageNumber = 1; pageNumber <= this.total; pageNumber += 1) {
       const page = document.createElement("article");
       page.className = "page-card loading";
       page.dataset.page = String(pageNumber);
       page.setAttribute("aria-label", `Page ${pageNumber}`);
+      const canvas = document.createElement("canvas");
+      canvas.className = "page-canvas";
       const pill = document.createElement("span");
       pill.className = "page-number-pill";
       pill.textContent = String(pageNumber);
-      page.append(pill);
+      page.append(canvas, pill);
       this.track.append(page);
       this.visibleObserver.observe(page);
     }
+  }
+
+  createReusableFlipLayer() {
+    const layer = document.createElement("div");
+    layer.className = "page-flip-layer is-idle";
+
+    const under = document.createElement("div");
+    under.className = "flip-under-page";
+    const underCanvas = document.createElement("canvas");
+    under.append(underCanvas);
+
+    const sheet = document.createElement("div");
+    sheet.className = "flip-sheet";
+    const front = document.createElement("div");
+    front.className = "flip-face flip-front";
+    const frontCanvas = document.createElement("canvas");
+    front.append(frontCanvas);
+    const back = document.createElement("div");
+    back.className = "flip-face flip-back";
+    const backCanvas = document.createElement("canvas");
+    back.append(backCanvas);
+
+    const highlight = document.createElement("div");
+    highlight.className = "flip-fold-highlight";
+    const curl = document.createElement("div");
+    curl.className = "flip-curl";
+    sheet.append(front, back, highlight, curl);
+
+    const spine = document.createElement("div");
+    spine.className = "flip-spine-shadow";
+    const shadow = document.createElement("div");
+    shadow.className = "flip-drop-shadow";
+    layer.append(under, shadow, sheet, spine);
+    this.shell.append(layer);
+
+    this.flipDom = { layer, sheet, shadow, highlight, curl, underCanvas, frontCanvas, backCanvas };
   }
 
   applyMode() {
@@ -138,7 +179,7 @@ export class PDFViewer {
     this.shell.classList.toggle("book-reader", bookMode);
     this.shell.style.direction = this.settings.direction === "rtl" ? "rtl" : "ltr";
     this.zoomLabel.textContent = `${Math.round(this.scale * 100)}%`;
-    this.updateSpreadVisibility();
+    this.syncAllSpreadVisibility();
   }
 
   async onVisible(entries) {
@@ -171,7 +212,7 @@ export class PDFViewer {
       const fitScale = this.computeFitScale(baseViewport);
       const outputScale = Math.min(window.devicePixelRatio || 1, 2);
       const viewport = page.getViewport({ scale: fitScale * this.scale, rotation: this.rotation });
-      const canvas = document.createElement("canvas");
+      const canvas = container.querySelector("canvas");
       const context = canvas.getContext("2d", { alpha: false });
 
       canvas.width = Math.floor(viewport.width * outputScale);
@@ -183,7 +224,6 @@ export class PDFViewer {
       container.style.width = `${Math.floor(viewport.width)}px`;
       container.style.height = `${Math.floor(viewport.height)}px`;
       container.classList.toggle("page-turn", this.settings.pageFlip !== "realistic");
-      container.replaceChildren(canvas, this.makePagePill(pageNumber));
 
       await page.render({ canvasContext: context, viewport }).promise;
       container.classList.remove("loading");
@@ -210,7 +250,7 @@ export class PDFViewer {
     const outputScale = Math.min(window.devicePixelRatio || 1, 2);
     const contentScale = Math.min(box.width / baseViewport.width, box.height / baseViewport.height);
     const viewport = page.getViewport({ scale: contentScale, rotation: this.rotation });
-    const canvas = document.createElement("canvas");
+    const canvas = container.querySelector("canvas");
     const context = canvas.getContext("2d", { alpha: false });
 
     canvas.width = Math.floor(box.width * outputScale);
@@ -227,7 +267,6 @@ export class PDFViewer {
     container.style.width = `${Math.floor(box.width)}px`;
     container.style.height = `${Math.floor(box.height)}px`;
     container.classList.remove("page-turn");
-    container.replaceChildren(canvas, this.makePagePill(pageNumber));
 
     await page.render({
       canvasContext: context,
@@ -321,7 +360,11 @@ export class PDFViewer {
     this.bookPageBoxKey = "";
     this.track.querySelectorAll(".page-card").forEach((card) => {
       card.className = "page-card loading";
-      card.replaceChildren(this.makePagePill(Number(card.dataset.page)));
+      const canvas = card.querySelector("canvas");
+      if (canvas) {
+        const context = canvas.getContext("2d");
+        context?.clearRect(0, 0, canvas.width, canvas.height);
+      }
     });
     this.updateSpreadVisibility();
     await this.renderNearby();
@@ -447,105 +490,55 @@ export class PDFViewer {
 
     const shellRect = this.shell.getBoundingClientRect();
     const cardRect = currentCard.getBoundingClientRect();
-    const layer = document.createElement("div");
+    const {
+      layer,
+      sheet,
+      shadow,
+      highlight,
+      curl,
+      underCanvas: reusableUnderCanvas,
+      frontCanvas: reusableFrontCanvas,
+      backCanvas: reusableBackCanvas,
+    } = this.flipDom;
     layer.className = `page-flip-layer ${direction > 0 ? "flip-next" : "flip-prev"}`;
     layer.style.left = `${cardRect.left - shellRect.left + this.shell.scrollLeft}px`;
     layer.style.top = `${cardRect.top - shellRect.top + this.shell.scrollTop}px`;
     layer.style.width = `${cardRect.width}px`;
     layer.style.height = `${cardRect.height}px`;
 
-    const under = document.createElement("div");
-    under.className = "flip-under-page";
-    under.append(this.cloneCanvas(underCanvas));
-
-    const sheet = document.createElement("div");
-    sheet.className = "flip-sheet";
-    const front = document.createElement("div");
-    front.className = "flip-face flip-front";
-    front.append(this.cloneCanvas(frontCanvas));
-    const back = document.createElement("div");
-    back.className = "flip-face flip-back";
-    back.append(this.cloneCanvas(backCanvas));
-    sheet.append(front, back);
-
-    const spine = document.createElement("div");
-    spine.className = "flip-spine-shadow";
-    const shadow = document.createElement("div");
-    shadow.className = "flip-drop-shadow";
-    const highlight = document.createElement("div");
-    highlight.className = "flip-fold-highlight";
-    const curl = document.createElement("div");
-    curl.className = "flip-curl";
-    sheet.append(highlight, curl);
-    layer.append(under, shadow, sheet, spine);
-    const shield = this.makeSpreadShield(direction, targetPage, backCanvas, underCanvas);
-    this.shell.append(layer);
-    if (shield) this.shell.append(shield);
+    this.copyCanvas(frontCanvas, reusableFrontCanvas);
+    this.copyCanvas(backCanvas, reusableBackCanvas);
+    this.copyCanvas(underCanvas, reusableUnderCanvas);
     currentCard.classList.add("page-is-flipping");
 
-    this.flipState = { layer, sheet, shadow, highlight, curl, currentCard, direction, shield };
+    this.flipState = { layer, sheet, shadow, highlight, curl, currentCard, direction };
     this.updateFlipProgress(0, direction);
     return this.flipState;
   }
 
-  makeSpreadShield(direction, targetPage, backCanvas, underCanvas) {
-    const spreadCards = [this.currentPage, Math.min(this.currentPage + 1, this.total)]
-      .map((page) => this.track.querySelector(`[data-page="${page}"]`))
-      .filter(Boolean);
-    if (!spreadCards.length) return null;
-
-    const shellRect = this.shell.getBoundingClientRect();
-    const rects = spreadCards.map((card) => card.getBoundingClientRect());
-    const left = Math.min(...rects.map((rect) => rect.left));
-    const top = Math.min(...rects.map((rect) => rect.top));
-    const right = Math.max(...rects.map((rect) => rect.right));
-    const bottom = Math.max(...rects.map((rect) => rect.bottom));
-    const shield = document.createElement("div");
-    shield.className = "flip-spread-shield";
-    shield.style.left = `${left - shellRect.left + this.shell.scrollLeft}px`;
-    shield.style.top = `${top - shellRect.top + this.shell.scrollTop}px`;
-    shield.style.width = `${right - left}px`;
-    shield.style.height = `${bottom - top}px`;
-
-    const leftPage = document.createElement("div");
-    leftPage.className = "shield-page shield-left";
-    const rightPage = document.createElement("div");
-    rightPage.className = "shield-page shield-right";
-    leftPage.append(this.cloneCanvas(direction > 0 ? backCanvas : underCanvas));
-    rightPage.append(this.cloneCanvas(direction > 0 ? underCanvas : backCanvas));
-    shield.append(leftPage, rightPage);
-    return shield;
-  }
-
-  cloneCanvas(source) {
-    const canvas = document.createElement("canvas");
-    canvas.width = source.width;
-    canvas.height = source.height;
-    canvas.style.width = source.style.width;
-    canvas.style.height = source.style.height;
-    const context = canvas.getContext("2d", { alpha: false });
+  copyCanvas(source, target) {
+    if (target.width !== source.width) target.width = source.width;
+    if (target.height !== source.height) target.height = source.height;
+    target.style.width = source.style.width;
+    target.style.height = source.style.height;
+    const context = target.getContext("2d", { alpha: false });
+    context.clearRect(0, 0, target.width, target.height);
     context.drawImage(source, 0, 0);
-    return canvas;
   }
 
   updateFlipProgress(progress, direction) {
     if (!this.flipState) return;
+    this.flipState.sheet.style.transform = this.pageFlipTransform(progress, direction);
+  }
+
+  pageFlipTransform(progress, direction) {
     const eased = clamp(progress, 0, 1);
     const angle = direction > 0 ? -180 * eased : 180 * eased;
     const curve = Math.sin(eased * Math.PI);
     const lift = curve * 18;
     const drift = (direction > 0 ? -1 : 1) * curve * 5;
     const skew = (direction > 0 ? -1 : 1) * curve * 4.2;
-    const shadowStrength = 0.12 + curve * 0.5;
-    const blur = 10 + curve * 34;
-    this.flipState.layer.style.setProperty("--flip-progress", String(eased));
-    this.flipState.layer.style.setProperty("--flip-shadow", String(shadowStrength));
-    this.flipState.layer.style.setProperty("--flip-blur", `${blur}px`);
-    this.flipState.sheet.style.transform = `translate3d(${drift}px, ${-lift}px, 0) rotateY(${angle}deg) skewY(${skew}deg)`;
-    this.flipState.highlight.style.opacity = String(0.18 + curve * 0.5);
-    this.flipState.curl.style.opacity = String(0.18 + curve * 0.42);
-    this.flipState.shadow.style.opacity = String(shadowStrength);
-    this.flipState.shadow.style.transform = `translateY(${lift * 0.45}px) scaleX(${1 - curve * 0.18})`;
+    return `translate3d(${drift}px, ${-lift}px, 0) rotateY(${angle}deg) skewY(${skew}deg)`;
   }
 
   easePageTurn(t, completing) {
@@ -555,52 +548,38 @@ export class PDFViewer {
   }
 
   animatePageFlip(state, { from, to, velocity = 0 }) {
-    return new Promise((resolve) => {
-      const distance = Math.abs(to - from);
-      const velocityBoost = Math.min(Math.abs(velocity) / 1600, 0.45);
-      const duration = clamp((620 - velocityBoost * 260) * distance, 300, 760) / (this.settings.animationSpeed / 100);
-      const started = performance.now();
-      const direction = state.direction;
-      const completing = to > from;
-
-      const step = (now) => {
-        const elapsed = now - started;
-        const t = clamp(elapsed / duration, 0, 1);
-        const eased = this.easePageTurn(t, completing);
-        const microFlex = Math.sin(t * Math.PI) * 0.012;
-        const progress = from + (to - from) * clamp(eased + microFlex, 0, 1);
-        this.updateFlipProgress(progress, direction);
-        if (t < 1) {
-          requestAnimationFrame(step);
-        } else {
-          this.updateFlipProgress(to, direction);
-          resolve();
-        }
-      };
-      requestAnimationFrame(step);
+    const distance = Math.abs(to - from);
+    const velocityBoost = Math.min(Math.abs(velocity) / 1600, 0.45);
+    const duration = clamp((620 - velocityBoost * 260) * distance, 300, 760) / (this.settings.animationSpeed / 100);
+    const direction = state.direction;
+    const mid = from + (to - from) * 0.58;
+    const animation = state.sheet.animate([
+      { transform: this.pageFlipTransform(from, direction), offset: 0 },
+      { transform: this.pageFlipTransform(mid, direction), offset: 0.58 },
+      { transform: this.pageFlipTransform(to, direction), offset: 1 },
+    ], {
+      duration,
+      easing: to > from ? "cubic-bezier(0.18, 0.72, 0.2, 1)" : "cubic-bezier(0.25, 0.1, 0.25, 1)",
+      fill: "forwards",
+    });
+    return animation.finished.then(() => {
+      state.sheet.style.transform = this.pageFlipTransform(to, direction);
+      animation.cancel();
     });
   }
 
-  finishFlipLayer({ keepShield = false } = {}) {
+  finishFlipLayer() {
     if (!this.flipState) return;
     this.flipState.currentCard.classList.remove("page-is-flipping");
-    this.flipState.layer.remove();
-    if (!keepShield) this.flipState.shield?.remove();
+    this.flipState.layer.className = "page-flip-layer is-idle";
     this.flipState = null;
   }
 
   async commitSpreadAfterFlip(targetPage) {
-    const shield = this.flipState?.shield || null;
-    shield?.classList.add("shield-active");
     await this.showPageAfterFlip(targetPage);
     await this.nextFrame();
     await this.nextFrame();
-    this.finishFlipLayer({ keepShield: true });
-    if (shield) {
-      shield.classList.add("shield-settling");
-      await this.wait(170);
-      shield.remove();
-    }
+    this.finishFlipLayer();
   }
 
   async showPageAfterFlip(pageNumber) {
@@ -874,12 +853,38 @@ export class PDFViewer {
 
   updateSpreadVisibility() {
     const bookMode = this.settings.pageFlip === "realistic";
+    if (!bookMode) {
+      this.track.querySelectorAll(".page-card").forEach((card) => {
+        card.classList.add("spread-visible");
+        card.setAttribute("aria-hidden", "false");
+      });
+      this.visibleSpreadPages.clear();
+      return;
+    }
+
+    const nextVisible = new Set([this.currentPage, Math.min(this.currentPage + 1, this.total)]);
+    const pagesToTouch = new Set([...this.visibleSpreadPages, ...nextVisible]);
+    pagesToTouch.forEach((pageNumber) => {
+      const card = this.track.querySelector(`[data-page="${pageNumber}"]`);
+      if (!card) return;
+      const visible = nextVisible.has(pageNumber);
+      card.classList.toggle("spread-visible", visible);
+      card.setAttribute("aria-hidden", visible ? "false" : "true");
+    });
+    this.visibleSpreadPages = nextVisible;
+  }
+
+  syncAllSpreadVisibility() {
+    const bookMode = this.settings.pageFlip === "realistic";
     this.track.querySelectorAll(".page-card").forEach((card) => {
       const pageNumber = Number(card.dataset.page);
       const visible = !bookMode || this.isSpreadPage(pageNumber);
       card.classList.toggle("spread-visible", visible);
       card.setAttribute("aria-hidden", visible ? "false" : "true");
     });
+    this.visibleSpreadPages = bookMode
+      ? new Set([this.currentPage, Math.min(this.currentPage + 1, this.total)])
+      : new Set();
   }
 
   pageStatus() {
