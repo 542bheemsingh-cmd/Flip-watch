@@ -81,10 +81,6 @@ export class PDFViewer {
     this.rendered.clear();
     this.rendering.clear();
     this.textCache.clear();
-    this.bookPageRatio = null;
-    this.bookPageBaseWidth = null;
-    this.bookPageBox = null;
-    this.bookPageBoxKey = "";
     this.pageInput.max = String(this.total);
     this.pageSlider.max = String(this.total);
     this.totalPages.textContent = `/ ${this.total}`;
@@ -341,6 +337,19 @@ export class PDFViewer {
     await Promise.all(Array.from({ length: end - start + 1 }, (_, index) => this.renderPage(start + index)));
   }
 
+  async renderCurrentSpread() {
+    const spreadStart = this.getSpreadStart(this.currentPage);
+    await Promise.all([
+      this.renderPage(spreadStart),
+      spreadStart < this.total ? this.renderPage(spreadStart + 1) : Promise.resolve(),
+    ]);
+  }
+
+  renderNearbyInBackground() {
+    if (!this.pdf) return;
+    window.requestIdleCallback?.(() => void this.renderNearby()) ?? window.setTimeout(() => void this.renderNearby(), 80);
+  }
+
   async goToPage(pageNumber, smooth = true) {
     if (!this.pdf) return;
     const requestedPage = clamp(Number(pageNumber) || 1, 1, this.total);
@@ -445,12 +454,43 @@ export class PDFViewer {
     curl.className = "flip-curl";
     sheet.append(highlight, curl);
     layer.append(under, shadow, sheet, spine);
+    const shield = this.makeSpreadShield(direction, targetPage, backCanvas, underCanvas);
     this.shell.append(layer);
+    if (shield) this.shell.append(shield);
     currentCard.classList.add("page-is-flipping");
 
-    this.flipState = { layer, sheet, shadow, highlight, curl, currentCard, direction };
+    this.flipState = { layer, sheet, shadow, highlight, curl, currentCard, direction, shield };
     this.updateFlipProgress(0, direction);
     return this.flipState;
+  }
+
+  makeSpreadShield(direction, targetPage, backCanvas, underCanvas) {
+    const spreadCards = [this.currentPage, Math.min(this.currentPage + 1, this.total)]
+      .map((page) => this.track.querySelector(`[data-page="${page}"]`))
+      .filter(Boolean);
+    if (!spreadCards.length) return null;
+
+    const shellRect = this.shell.getBoundingClientRect();
+    const rects = spreadCards.map((card) => card.getBoundingClientRect());
+    const left = Math.min(...rects.map((rect) => rect.left));
+    const top = Math.min(...rects.map((rect) => rect.top));
+    const right = Math.max(...rects.map((rect) => rect.right));
+    const bottom = Math.max(...rects.map((rect) => rect.bottom));
+    const shield = document.createElement("div");
+    shield.className = "flip-spread-shield";
+    shield.style.left = `${left - shellRect.left + this.shell.scrollLeft}px`;
+    shield.style.top = `${top - shellRect.top + this.shell.scrollTop}px`;
+    shield.style.width = `${right - left}px`;
+    shield.style.height = `${bottom - top}px`;
+
+    const leftPage = document.createElement("div");
+    leftPage.className = "shield-page shield-left";
+    const rightPage = document.createElement("div");
+    rightPage.className = "shield-page shield-right";
+    leftPage.append(this.cloneCanvas(direction > 0 ? backCanvas : underCanvas));
+    rightPage.append(this.cloneCanvas(direction > 0 ? underCanvas : backCanvas));
+    shield.append(leftPage, rightPage);
+    return shield;
   }
 
   cloneCanvas(source) {
@@ -517,23 +557,26 @@ export class PDFViewer {
     });
   }
 
-  finishFlipLayer() {
+  finishFlipLayer({ keepShield = false } = {}) {
     if (!this.flipState) return;
     this.flipState.currentCard.classList.remove("page-is-flipping");
     this.flipState.layer.remove();
+    if (!keepShield) this.flipState.shield?.remove();
     this.flipState = null;
   }
 
   async commitSpreadAfterFlip(targetPage) {
-    this.shell.classList.add("spread-switching");
+    const shield = this.flipState?.shield || null;
+    shield?.classList.add("shield-active");
     await this.showPageAfterFlip(targetPage);
     await this.nextFrame();
     await this.nextFrame();
-    this.shell.classList.remove("spread-switching");
-    this.shell.classList.add("spread-revealing");
-    await this.wait(70);
-    await this.fadeOutFlipLayer();
-    this.shell.classList.remove("spread-revealing");
+    this.finishFlipLayer({ keepShield: true });
+    if (shield) {
+      shield.classList.add("shield-settling");
+      await this.wait(170);
+      shield.remove();
+    }
   }
 
   async showPageAfterFlip(pageNumber) {
@@ -541,11 +584,12 @@ export class PDFViewer {
     this.pageInput.value = String(this.currentPage);
     this.pageSlider.value = String(this.currentPage);
     this.updateSpreadVisibility();
-    await this.renderNearby();
+    await this.renderCurrentSpread();
     const target = this.track.querySelector(`[data-page="${this.currentPage}"]`);
-    if (target) target.scrollIntoView({ behavior: "auto", block: "center", inline: "center" });
+    if (target && this.settings.pageFlip !== "realistic") target.scrollIntoView({ behavior: "auto", block: "center", inline: "center" });
     this.status.textContent = `${this.pageStatus()} • ${this.readingTime()}`;
     this.dispatch("pagechange");
+    this.renderNearbyInBackground();
     void this.saveProgress();
   }
 
