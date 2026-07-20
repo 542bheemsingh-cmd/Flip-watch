@@ -155,7 +155,7 @@ export class PDFViewer {
 
       container.style.width = `${Math.floor(viewport.width)}px`;
       container.style.height = `${Math.floor(viewport.height)}px`;
-      container.classList.add("page-turn");
+      container.classList.toggle("page-turn", this.settings.pageFlip !== "realistic");
       container.replaceChildren(canvas, this.makePagePill(pageNumber));
 
       await page.render({ canvasContext: context, viewport }).promise;
@@ -275,6 +275,7 @@ export class PDFViewer {
       velocity: options.velocity ?? 0,
     });
     await this.goToPage(targetPage, false);
+    this.finishFlipLayer();
   }
 
   async preparePageFlip(direction, targetPage) {
@@ -386,7 +387,6 @@ export class PDFViewer {
         if (t < 1) {
           requestAnimationFrame(step);
         } else {
-          this.finishFlipLayer();
           resolve();
         }
       };
@@ -403,6 +403,7 @@ export class PDFViewer {
 
   async cancelFlip(state, progress, velocity = 0) {
     await this.animatePageFlip(state, { from: progress, to: 0, velocity });
+    this.finishFlipLayer();
   }
 
   bindPageFlipInteractions() {
@@ -498,6 +499,7 @@ export class PDFViewer {
     if (shouldComplete) {
       await this.animatePageFlip(this.flipState, { from: drag.progress, to: 1, velocity: momentum });
       await this.goToPage(drag.targetPage, false);
+      this.finishFlipLayer();
     } else {
       await this.cancelFlip(this.flipState, drag.progress, momentum);
     }
