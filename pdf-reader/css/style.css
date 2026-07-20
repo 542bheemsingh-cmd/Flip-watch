@@ -46,9 +46,14 @@ button {
 
 .app {
   min-height: 100vh;
+  height: 100vh;
   display: grid;
   grid-template-rows: auto 1fr auto;
   filter: brightness(var(--brightness, 1));
+}
+
+.app.reader-ui-hidden {
+  grid-template-rows: 1fr;
 }
 
 .top-app-bar,
@@ -211,6 +216,44 @@ button {
   font-weight: 900;
 }
 
+.reader-ui-reveal {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 40;
+  width: 44px;
+  height: 44px;
+  display: none;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line));
+  border-radius: 50%;
+  color: var(--accent-ink);
+  background: linear-gradient(180deg, #e4ff99, var(--accent));
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.reader-ui-hidden .top-app-bar,
+.reader-ui-hidden .bottom-nav,
+.reader-ui-hidden .fab-stack,
+.reader-ui-hidden .side-panel,
+.reader-ui-hidden .settings-sheet {
+  display: none !important;
+}
+
+.reader-ui-hidden .reader-stage {
+  grid-row: 1;
+}
+
+.reader-ui-hidden .reader-ui-reveal {
+  display: grid;
+}
+
+.is-fullscreen {
+  background: #06100d;
+}
+
 @media (max-width: 740px) {
   .top-app-bar {
     min-height: 62px;
@@ -219,6 +262,11 @@ button {
 
   .toolbar-actions .icon-button:nth-child(n + 4) {
     display: none;
+  }
+
+  .toolbar-actions .icon-button[data-action="toggle-ui"],
+  .toolbar-actions .icon-button[data-action="fullscreen"] {
+    display: grid;
   }
 
   .bottom-nav {

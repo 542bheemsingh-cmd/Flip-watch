@@ -82,6 +82,7 @@
   overscroll-behavior: contain;
   padding: 22px;
   scroll-behavior: smooth;
+  scrollbar-gutter: stable both-edges;
 }
 
 .page-track {
@@ -111,6 +112,7 @@
   background: #fff;
   box-shadow: 0 20px 70px rgba(0, 0, 0, 0.34);
   overflow: hidden;
+  transform: translateZ(0);
 }
 
 .page-card.loading {

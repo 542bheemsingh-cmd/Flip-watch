@@ -126,10 +126,10 @@ export class PDFViewer {
 
   async renderPage(pageNumber) {
     if (!this.pdf || this.rendered.has(pageNumber) || this.rendering.has(pageNumber)) return;
-    this.rendering.add(pageNumber);
     const container = this.track.querySelector(`[data-page="${pageNumber}"]`);
     if (!container) return;
 
+    this.rendering.add(pageNumber);
     try {
       const page = await this.pdf.getPage(pageNumber);
       const baseViewport = page.getViewport({ scale: 1, rotation: this.rotation });
@@ -163,13 +163,15 @@ export class PDFViewer {
 
   computeFitScale(viewport) {
     const shellRect = this.shell.getBoundingClientRect();
+    const availableWidth = Math.max(220, shellRect.width - 36);
+    const availableHeight = Math.max(260, shellRect.height - 36);
     if (this.settings.fitMode === "page") {
-      return Math.min((shellRect.width - 30) / viewport.width, (shellRect.height - 30) / viewport.height);
+      return Math.max(0.2, Math.min(availableWidth / viewport.width, availableHeight / viewport.height));
     }
     if (this.settings.fitMode === "free") {
       return 1;
     }
-    return Math.max(0.2, (shellRect.width - 42) / viewport.width);
+    return Math.max(0.2, availableWidth / viewport.width);
   }
 
   makePagePill(pageNumber) {
@@ -180,6 +182,7 @@ export class PDFViewer {
   }
 
   async rerenderVisible() {
+    if (!this.pdf) return;
     this.rendered.clear();
     this.rendering.clear();
     this.track.querySelectorAll(".page-card").forEach((card) => {
@@ -187,6 +190,12 @@ export class PDFViewer {
       card.replaceChildren(this.makePagePill(Number(card.dataset.page)));
     });
     await this.renderNearby();
+  }
+
+  async refreshLayout() {
+    if (!this.pdf) return;
+    await this.rerenderVisible();
+    await this.goToPage(this.currentPage, false);
   }
 
   async renderNearby() {

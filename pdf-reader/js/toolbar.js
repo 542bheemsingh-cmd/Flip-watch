@@ -32,7 +32,8 @@ export class ToolbarController {
     if (event.key === "ArrowLeft" || event.key === "PageUp") void this.viewer.prevPage();
     if (event.key === "+") void this.viewer.zoomBy(0.15);
     if (event.key === "-") void this.viewer.zoomBy(-0.15);
-    if (event.key === "f") void document.documentElement.requestFullscreen?.();
+    if (event.key.toLowerCase() === "f") document.dispatchEvent(new CustomEvent("reader:fullscreen"));
+    if (event.key.toLowerCase() === "u") document.dispatchEvent(new CustomEvent("reader:toggle-ui"));
   }
 
   async renderRecent(list) {

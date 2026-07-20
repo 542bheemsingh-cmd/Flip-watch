@@ -40,10 +40,12 @@ const toolbar = new ToolbarController(viewer, {
 const gestures = new GestureController(viewer, $("[data-reader-stage]"));
 
 const fileInput = $("[data-file-input]");
+const app = $("[data-app]");
 const sidebar = $("[data-sidebar]");
 const searchPanel = $("[data-search-panel]");
 const settingsPanel = $("[data-settings-panel]");
 const recentList = $("[data-recent]");
+let resizeTimer = 0;
 
 settings.bind(settingsPanel);
 settings.onChange(async (next) => {
@@ -70,11 +72,22 @@ toolbar.bind({
   print: () => viewer.print(),
   download: () => viewer.download(),
   bookmark: () => bookmarks.toggle(),
-  fullscreen: () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(),
+  "toggle-ui": () => toggleReaderUi(),
+  fullscreen: () => toggleFullscreen(),
   "prev-result": () => search.previous(),
   "next-result": () => search.next(),
 });
 gestures.bind();
+
+window.addEventListener("resize", () => scheduleReaderRefresh());
+document.addEventListener("fullscreenchange", () => {
+  app.classList.toggle("is-fullscreen", Boolean(document.fullscreenElement));
+  scheduleReaderRefresh();
+});
+document.addEventListener("reader:fullscreen", () => {
+  void toggleFullscreen();
+});
+document.addEventListener("reader:toggle-ui", () => toggleReaderUi());
 
 fileInput.addEventListener("change", async () => {
   const file = fileInput.files?.[0];
@@ -127,6 +140,39 @@ async function openFile(file) {
 function togglePanel(panel) {
   panel.hidden = !panel.hidden;
   if (!panel.hidden) panel.classList.add("material-enter");
+}
+
+async function toggleFullscreen() {
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else {
+      await app.requestFullscreen?.();
+    }
+  } catch (error) {
+    console.warn("[PDFReader] Fullscreen request failed", error);
+  } finally {
+    scheduleReaderRefresh();
+  }
+}
+
+function toggleReaderUi(force) {
+  const hideUi = typeof force === "boolean" ? force : !app.classList.contains("reader-ui-hidden");
+  app.classList.toggle("reader-ui-hidden", hideUi);
+  sidebar.hidden = true;
+  searchPanel.hidden = true;
+  settingsPanel.hidden = true;
+  document.querySelectorAll('[data-action="toggle-ui"]').forEach((button) => {
+    button.setAttribute("aria-label", hideUi ? "Show reader interface" : "Hide reader interface");
+  });
+  scheduleReaderRefresh();
+}
+
+function scheduleReaderRefresh() {
+  window.clearTimeout(resizeTimer);
+  resizeTimer = window.setTimeout(() => {
+    void viewer.refreshLayout();
+  }, 180);
 }
 
 function animateEnter() {
