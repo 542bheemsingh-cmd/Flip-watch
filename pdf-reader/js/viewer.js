@@ -274,8 +274,7 @@ export class PDFViewer {
       to: 1,
       velocity: options.velocity ?? 0,
     });
-    await this.goToPage(targetPage, false);
-    this.finishFlipLayer();
+    await this.commitSpreadAfterFlip(targetPage);
   }
 
   async preparePageFlip(direction, targetPage) {
@@ -401,6 +400,32 @@ export class PDFViewer {
     this.flipState = null;
   }
 
+  async commitSpreadAfterFlip(targetPage) {
+    this.shell.classList.add("spread-switching");
+    await this.showPageAfterFlip(targetPage);
+    await this.nextFrame();
+    this.shell.classList.remove("spread-switching");
+    await this.nextFrame();
+    this.finishFlipLayer();
+  }
+
+  async showPageAfterFlip(pageNumber) {
+    this.currentPage = this.settings.pageFlip === "realistic" ? this.getSpreadStart(pageNumber) : clamp(Number(pageNumber) || 1, 1, this.total);
+    this.pageInput.value = String(this.currentPage);
+    this.pageSlider.value = String(this.currentPage);
+    this.updateSpreadVisibility();
+    await this.renderNearby();
+    const target = this.track.querySelector(`[data-page="${this.currentPage}"]`);
+    if (target) target.scrollIntoView({ behavior: "auto", block: "center", inline: "center" });
+    this.status.textContent = `${this.pageStatus()} • ${this.readingTime()}`;
+    this.dispatch("pagechange");
+    void this.saveProgress();
+  }
+
+  nextFrame() {
+    return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  }
+
   async cancelFlip(state, progress, velocity = 0) {
     await this.animatePageFlip(state, { from: progress, to: 0, velocity });
     this.finishFlipLayer();
@@ -498,8 +523,7 @@ export class PDFViewer {
     const shouldComplete = drag.progress > 0.5 || momentum > 650;
     if (shouldComplete) {
       await this.animatePageFlip(this.flipState, { from: drag.progress, to: 1, velocity: momentum });
-      await this.goToPage(drag.targetPage, false);
-      this.finishFlipLayer();
+      await this.commitSpreadAfterFlip(drag.targetPage);
     } else {
       await this.cancelFlip(this.flipState, drag.progress, momentum);
     }

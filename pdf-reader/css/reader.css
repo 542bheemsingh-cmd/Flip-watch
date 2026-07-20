@@ -126,6 +126,10 @@
   overflow: visible;
 }
 
+.book-reader.spread-switching .page-track {
+  visibility: hidden;
+}
+
 .book-layout .page-card {
   border-radius: 4px;
   box-shadow:
