@@ -131,6 +131,8 @@
 }
 
 .book-layout .page-card {
+  width: var(--book-page-width, 340px) !important;
+  height: var(--book-page-height, 480px) !important;
   border-radius: 4px;
   box-shadow:
     0 28px 80px rgba(0, 0, 0, 0.42),
@@ -143,6 +145,13 @@
 
 .book-layout .page-card.spread-visible {
   flex: 0 0 auto;
+}
+
+.book-layout .page-card canvas {
+  width: var(--book-page-width, 340px) !important;
+  height: var(--book-page-height, 480px) !important;
+  object-fit: contain;
+  background: #fff;
 }
 
 .book-layout .page-card.spread-visible:nth-child(odd) {

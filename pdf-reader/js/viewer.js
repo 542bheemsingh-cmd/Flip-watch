@@ -33,6 +33,10 @@ export class PDFViewer {
     this.flipState = null;
     this.dragState = null;
     this.suppressFlipClickUntil = 0;
+    this.bookPageRatio = null;
+    this.bookPageBaseWidth = null;
+    this.bookPageBox = null;
+    this.bookPageBoxKey = "";
     this.visibleObserver = new IntersectionObserver((entries) => this.onVisible(entries), {
       root: this.shell,
       rootMargin: "900px 0px",
@@ -73,9 +77,14 @@ export class PDFViewer {
     this.pdf = await loadingTask.promise;
     this.total = this.pdf.numPages;
     this.currentPage = (await this.restoreLastPage()) || 1;
+    await this.initializeBookMetrics();
     this.rendered.clear();
     this.rendering.clear();
     this.textCache.clear();
+    this.bookPageRatio = null;
+    this.bookPageBaseWidth = null;
+    this.bookPageBox = null;
+    this.bookPageBoxKey = "";
     this.pageInput.max = String(this.total);
     this.pageSlider.max = String(this.total);
     this.totalPages.textContent = `/ ${this.total}`;
@@ -95,6 +104,17 @@ export class PDFViewer {
       lastModified: record.lastModified || Date.now(),
     });
     await this.loadFile(file);
+  }
+
+  async initializeBookMetrics() {
+    if (!this.pdf) return;
+    const firstPage = await this.pdf.getPage(1);
+    const viewport = firstPage.getViewport({ scale: 1, rotation: this.rotation });
+    this.bookPageRatio = viewport.height / viewport.width;
+    this.bookPageBaseWidth = viewport.width;
+    this.bookPageBox = this.computeBookPageBoxFromShell();
+    this.bookPageBoxKey = this.getBookPageBoxKey();
+    this.applyBookPageBoxVars();
   }
 
   buildPlaceholders() {
@@ -141,6 +161,11 @@ export class PDFViewer {
     try {
       const page = await this.pdf.getPage(pageNumber);
       const baseViewport = page.getViewport({ scale: 1, rotation: this.rotation });
+      if (this.settings.pageFlip === "realistic") {
+        await this.renderBookPage(page, baseViewport, container, pageNumber);
+        return;
+      }
+
       const fitScale = this.computeFitScale(baseViewport);
       const outputScale = Math.min(window.devicePixelRatio || 1, 2);
       const viewport = page.getViewport({ scale: fitScale * this.scale, rotation: this.rotation });
@@ -174,6 +199,93 @@ export class PDFViewer {
     return this.rendered.get(pageNumber) || null;
   }
 
+  async renderBookPage(page, baseViewport, container, pageNumber) {
+    const box = this.computeBookPageBox(baseViewport);
+    const outputScale = Math.min(window.devicePixelRatio || 1, 2);
+    const contentScale = Math.min(box.width / baseViewport.width, box.height / baseViewport.height);
+    const viewport = page.getViewport({ scale: contentScale, rotation: this.rotation });
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d", { alpha: false });
+
+    canvas.width = Math.floor(box.width * outputScale);
+    canvas.height = Math.floor(box.height * outputScale);
+    canvas.style.width = `${Math.floor(box.width)}px`;
+    canvas.style.height = `${Math.floor(box.height)}px`;
+    context.setTransform(outputScale, 0, 0, outputScale, 0, 0);
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, box.width, box.height);
+
+    const offsetX = Math.max(0, (box.width - viewport.width) / 2);
+    const offsetY = Math.max(0, (box.height - viewport.height) / 2);
+
+    container.style.width = `${Math.floor(box.width)}px`;
+    container.style.height = `${Math.floor(box.height)}px`;
+    container.classList.remove("page-turn");
+    container.replaceChildren(canvas, this.makePagePill(pageNumber));
+
+    await page.render({
+      canvasContext: context,
+      viewport,
+      transform: [1, 0, 0, 1, offsetX, offsetY],
+    }).promise;
+    container.classList.remove("loading");
+    this.rendered.set(pageNumber, canvas);
+  }
+
+  computeBookPageBox(baseViewport) {
+    if (this.bookPageBox) {
+      this.applyBookPageBoxVars();
+      return this.bookPageBox;
+    }
+
+    if (!this.bookPageRatio) {
+      this.bookPageRatio = baseViewport.height / baseViewport.width;
+    }
+    if (!this.bookPageBaseWidth) {
+      this.bookPageBaseWidth = baseViewport.width;
+    }
+
+    const key = this.getBookPageBoxKey();
+    this.bookPageBox = this.computeBookPageBoxFromShell();
+    this.bookPageBoxKey = key;
+    this.applyBookPageBoxVars();
+    return this.bookPageBox;
+  }
+
+  applyBookPageBoxVars() {
+    if (!this.bookPageBox) return;
+    this.track.style.setProperty("--book-page-width", `${Math.round(this.bookPageBox.width)}px`);
+    this.track.style.setProperty("--book-page-height", `${Math.round(this.bookPageBox.height)}px`);
+  }
+
+  getBookPageBoxKey() {
+    const shellRect = this.shell.getBoundingClientRect();
+    const maxWidth = Math.max(180, ((shellRect.width - 64) / 2) * this.scale);
+    const maxHeight = Math.max(260, (shellRect.height - 36) * this.scale);
+    return `${Math.round(maxWidth)}:${Math.round(maxHeight)}:${this.settings.fitMode}:${this.rotation}:${this.scale.toFixed(3)}:${(this.bookPageRatio || 0).toFixed(4)}:${Math.round(this.bookPageBaseWidth || 0)}`;
+  }
+
+  computeBookPageBoxFromShell() {
+    const shellRect = this.shell.getBoundingClientRect();
+    const maxWidth = Math.max(180, ((shellRect.width - 64) / 2) * this.scale);
+    const maxHeight = Math.max(260, (shellRect.height - 36) * this.scale);
+    if (this.settings.fitMode === "free") {
+      return {
+        width: Math.min(maxWidth, this.bookPageBaseWidth),
+        height: Math.min(maxHeight, this.bookPageBaseWidth * this.bookPageRatio),
+      };
+    }
+
+    const widthScale = maxWidth / this.bookPageBaseWidth;
+    const heightScale = maxHeight / (this.bookPageBaseWidth * this.bookPageRatio);
+    const fitScale = this.settings.fitMode === "page" ? Math.min(widthScale, heightScale) : widthScale;
+    const width = Math.max(180, this.bookPageBaseWidth * fitScale);
+    return {
+      width,
+      height: Math.min(maxHeight, width * this.bookPageRatio),
+    };
+  }
+
   computeFitScale(viewport) {
     const shellRect = this.shell.getBoundingClientRect();
     const spreadWidth = this.settings.pageFlip === "realistic" ? (shellRect.width - 64) / 2 : shellRect.width - 36;
@@ -199,6 +311,8 @@ export class PDFViewer {
     if (!this.pdf) return;
     this.rendered.clear();
     this.rendering.clear();
+    this.bookPageBox = null;
+    this.bookPageBoxKey = "";
     this.track.querySelectorAll(".page-card").forEach((card) => {
       card.className = "page-card loading";
       card.replaceChildren(this.makePagePill(Number(card.dataset.page)));
@@ -542,6 +656,10 @@ export class PDFViewer {
 
   async rotate() {
     this.rotation = (this.rotation + 90) % 360;
+    this.bookPageRatio = null;
+    this.bookPageBaseWidth = null;
+    this.bookPageBox = null;
+    this.bookPageBoxKey = "";
     await this.rerenderVisible();
   }
 
