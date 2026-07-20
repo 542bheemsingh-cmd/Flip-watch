@@ -39,7 +39,6 @@ export class PDFViewer {
     this.bookPageBaseWidth = null;
     this.bookPageBox = null;
     this.bookPageBoxKey = "";
-    this.visibleSpreadPages = new Set();
     this.visibleObserver = new IntersectionObserver((entries) => this.onVisible(entries), {
       root: this.shell,
       rootMargin: "900px 0px",
@@ -119,7 +118,6 @@ export class PDFViewer {
 
   buildPlaceholders() {
     this.track.textContent = "";
-    this.visibleSpreadPages.clear();
     for (let pageNumber = 1; pageNumber <= this.total; pageNumber += 1) {
       const page = document.createElement("article");
       page.className = "page-card loading";
@@ -179,7 +177,7 @@ export class PDFViewer {
     this.shell.classList.toggle("book-reader", bookMode);
     this.shell.style.direction = this.settings.direction === "rtl" ? "rtl" : "ltr";
     this.zoomLabel.textContent = `${Math.round(this.scale * 100)}%`;
-    this.syncAllSpreadVisibility();
+    this.updateSpreadVisibility();
   }
 
   async onVisible(entries) {
@@ -528,17 +526,22 @@ export class PDFViewer {
 
   updateFlipProgress(progress, direction) {
     if (!this.flipState) return;
-    this.flipState.sheet.style.transform = this.pageFlipTransform(progress, direction);
-  }
-
-  pageFlipTransform(progress, direction) {
     const eased = clamp(progress, 0, 1);
     const angle = direction > 0 ? -180 * eased : 180 * eased;
     const curve = Math.sin(eased * Math.PI);
     const lift = curve * 18;
     const drift = (direction > 0 ? -1 : 1) * curve * 5;
     const skew = (direction > 0 ? -1 : 1) * curve * 4.2;
-    return `translate3d(${drift}px, ${-lift}px, 0) rotateY(${angle}deg) skewY(${skew}deg)`;
+    const shadowStrength = 0.12 + curve * 0.5;
+    const blur = 10 + curve * 34;
+    this.flipState.layer.style.setProperty("--flip-progress", String(eased));
+    this.flipState.layer.style.setProperty("--flip-shadow", String(shadowStrength));
+    this.flipState.layer.style.setProperty("--flip-blur", `${blur}px`);
+    this.flipState.sheet.style.transform = `translate3d(${drift}px, ${-lift}px, 0) rotateY(${angle}deg) skewY(${skew}deg)`;
+    this.flipState.highlight.style.opacity = String(0.18 + curve * 0.5);
+    this.flipState.curl.style.opacity = String(0.18 + curve * 0.42);
+    this.flipState.shadow.style.opacity = String(shadowStrength);
+    this.flipState.shadow.style.transform = `translateY(${lift * 0.45}px) scaleX(${1 - curve * 0.18})`;
   }
 
   easePageTurn(t, completing) {
@@ -548,23 +551,29 @@ export class PDFViewer {
   }
 
   animatePageFlip(state, { from, to, velocity = 0 }) {
-    const distance = Math.abs(to - from);
-    const velocityBoost = Math.min(Math.abs(velocity) / 1600, 0.45);
-    const duration = clamp((620 - velocityBoost * 260) * distance, 300, 760) / (this.settings.animationSpeed / 100);
-    const direction = state.direction;
-    const mid = from + (to - from) * 0.58;
-    const animation = state.sheet.animate([
-      { transform: this.pageFlipTransform(from, direction), offset: 0 },
-      { transform: this.pageFlipTransform(mid, direction), offset: 0.58 },
-      { transform: this.pageFlipTransform(to, direction), offset: 1 },
-    ], {
-      duration,
-      easing: to > from ? "cubic-bezier(0.18, 0.72, 0.2, 1)" : "cubic-bezier(0.25, 0.1, 0.25, 1)",
-      fill: "forwards",
-    });
-    return animation.finished.then(() => {
-      state.sheet.style.transform = this.pageFlipTransform(to, direction);
-      animation.cancel();
+    return new Promise((resolve) => {
+      const distance = Math.abs(to - from);
+      const velocityBoost = Math.min(Math.abs(velocity) / 1600, 0.45);
+      const duration = clamp((620 - velocityBoost * 260) * distance, 300, 760) / (this.settings.animationSpeed / 100);
+      const started = performance.now();
+      const direction = state.direction;
+      const completing = to > from;
+
+      const step = (now) => {
+        const elapsed = now - started;
+        const t = clamp(elapsed / duration, 0, 1);
+        const eased = this.easePageTurn(t, completing);
+        const microFlex = Math.sin(t * Math.PI) * 0.012;
+        const progress = from + (to - from) * clamp(eased + microFlex, 0, 1);
+        this.updateFlipProgress(progress, direction);
+        if (t < 1) {
+          requestAnimationFrame(step);
+        } else {
+          this.updateFlipProgress(to, direction);
+          resolve();
+        }
+      };
+      requestAnimationFrame(step);
     });
   }
 
@@ -853,38 +862,12 @@ export class PDFViewer {
 
   updateSpreadVisibility() {
     const bookMode = this.settings.pageFlip === "realistic";
-    if (!bookMode) {
-      this.track.querySelectorAll(".page-card").forEach((card) => {
-        card.classList.add("spread-visible");
-        card.setAttribute("aria-hidden", "false");
-      });
-      this.visibleSpreadPages.clear();
-      return;
-    }
-
-    const nextVisible = new Set([this.currentPage, Math.min(this.currentPage + 1, this.total)]);
-    const pagesToTouch = new Set([...this.visibleSpreadPages, ...nextVisible]);
-    pagesToTouch.forEach((pageNumber) => {
-      const card = this.track.querySelector(`[data-page="${pageNumber}"]`);
-      if (!card) return;
-      const visible = nextVisible.has(pageNumber);
-      card.classList.toggle("spread-visible", visible);
-      card.setAttribute("aria-hidden", visible ? "false" : "true");
-    });
-    this.visibleSpreadPages = nextVisible;
-  }
-
-  syncAllSpreadVisibility() {
-    const bookMode = this.settings.pageFlip === "realistic";
     this.track.querySelectorAll(".page-card").forEach((card) => {
       const pageNumber = Number(card.dataset.page);
       const visible = !bookMode || this.isSpreadPage(pageNumber);
       card.classList.toggle("spread-visible", visible);
       card.setAttribute("aria-hidden", visible ? "false" : "true");
     });
-    this.visibleSpreadPages = bookMode
-      ? new Set([this.currentPage, Math.min(this.currentPage + 1, this.total)])
-      : new Set();
   }
 
   pageStatus() {

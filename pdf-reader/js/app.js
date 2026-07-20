@@ -1,4 +1,4 @@
-import { PDFViewer } from "./viewer.js?v=persistent-canvas-4";
+import { PDFViewer } from "./viewer.js?v=persistent-canvas-1";
 import { SettingsController } from "./settings.js";
 import { SearchController } from "./search.js";
 import { BookmarkController } from "./bookmarks.js";
