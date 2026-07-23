@@ -209,14 +209,15 @@ export class PDFViewer {
     if (!pages.length) return;
 
     const root = this.bookRoot || this.track;
+    const limits = this.getBookViewportLimits();
     this.stPageFlip = new window.St.PageFlip(root, {
-      width: Math.max(180, Math.round(box.width)),
-      height: Math.max(260, Math.round(box.height)),
+      width: Math.max(limits.minWidth, Math.round(box.width)),
+      height: Math.max(limits.minHeight, Math.round(box.height)),
       size: "stretch",
-      minWidth: 180,
-      maxWidth: Math.max(360, Math.round(box.width * 2.15)),
-      minHeight: 260,
-      maxHeight: Math.max(520, Math.round(box.height * 1.3)),
+      minWidth: limits.minWidth,
+      maxWidth: limits.maxWidth,
+      minHeight: limits.minHeight,
+      maxHeight: limits.maxHeight,
       startPage: Math.max(0, this.currentPage - 1),
       drawShadow: true,
       flippingTime: Math.round(760 / (this.settings.animationSpeed / 100)),
@@ -402,35 +403,59 @@ export class PDFViewer {
 
   applyBookPageBoxVars() {
     if (!this.bookPageBox) return;
+    const limits = this.getBookViewportLimits();
     this.track.style.setProperty("--book-page-width", `${Math.round(this.bookPageBox.width)}px`);
     this.track.style.setProperty("--book-page-height", `${Math.round(this.bookPageBox.height)}px`);
+    this.track.style.setProperty("--book-min-page-height", `${limits.minHeight}px`);
   }
 
   getBookPageBoxKey() {
-    const shellRect = this.shell.getBoundingClientRect();
-    const maxWidth = Math.max(180, ((shellRect.width - 64) / 2) * this.scale);
-    const maxHeight = Math.max(260, (shellRect.height - 36) * this.scale);
-    return `${Math.round(maxWidth)}:${Math.round(maxHeight)}:${this.settings.fitMode}:${this.rotation}:${this.scale.toFixed(3)}:${(this.bookPageRatio || 0).toFixed(4)}:${Math.round(this.bookPageBaseWidth || 0)}`;
+    const limits = this.getBookViewportLimits();
+    return `${limits.maxWidth}:${limits.maxHeight}:${limits.minWidth}:${limits.minHeight}:${this.settings.fitMode}:${this.rotation}:${this.scale.toFixed(3)}:${(this.bookPageRatio || 0).toFixed(4)}:${Math.round(this.bookPageBaseWidth || 0)}`;
   }
 
   computeBookPageBoxFromShell() {
-    const shellRect = this.shell.getBoundingClientRect();
-    const maxWidth = Math.max(180, ((shellRect.width - 64) / 2) * this.scale);
-    const maxHeight = Math.max(260, (shellRect.height - 36) * this.scale);
+    const limits = this.getBookViewportLimits();
+    const maxWidth = limits.maxWidth;
+    const maxHeight = limits.maxHeight;
     if (this.settings.fitMode === "free") {
       return {
-        width: Math.min(maxWidth, this.bookPageBaseWidth),
-        height: Math.min(maxHeight, this.bookPageBaseWidth * this.bookPageRatio),
+        width: Math.max(limits.minWidth, Math.min(maxWidth, this.bookPageBaseWidth)),
+        height: Math.max(limits.minHeight, Math.min(maxHeight, this.bookPageBaseWidth * this.bookPageRatio)),
       };
     }
 
     const widthScale = maxWidth / this.bookPageBaseWidth;
     const heightScale = maxHeight / (this.bookPageBaseWidth * this.bookPageRatio);
     const fitScale = this.settings.fitMode === "page" ? Math.min(widthScale, heightScale) : widthScale;
-    const width = Math.max(180, this.bookPageBaseWidth * fitScale);
+    let width = clamp(this.bookPageBaseWidth * fitScale, limits.minWidth, maxWidth);
+    if (width * this.bookPageRatio < limits.minHeight) {
+      width = clamp(limits.minHeight / this.bookPageRatio, limits.minWidth, maxWidth);
+    }
     return {
       width,
       height: Math.min(maxHeight, width * this.bookPageRatio),
+    };
+  }
+
+  getBookViewportLimits() {
+    const shellRect = this.shell.getBoundingClientRect();
+    const ratio = this.bookPageRatio || 1.414;
+    const narrow = shellRect.width < 720 || window.matchMedia("(orientation: portrait)").matches;
+    const horizontalPadding = narrow ? 28 : 64;
+    const verticalPadding = narrow ? 20 : 36;
+    const columns = narrow ? 1 : 2;
+    const availableWidth = Math.max(160, ((shellRect.width - horizontalPadding) / columns) * this.scale);
+    const availableHeight = Math.max(220, (shellRect.height - verticalPadding) * this.scale);
+    const verticalMin = availableHeight * (narrow ? 0.82 : 0.74);
+    const minHeight = Math.round(clamp(verticalMin, 220, availableHeight));
+    const minWidth = Math.round(clamp(minHeight / ratio, 150, availableWidth));
+
+    return {
+      minWidth,
+      minHeight,
+      maxWidth: Math.round(Math.max(minWidth, availableWidth)),
+      maxHeight: Math.round(Math.max(minHeight, availableHeight)),
     };
   }
 
