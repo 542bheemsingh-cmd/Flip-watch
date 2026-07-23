@@ -265,7 +265,8 @@ export class PDFViewer {
     if (this.isSyncingStPageFlip) return;
     this.animationActive = false;
     this.flushDeferredRenders();
-    const nextPage = this.getSpreadStart((Number(pageIndex) || 0) + 1);
+    const rawPage = (Number(pageIndex) || 0) + 1;
+    const nextPage = this.usesSinglePageBookMode() ? clamp(rawPage, 1, this.total) : this.getSpreadStart(rawPage);
     if (nextPage === this.currentPage) return;
     this.currentPage = nextPage;
     this.pageInput.value = String(this.currentPage);
@@ -447,15 +448,17 @@ export class PDFViewer {
     const columns = narrow ? 1 : 2;
     const availableWidth = Math.max(160, ((shellRect.width - horizontalPadding) / columns) * this.scale);
     const availableHeight = Math.max(220, (shellRect.height - verticalPadding) * this.scale);
+    const heightAllowedByWidth = availableWidth * ratio;
+    const maxHeight = Math.min(availableHeight, heightAllowedByWidth);
     const verticalMin = availableHeight * (narrow ? 0.82 : 0.74);
-    const minHeight = Math.round(clamp(verticalMin, 220, availableHeight));
+    const minHeight = Math.round(clamp(verticalMin, 220, maxHeight));
     const minWidth = Math.round(clamp(minHeight / ratio, 150, availableWidth));
 
     return {
       minWidth,
       minHeight,
       maxWidth: Math.round(Math.max(minWidth, availableWidth)),
-      maxHeight: Math.round(Math.max(minHeight, availableHeight)),
+      maxHeight: Math.round(Math.max(minHeight, maxHeight)),
     };
   }
 
@@ -548,7 +551,7 @@ export class PDFViewer {
   async goToPage(pageNumber, smooth = true) {
     if (!this.pdf) return;
     const requestedPage = clamp(Number(pageNumber) || 1, 1, this.total);
-    this.currentPage = this.settings.pageFlip === "realistic" ? this.getSpreadStart(requestedPage) : requestedPage;
+    this.currentPage = this.settings.pageFlip === "realistic" && !this.usesSinglePageBookMode() ? this.getSpreadStart(requestedPage) : requestedPage;
     this.pageInput.value = String(this.currentPage);
     this.pageSlider.value = String(this.currentPage);
     this.updateSpreadVisibility();
@@ -581,9 +584,11 @@ export class PDFViewer {
   }
 
   async turnPage(direction, options = {}) {
-    const step = this.settings.pageFlip === "realistic" ? 2 : 1;
+    const step = this.settings.pageFlip === "realistic" && !this.usesSinglePageBookMode() ? 2 : 1;
     const targetPage = this.settings.pageFlip === "realistic"
-      ? this.getSpreadStart(this.currentPage + direction * step)
+      ? (this.usesSinglePageBookMode()
+        ? clamp(this.currentPage + direction * step, 1, this.total)
+        : this.getSpreadStart(this.currentPage + direction * step))
       : clamp(this.currentPage + direction, 1, this.total);
     if (!this.pdf || targetPage === this.currentPage) return;
 
@@ -1091,7 +1096,14 @@ export class PDFViewer {
     return page % 2 === 0 ? Math.max(1, page - 1) : page;
   }
 
+  usesSinglePageBookMode() {
+    if (this.settings.pageFlip !== "realistic") return false;
+    const shellRect = this.shell.getBoundingClientRect();
+    return shellRect.width < 720 || window.matchMedia("(orientation: portrait)").matches;
+  }
+
   isSpreadPage(pageNumber) {
+    if (this.usesSinglePageBookMode()) return pageNumber === this.currentPage;
     return pageNumber === this.currentPage || pageNumber === Math.min(this.currentPage + 1, this.total);
   }
 
@@ -1106,7 +1118,9 @@ export class PDFViewer {
       return;
     }
 
-    const nextVisible = new Set([this.currentPage, Math.min(this.currentPage + 1, this.total)]);
+    const nextVisible = this.usesSinglePageBookMode()
+      ? new Set([this.currentPage])
+      : new Set([this.currentPage, Math.min(this.currentPage + 1, this.total)]);
     const pagesToTouch = new Set([...this.visibleSpreadPages, ...nextVisible]);
     pagesToTouch.forEach((pageNumber) => {
       const card = this.track.querySelector(`[data-page="${pageNumber}"]`);
@@ -1127,12 +1141,17 @@ export class PDFViewer {
       card.setAttribute("aria-hidden", visible ? "false" : "true");
     });
     this.visibleSpreadPages = bookMode
-      ? new Set([this.currentPage, Math.min(this.currentPage + 1, this.total)])
+      ? (this.usesSinglePageBookMode()
+        ? new Set([this.currentPage])
+        : new Set([this.currentPage, Math.min(this.currentPage + 1, this.total)]))
       : new Set();
   }
 
   pageStatus() {
     if (this.settings.pageFlip !== "realistic") {
+      return `Page ${this.currentPage} of ${this.total}`;
+    }
+    if (this.usesSinglePageBookMode()) {
       return `Page ${this.currentPage} of ${this.total}`;
     }
     const rightPage = Math.min(this.currentPage + 1, this.total);

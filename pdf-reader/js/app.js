@@ -1,4 +1,4 @@
-import { PDFViewer } from "./viewer.js?v=stpageflip-1";
+import { PDFViewer } from "./viewer.js?v=stpageflip-3";
 import { SettingsController } from "./settings.js";
 import { SearchController } from "./search.js";
 import { BookmarkController } from "./bookmarks.js";
@@ -38,6 +38,7 @@ const toolbar = new ToolbarController(viewer, {
   pageSlider: $("[data-page-slider]"),
 });
 const gestures = new GestureController(viewer, $("[data-reader-stage]"));
+window.app = { viewer, settings, bookmarks, thumbnails, toc, search, toolbar, gestures };
 
 const fileInput = $("[data-file-input]");
 const app = $("[data-app]");

@@ -78,7 +78,8 @@
 }
 
 .viewer-shell {
-  position: relative;
+  position: absolute;
+  inset: 0;
   overflow: auto;
   overscroll-behavior: contain;
   padding: 22px;
@@ -135,13 +136,18 @@
   width: 100%;
   min-width: 100%;
   height: 100%;
+  position: relative;
 }
 
 .book-layout.st-pageflip-layout > .st-pageflip-book {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: min(100%, calc(var(--book-page-width, 340px) * 2));
+  height: var(--book-page-height, 480px);
   min-height: var(--book-min-page-height, min(82dvh, 680px));
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate3d(-50%, -50%, 0);
 }
 
 .book-layout .page-card {
