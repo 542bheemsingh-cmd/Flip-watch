@@ -195,12 +195,12 @@
             </article>
             <article>
               <h4>Scientific functions</h4>
-              <p>Use <code>sin(</code>, <code>cos(</code>, <code>tan(</code>, <code>asin(</code>, <code>acos(</code>, <code>atan(</code>, <code>sqrt(</code>, <code>ln(</code>, <code>log(</code>, <code>exp(</code>, <code>abs(</code>, <code>floor(</code>, <code>ceil(</code>, <code>round(</code>, and <code>mod(</code>.</p>
-              <p>Examples: <code>sqrt(81) = 9</code>, <code>mod(10,3) = 1</code>.</p>
+              <p>Use <code>sin(</code>, <code>cos(</code>, <code>tan(</code>, <code>cosec(</code>, <code>sec(</code>, <code>cot(</code>, <code>asin(</code>, <code>acos(</code>, <code>atan(</code>, <code>sqrt(</code>, <code>ln(</code>, <code>log(</code>, <code>exp(</code>, <code>abs(</code>, <code>floor(</code>, <code>ceil(</code>, <code>round(</code>, and <code>mod(</code>.</p>
+              <p><code>log(value)</code> uses base 10. Add a base with <code>log(value,base)</code>. Examples: <code>sqrt(81) = 9</code>, <code>log(100) = 2</code>, <code>log(8,2) = 3</code>, <code>mod(10,3) = 1</code>.</p>
             </article>
             <article>
               <h4>DEG / RAD</h4>
-              <p><strong>DEG</strong> reads angles in degrees, such as <code>sin(30) = 0.5</code>. Switch to <strong>RAD</strong> for radians, such as <code>sin(pi/2) = 1</code>.</p>
+              <p><strong>DEG</strong> reads angles in degrees, such as <code>sin(30) = 0.5</code>. Switch to <strong>RAD</strong> for radians, such as <code>sin(pi/2) = 1</code>. Reciprocal examples: <code>cosec(30) = 2</code>, <code>sec(60) = 2</code>, <code>cot(45) = 1</code>.</p>
             </article>
             <article>
               <h4>Constants and memory</h4>
@@ -233,14 +233,17 @@
               <button class="calc-function" type="button" data-calc-value="sin(">sin</button>
               <button class="calc-function" type="button" data-calc-value="cos(">cos</button>
               <button class="calc-function" type="button" data-calc-value="tan(">tan</button>
+              <button class="calc-function" type="button" data-calc-value="cosec(">cosec</button>
+              <button class="calc-function" type="button" data-calc-value="sec(">sec</button>
+              <button class="calc-function" type="button" data-calc-value="cot(">cot</button>
               <button class="calc-function" type="button" data-calc-value="ln(">ln</button>
               <button class="calc-function" type="button" data-calc-value="log(">log</button>
 
               <button class="calc-function" type="button" data-calc-value="sqrt(">√</button>
               <button class="calc-function" type="button" data-calc-value="abs(">abs</button>
-              <button class="calc-function" type="button" data-calc-value="floor(">floor</button>
-              <button class="calc-function" type="button" data-calc-value="ceil(">ceil</button>
-              <button class="calc-function" type="button" data-calc-value="round(">round</button>
+              <button class="calc-function" type="button" data-calc-value="floor(">GIF</button>
+              <button class="calc-function" type="button" data-calc-value="ceil(">LIF</button>
+              <button class="calc-function" type="button" data-calc-value="round(">round off</button>
 
               <button class="calc-function" type="button" data-calc-value="asin(">asin</button>
               <button class="calc-function" type="button" data-calc-value="acos(">acos</button>
@@ -252,6 +255,7 @@
               <button class="calc-action" type="button" data-calc-action="delete">DEL</button>
               <button type="button" data-calc-value="(">(</button>
               <button type="button" data-calc-value=")">)</button>
+              <button type="button" data-calc-value=",">,</button>
               <button class="calc-operator" type="button" data-calc-value="^">xʸ</button>
               <button class="calc-operator" type="button" data-calc-value="!">!</button>
 
@@ -293,6 +297,6 @@
       </section>
     </main>
 
-    <script src="script.js?v=sound-effects-2"></script>
+    <script src="script.js?v=trig-functions-1"></script>
   </body>
 </html>

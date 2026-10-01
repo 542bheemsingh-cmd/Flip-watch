@@ -185,13 +185,34 @@ const calculatorFunctions = {
   sin: (value) => Math.sin(calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value),
   cos: (value) => Math.cos(calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value),
   tan: (value) => Math.tan(calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value),
+  cosec: (value) => {
+    const result = Math.sin(calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value);
+    if (Math.abs(result) < 1e-12) throw new Error("cosec is undefined at this angle");
+    return 1 / result;
+  },
+  sec: (value) => {
+    const result = Math.cos(calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value);
+    if (Math.abs(result) < 1e-12) throw new Error("sec is undefined at this angle");
+    return 1 / result;
+  },
+  cot: (value) => {
+    const radians = calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value;
+    const result = Math.sin(radians);
+    if (Math.abs(result) < 1e-12) throw new Error("cot is undefined at this angle");
+    return Math.cos(radians) / result;
+  },
   asin: (value) => calculatorAngleMode === "DEG" ? Math.asin(value) * 180 / Math.PI : Math.asin(value),
   acos: (value) => calculatorAngleMode === "DEG" ? Math.acos(value) * 180 / Math.PI : Math.acos(value),
   atan: (value) => calculatorAngleMode === "DEG" ? Math.atan(value) * 180 / Math.PI : Math.atan(value),
   sqrt: Math.sqrt,
   abs: Math.abs,
   ln: Math.log,
-  log: Math.log10,
+  log: (value, base = 10) => {
+    if (value <= 0 || base <= 0 || base === 1) {
+      throw new Error("Log needs a positive value and a base greater than 0 (not 1)");
+    }
+    return Math.log(value) / Math.log(base);
+  },
   exp: Math.exp,
   floor: Math.floor,
   ceil: Math.ceil,
@@ -354,8 +375,18 @@ function evaluateCalculatorExpression(expression) {
   return Object.is(result, -0) ? 0 : result;
 }
 
+function normalizeCalculatorValue(value) {
+  const epsilon = 1e-12;
+  if (Math.abs(value) < epsilon) return 0;
+
+  const nearestInteger = Math.round(value);
+  if (Math.abs(value - nearestInteger) < epsilon) return nearestInteger;
+  return value;
+}
+
 function formatCalculatorResult(value) {
-  return Number(value.toPrecision(12)).toString();
+  const normalized = normalizeCalculatorValue(value);
+  return Number(normalized.toPrecision(12)).toString();
 }
 
 function renderCalculatorHistory() {
