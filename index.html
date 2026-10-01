@@ -19,13 +19,23 @@
       >
         <span aria-hidden="true">&#x26F6;</span>
       </button>
+      <button
+        class="sound-toggle"
+        type="button"
+        data-sound-toggle
+        aria-label="Turn sound effects off"
+        aria-pressed="true"
+        title="Turn sound effects off"
+      >
+        <span aria-hidden="true">&#x1F50A;</span>
+      </button>
       <section class="dashboard" data-dashboard aria-label="Tools dashboard">
         <div class="dashboard-header">
           <div>
             <p class="dashboard-kicker">Flip Watch</p>
             <h1>Time Tools</h1>
           </div>
-          <span class="dashboard-badge">4 Tools</span>
+          <span class="dashboard-badge">5 Tools</span>
         </div>
 
         <div class="tool-grid">
@@ -51,6 +61,12 @@
             <span class="tool-icon">PDF</span>
             <span class="tool-name">PDF Reader</span>
             <span class="tool-meta">Books-style reader with search and bookmarks</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="calculator">
+            <span class="tool-icon calculator-icon">&#x00B1;</span>
+            <span class="tool-name">Calculator</span>
+            <span class="tool-meta">Scientific, percentage and memory calculations</span>
           </button>
         </div>
       </section>
@@ -148,8 +164,135 @@
           <button class="control-button" type="button" data-action="reset">Reset</button>
         </div>
       </section>
+
+      <section class="calculator-panel" data-calculator-panel aria-label="Calculator" hidden>
+        <button class="back-button" type="button" data-calculator-back>Dashboard</button>
+
+        <div class="calculator-heading">
+          <div>
+            <p class="dashboard-kicker">Flip Watch</p>
+            <h2>Calculator</h2>
+          </div>
+          <div class="calculator-heading-controls">
+            <button class="guide-button" type="button" data-calc-guide aria-expanded="false">Guide</button>
+            <button class="angle-button" type="button" data-calc-angle aria-pressed="false">DEG</button>
+          </div>
+        </div>
+
+        <div class="calculator-guide" data-calc-guide-panel role="dialog" aria-modal="false" aria-labelledby="calculator-guide-title" hidden>
+          <div class="calculator-guide-heading">
+            <div>
+              <p class="dashboard-kicker">Quick reference</p>
+              <h3 id="calculator-guide-title">How to use Calculator</h3>
+            </div>
+            <button class="guide-close" type="button" data-calc-guide-close aria-label="Close calculator guide">×</button>
+          </div>
+          <div class="guide-grid">
+            <article>
+              <h4>Operators</h4>
+              <p><code>+</code> add, <code>−</code> subtract, <code>×</code> multiply, <code>÷</code> divide, <code>^</code> power, <code>%</code> percentage, and <code>!</code> factorial.</p>
+              <p>Examples: <code>25% = 0.25</code>, <code>5! = 120</code>, <code>2^8 = 256</code>.</p>
+            </article>
+            <article>
+              <h4>Scientific functions</h4>
+              <p>Use <code>sin(</code>, <code>cos(</code>, <code>tan(</code>, <code>asin(</code>, <code>acos(</code>, <code>atan(</code>, <code>sqrt(</code>, <code>ln(</code>, <code>log(</code>, <code>exp(</code>, <code>abs(</code>, <code>floor(</code>, <code>ceil(</code>, <code>round(</code>, and <code>mod(</code>.</p>
+              <p>Examples: <code>sqrt(81) = 9</code>, <code>mod(10,3) = 1</code>.</p>
+            </article>
+            <article>
+              <h4>DEG / RAD</h4>
+              <p><strong>DEG</strong> reads angles in degrees, such as <code>sin(30) = 0.5</code>. Switch to <strong>RAD</strong> for radians, such as <code>sin(pi/2) = 1</code>.</p>
+            </article>
+            <article>
+              <h4>Constants and memory</h4>
+              <p><code>π</code> is pi, <code>e</code> is Euler's number, and <code>Ans</code> uses the last result. <strong>MC</strong> clears memory, <strong>MR</strong> recalls it, <strong>M+</strong> adds to it, and <strong>M−</strong> subtracts from it.</p>
+            </article>
+            <article>
+              <h4>Keyboard shortcuts</h4>
+              <p>Type directly into the display. Press <strong>Enter</strong> to calculate, <strong>Escape</strong> to clear, and use parentheses for grouped calculations.</p>
+              <p>Example: <code>(18+6)/3 + 2^3 = 16</code>.</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="calculator-layout">
+          <section class="calculator-workspace" aria-label="Calculator workspace">
+            <div class="calculator-display" aria-live="polite">
+              <div class="calculator-previous" data-calc-previous>Ready</div>
+              <input class="calculator-input" data-calc-input value="0" aria-label="Calculator expression" autocomplete="off" spellcheck="false" />
+            </div>
+
+            <div class="calculator-memory" aria-label="Memory controls">
+              <button type="button" data-calc-action="memory-clear">MC</button>
+              <button type="button" data-calc-action="memory-recall">MR</button>
+              <button type="button" data-calc-action="memory-add">M+</button>
+              <button type="button" data-calc-action="memory-subtract">M−</button>
+              <span data-calc-memory-status>Memory empty</span>
+            </div>
+
+            <div class="calculator-keypad" aria-label="Calculator keypad">
+              <button class="calc-function" type="button" data-calc-value="sin(">sin</button>
+              <button class="calc-function" type="button" data-calc-value="cos(">cos</button>
+              <button class="calc-function" type="button" data-calc-value="tan(">tan</button>
+              <button class="calc-function" type="button" data-calc-value="ln(">ln</button>
+              <button class="calc-function" type="button" data-calc-value="log(">log</button>
+
+              <button class="calc-function" type="button" data-calc-value="sqrt(">√</button>
+              <button class="calc-function" type="button" data-calc-value="abs(">abs</button>
+              <button class="calc-function" type="button" data-calc-value="floor(">floor</button>
+              <button class="calc-function" type="button" data-calc-value="ceil(">ceil</button>
+              <button class="calc-function" type="button" data-calc-value="round(">round</button>
+
+              <button class="calc-function" type="button" data-calc-value="asin(">asin</button>
+              <button class="calc-function" type="button" data-calc-value="acos(">acos</button>
+              <button class="calc-function" type="button" data-calc-value="atan(">atan</button>
+              <button class="calc-function" type="button" data-calc-value="exp(">exp</button>
+              <button class="calc-function" type="button" data-calc-value="mod(">mod</button>
+
+              <button class="calc-action" type="button" data-calc-action="clear">AC</button>
+              <button class="calc-action" type="button" data-calc-action="delete">DEL</button>
+              <button type="button" data-calc-value="(">(</button>
+              <button type="button" data-calc-value=")">)</button>
+              <button class="calc-operator" type="button" data-calc-value="^">xʸ</button>
+              <button class="calc-operator" type="button" data-calc-value="!">!</button>
+
+              <button type="button" data-calc-value="7">7</button>
+              <button type="button" data-calc-value="8">8</button>
+              <button type="button" data-calc-value="9">9</button>
+              <button class="calc-operator" type="button" data-calc-value="/">÷</button>
+              <button class="calc-operator" type="button" data-calc-value="%">%</button>
+
+              <button type="button" data-calc-value="4">4</button>
+              <button type="button" data-calc-value="5">5</button>
+              <button type="button" data-calc-value="6">6</button>
+              <button class="calc-operator" type="button" data-calc-value="*">×</button>
+              <button class="calc-operator" type="button" data-calc-value="-">−</button>
+
+              <button type="button" data-calc-value="1">1</button>
+              <button type="button" data-calc-value="2">2</button>
+              <button type="button" data-calc-value="3">3</button>
+              <button class="calc-operator" type="button" data-calc-value="+">+</button>
+              <button class="calc-function" type="button" data-calc-value="pi">π</button>
+
+              <button class="calc-wide" type="button" data-calc-value="0">0</button>
+              <button type="button" data-calc-value=".">.</button>
+              <button class="calc-function" type="button" data-calc-value="e">e</button>
+              <button class="calc-equals" type="button" data-calc-action="equals">=</button>
+            </div>
+          </section>
+
+          <aside class="calculator-history" aria-label="Calculation history">
+            <div class="calculator-history-heading">
+              <h3>History</h3>
+              <button type="button" data-calc-action="history-clear">Clear</button>
+            </div>
+            <div class="history-list" data-calc-history>
+              <p class="history-empty">Your calculations will appear here.</p>
+            </div>
+          </aside>
+        </div>
+      </section>
     </main>
 
-    <script src="script.js?v=screen-fit-3"></script>
+    <script src="script.js?v=sound-effects-2"></script>
   </body>
 </html>
