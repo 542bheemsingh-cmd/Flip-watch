@@ -8,7 +8,17 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="app-shell">
+    <main class="app-shell" data-app-shell>
+      <button
+        class="screen-fit-button"
+        type="button"
+        data-screen-fit
+        aria-label="Enter screen fit"
+        aria-pressed="false"
+        title="Enter screen fit"
+      >
+        <span aria-hidden="true">&#x26F6;</span>
+      </button>
       <section class="dashboard" data-dashboard aria-label="Tools dashboard">
         <div class="dashboard-header">
           <div>
@@ -140,6 +150,6 @@
       </section>
     </main>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=screen-fit-3"></script>
   </body>
 </html>

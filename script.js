@@ -1,4 +1,5 @@
 const display = document.querySelector(".display");
+const appShell = document.querySelector("[data-app-shell]");
 const dashboard = document.querySelector("[data-dashboard]");
 const toolPanel = document.querySelector("[data-tool-panel]");
 const toolCards = document.querySelectorAll("[data-open-tool]");
@@ -16,6 +17,7 @@ const presetButtons = document.querySelectorAll("[data-minutes]");
 const customMinutesInput = document.querySelector("[data-custom-minutes]");
 const awakeToggle = document.querySelector("[data-awake-toggle]");
 const wakeStatus = document.querySelector("[data-wake-status]");
+const screenFitButton = document.querySelector("[data-screen-fit]");
 const hourCards = document.querySelectorAll('[data-unit="hours"] .flip-card');
 const minuteCards = document.querySelectorAll('[data-unit="minutes"] .flip-card');
 const secondCards = document.querySelectorAll('[data-unit="seconds"] .flip-card');
@@ -35,6 +37,48 @@ let lastRenderedCentiseconds = -1;
 let selectedTimerDuration = 5 * 60 * 1000;
 let timerRemainingBeforeStart = selectedTimerDuration;
 const flipDuration = 820;
+
+function updateScreenFitControl(isActive) {
+  appShell.classList.toggle("is-screen-fit", isActive);
+  document.body.classList.toggle("screen-fit-active", isActive);
+  screenFitButton.setAttribute("aria-pressed", String(isActive));
+  screenFitButton.setAttribute("aria-label", isActive ? "Exit screen fit" : "Enter screen fit");
+  screenFitButton.title = isActive ? "Exit screen fit" : "Enter screen fit";
+}
+
+async function toggleScreenFit() {
+  const isFullscreen = document.fullscreenElement === appShell;
+
+  if (isFullscreen || appShell.classList.contains("is-screen-fit")) {
+    if (!isFullscreen) {
+      updateScreenFitControl(false);
+      return;
+    }
+
+    try {
+      await document.exitFullscreen();
+      updateScreenFitControl(false);
+    } catch (error) {
+      console.warn("[ScreenFit] Could not exit browser fullscreen.", error);
+      updateScreenFitControl(false);
+    }
+    return;
+  }
+
+  // Retain an app-like viewport layout when the browser blocks fullscreen.
+  updateScreenFitControl(true);
+
+  if (!appShell.requestFullscreen) {
+    console.info("[ScreenFit] Browser fullscreen is unavailable; using viewport-fit layout.");
+    return;
+  }
+
+  try {
+    await appShell.requestFullscreen({ navigationUI: "hide" });
+  } catch (error) {
+    console.warn("[ScreenFit] Browser fullscreen was not granted; viewport-fit layout remains enabled.", error);
+  }
+}
 
 function pad(value, size) {
   return String(value).padStart(size, "0");
@@ -377,6 +421,7 @@ function setMode(nextMode) {
   }
 
   activeMode = nextMode;
+  toolPanel.dataset.activeMode = nextMode;
   const isClock = nextMode === "clock";
   const isTimer = nextMode === "timer";
 
@@ -460,6 +505,15 @@ toolCards.forEach((card) => {
 });
 
 backDashboardButton.addEventListener("click", showDashboard);
+screenFitButton.addEventListener("click", () => {
+  void toggleScreenFit();
+});
+
+document.addEventListener("fullscreenchange", () => {
+  if (document.fullscreenElement === appShell) {
+    updateScreenFitControl(true);
+  }
+});
 
 presetButtons.forEach((button) => {
   button.addEventListener("click", () => setTimerDuration(button.dataset.minutes));
