@@ -194,13 +194,43 @@
               <p>Examples: <code>25% = 0.25</code>, <code>5! = 120</code>, <code>2^8 = 256</code>.</p>
             </article>
             <article>
-              <h4>Scientific functions</h4>
-              <p>Use <code>sin(</code>, <code>cos(</code>, <code>tan(</code>, <code>cosec(</code>, <code>sec(</code>, <code>cot(</code>, <code>asin(</code>, <code>acos(</code>, <code>atan(</code>, <code>sqrt(</code>, <code>ln(</code>, <code>log(</code>, <code>exp(</code>, <code>abs(</code>, <code>floor(</code>, <code>ceil(</code>, <code>round(</code>, and <code>mod(</code>.</p>
-              <p><code>log(value)</code> uses base 10. Add a base with <code>log(value,base)</code>. Examples: <code>sqrt(81) = 9</code>, <code>log(100) = 2</code>, <code>log(8,2) = 3</code>, <code>mod(10,3) = 1</code>.</p>
+              <h4>sin, cos and tan</h4>
+              <p>These functions find the sine, cosine or tangent of an angle. In <strong>DEG</strong> mode, <code>sin(30) = 0.5</code>, <code>cos(60) = 0.5</code>, and <code>tan(45) = 1</code>.</p>
+              <p>Use them for triangle angles, slopes and height or distance calculations. <code>tan(90)</code> is undefined.</p>
+            </article>
+            <article>
+              <h4>cosec, sec and cot</h4>
+              <p>These are reciprocal trigonometric functions: <code>cosec(x) = 1/sin(x)</code>, <code>sec(x) = 1/cos(x)</code>, and <code>cot(x) = cos(x)/sin(x)</code>.</p>
+              <p>Examples in DEG mode: <code>cosec(30) = 2</code>, <code>sec(60) = 2</code>, and <code>cot(45) = 1</code>. They are undefined when their denominator is zero.</p>
+            </article>
+            <article>
+              <h4>asin, acos and atan</h4>
+              <p>These inverse functions return an angle from a sine, cosine or tangent value. They are useful for finding a missing angle in a triangle.</p>
+              <p>Examples in DEG mode: <code>asin(0.5) = 30°</code>, <code>acos(0.5) = 60°</code>, and <code>atan(1) = 45°</code>. <code>asin</code> and <code>acos</code> accept values only from <code>-1</code> to <code>1</code>.</p>
+            </article>
+            <article>
+              <h4>sqrt, abs and exp</h4>
+              <p><code>sqrt(x)</code> finds the square root, <code>abs(x)</code> removes the negative sign to return distance from zero, and <code>exp(x)</code> calculates <code>e^x</code>.</p>
+              <p>Examples: <code>sqrt(81) = 9</code>, <code>abs(-8) = 8</code>, <code>abs(10-18) = 8</code>, and <code>exp(1) = 2.71828...</code>.</p>
+            </article>
+            <article>
+              <h4>ln and log</h4>
+              <p><code>ln(x)</code> is the natural logarithm with base <code>e</code>. <code>log(value)</code> is base 10 by default. Add a second value for another base: <code>log(value,base)</code>.</p>
+              <p>Examples: <code>ln(e) = 1</code>, <code>log(100) = 2</code>, and <code>log(8,2) = 3</code>. The value and base must be positive, and the base cannot be <code>1</code>.</p>
+            </article>
+            <article>
+              <h4>GIF, LIF and round off</h4>
+              <p>The <strong>GIF</strong> button runs <code>floor(x)</code> and rounds down. The <strong>LIF</strong> button runs <code>ceil(x)</code> and rounds up. <strong>round off</strong> runs <code>round(x)</code> and rounds to 2 decimal places.</p>
+              <p>Examples: <code>floor(3.8) = 3</code>, <code>ceil(3.2) = 4</code>, and <code>round(3.14159) = 3.14</code>.</p>
+            </article>
+            <article>
+              <h4>mod and factorial</h4>
+              <p><code>mod(a,b)</code> returns the remainder after dividing <code>a</code> by <code>b</code>. The <code>!</code> operator calculates factorial, the product of all positive integers up to a number.</p>
+              <p>Examples: <code>mod(10,3) = 1</code> and <code>5! = 120</code>. Factorial is for non-negative whole numbers.</p>
             </article>
             <article>
               <h4>DEG / RAD</h4>
-              <p><strong>DEG</strong> reads angles in degrees, such as <code>sin(30) = 0.5</code>. Switch to <strong>RAD</strong> for radians, such as <code>sin(pi/2) = 1</code>. Reciprocal examples: <code>cosec(30) = 2</code>, <code>sec(60) = 2</code>, <code>cot(45) = 1</code>.</p>
+              <p><strong>DEG</strong> reads angles in degrees. Switch to <strong>RAD</strong> for radians: <code>sin(pi/2) = 1</code>, <code>asin(0.5) = pi/6</code>, and <code>atan(1) = pi/4</code>.</p>
             </article>
             <article>
               <h4>Constants and memory</h4>
@@ -297,6 +327,6 @@
       </section>
     </main>
 
-    <script src="script.js?v=trig-functions-1"></script>
+    <script src="script.js?v=round-2dp-1"></script>
   </body>
 </html>

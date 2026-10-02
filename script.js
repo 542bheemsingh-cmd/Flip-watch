@@ -216,7 +216,7 @@ const calculatorFunctions = {
   exp: Math.exp,
   floor: Math.floor,
   ceil: Math.ceil,
-  round: Math.round,
+  round: (value) => Math.round((value + Math.sign(value) * Number.EPSILON) * 100) / 100,
   pow: Math.pow,
   mod: (left, right) => left % right,
   min: Math.min,
@@ -445,8 +445,9 @@ function insertCalculatorValue(value) {
   const input = calculatorInput;
   const start = input.selectionStart ?? input.value.length;
   const end = input.selectionEnd ?? input.value.length;
+  const shouldReplaceEmptyDisplay = input.value === "";
   const shouldReplaceZero = input.value === "0" && (/[0-9.]/.test(value) || value === "pi" || value === "e");
-  if (shouldReplaceZero) {
+  if (shouldReplaceEmptyDisplay || shouldReplaceZero) {
     input.value = value;
   } else {
     input.value = `${input.value.slice(0, start)}${value}${input.value.slice(end)}`;
@@ -472,13 +473,14 @@ function setCalculatorGuide(open) {
 
 function handleCalculatorAction(action) {
   if (action === "clear") {
-    calculatorInput.value = "0";
+    calculatorInput.value = "";
     calculatorPrevious.textContent = "Ready";
     clearCalculatorError();
+    calculatorInput.focus();
     return;
   }
   if (action === "delete") {
-    calculatorInput.value = calculatorInput.value.length > 1 ? calculatorInput.value.slice(0, -1) : "0";
+    calculatorInput.value = calculatorInput.value.slice(0, -1);
     clearCalculatorError();
     calculatorInput.focus();
     return;
