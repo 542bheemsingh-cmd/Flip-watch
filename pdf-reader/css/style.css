@@ -31,11 +31,28 @@ body {
   margin: 0;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 34%),
-    linear-gradient(145deg, #07120f, var(--bg) 52%, #06100d);
+    linear-gradient(120deg, rgba(5, 15, 14, 0.88), rgba(7, 18, 28, 0.94)),
+    url("https://images.unsplash.com/photo-1734361469806-690540d68edc?auto=format&fit=crop&w=3840&q=82");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   color: var(--text);
   font-family: Arial, Helvetica, sans-serif;
   font-size: calc(16px * var(--ui-scale));
+}
+
+body[data-theme="light"] {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), transparent 45%),
+    #edf2ec;
+}
+
+body[data-theme="sepia"] {
+  background:
+    linear-gradient(120deg, rgba(36, 30, 22, 0.84), rgba(62, 45, 27, 0.92)),
+    url("https://images.unsplash.com/photo-1573591276084-47884b4335f4?auto=format&fit=crop&w=3840&q=82");
+  background-size: cover;
+  background-position: center;
 }
 
 button,

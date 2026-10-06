@@ -49,6 +49,12 @@ const panelBackdrop = $("[data-action='close-panels']");
 const recentList = $("[data-recent]");
 let resizeTimer = 0;
 
+function navigateToDashboard() {
+  const dashboardUrl = new URL("../index.html", window.location.href);
+  console.info(`[PDFReader] Returning to dashboard: ${dashboardUrl.href}`);
+  window.location.assign(dashboardUrl.href);
+}
+
 settings.bind(settingsPanel);
 settings.onChange(async (next) => {
   Object.assign(viewer.settings, next);
@@ -57,7 +63,7 @@ settings.onChange(async (next) => {
 });
 
 toolbar.bind({
-  home: () => { window.location.href = "../index.html"; },
+  home: navigateToDashboard,
   open: () => fileInput.click(),
   "open-empty": () => fileInput.click(),
   search: () => togglePanel(searchPanel),

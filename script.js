@@ -73,6 +73,7 @@ const equationVisual = document.querySelector("[data-equation-visual]");
 const equationShapeGrid = document.querySelector("[data-equation-shape-grid]");
 const equationReferenceCount = document.querySelector("[data-equation-reference-count]");
 const equationBackButton = document.querySelector("[data-equation-back]");
+const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 let elapsedBeforeStart = 0;
 let startedAt = 0;
@@ -89,7 +90,8 @@ let timerRemainingBeforeStart = selectedTimerDuration;
 let stopwatchType = "countup";
 let selectedStopwatchStart = 5 * 60 * 1000;
 let stopwatchElapsedBeforeStart = selectedStopwatchStart;
-const flipDuration = 820;
+let prefersReducedMotion = motionPreference.matches;
+let flipDuration = prefersReducedMotion ? 0 : 820;
 let calculatorAngleMode = "DEG";
 let calculatorMemory = 0;
 let calculatorHistory = [];
@@ -99,6 +101,68 @@ let audioContext = null;
 let activeEquationDimension = "2d";
 let activeEquationMetric = "primary";
 let previousEquationGraphAngleUnit = "RAD";
+
+function restartMotion(element, className) {
+  if (!element) return;
+
+  element.classList.remove(className);
+  if (prefersReducedMotion) return;
+
+  requestAnimationFrame(() => {
+    element.classList.add(className);
+  });
+}
+
+function animatePanelIn(panel) {
+  restartMotion(panel, "panel-enter");
+}
+
+function animateDashboardIn() {
+  if (!dashboard) return;
+  restartMotion(dashboard, "dashboard-enter");
+}
+
+function applyRandomDashboardTheme() {
+  if (!dashboard) return;
+
+  const themes = ["studio", "aurora", "blueprint", "ember"];
+  const storageKey = "flip-watch-dashboard-theme";
+  let previousTheme = "";
+
+  try {
+    previousTheme = localStorage.getItem(storageKey) || "";
+  } catch (error) {
+    console.info("[Dashboard] Theme memory is unavailable; using a fresh random theme.");
+  }
+
+  const availableThemes = themes.filter((theme) => theme !== previousTheme);
+  const randomIndex = window.crypto?.getRandomValues
+    ? window.crypto.getRandomValues(new Uint32Array(1))[0] % availableThemes.length
+    : Math.floor(Math.random() * availableThemes.length);
+  const nextTheme = availableThemes[randomIndex];
+
+  dashboard.dataset.dashboardTheme = nextTheme;
+  try {
+    localStorage.setItem(storageKey, nextTheme);
+  } catch (error) {
+    // Private browsing can reject storage; the current theme still works.
+  }
+}
+
+toolCards.forEach((card, index) => {
+  card.style.setProperty("--card-index", index);
+});
+
+function handleMotionPreferenceChange(event) {
+  prefersReducedMotion = event.matches;
+  flipDuration = prefersReducedMotion ? 0 : 820;
+}
+
+if (motionPreference.addEventListener) {
+  motionPreference.addEventListener("change", handleMotionPreferenceChange);
+} else {
+  motionPreference.addListener(handleMotionPreferenceChange);
+}
 
 function getAudioContext() {
   if (audioContext) return audioContext;
@@ -710,6 +774,7 @@ function renderEquationGraph() {
     : graph.note;
   equationGraphReadout.textContent = readout;
   equationPlot.innerHTML = parts.join("");
+  restartMotion(equationPlot, "graph-refresh");
 }
 
 function getEquationShapesForDimension() {
@@ -797,6 +862,7 @@ function calculateEquation() {
     equationResultValue.textContent = error.message || "Enter valid measurements.";
     equationResultValue.setAttribute("data-error", "true");
   }
+  restartMotion(equationResultValue, "result-pop");
 }
 
 function renderEquationFields(shape) {
@@ -892,6 +958,8 @@ function renderEquationShape() {
   renderEquationFields(shape);
   renderEquationReference();
   calculateEquation();
+  restartMotion(equationVisual, "shape-refresh");
+  restartMotion(equationFields, "fields-refresh");
 }
 
 function setEquationDimension(dimension) {
@@ -1137,8 +1205,11 @@ function evaluateCalculator() {
     calculatorHistory = [{ expression, result }, ...calculatorHistory].slice(0, 30);
     renderCalculatorHistory();
     clearCalculatorError();
+    restartMotion(calculatorPrevious, "result-pop");
+    restartMotion(calculatorInput, "result-pop");
   } catch (error) {
     setCalculatorError(error.message || "Invalid expression");
+    restartMotion(calculatorPrevious, "result-pop");
   }
 }
 
@@ -1169,7 +1240,10 @@ function updateCalculatorMemoryStatus() {
 function setCalculatorGuide(open) {
   calculatorGuidePanel.hidden = !open;
   calculatorGuideButton.setAttribute("aria-expanded", String(open));
-  if (open) calculatorGuideClose.focus();
+  if (open) {
+    restartMotion(calculatorGuidePanel, "guide-enter");
+    calculatorGuideClose.focus();
+  }
 }
 
 function handleCalculatorAction(action) {
@@ -1279,26 +1353,41 @@ function setCardValue(card, nextValue) {
   card._flipTimers?.forEach((timer) => window.clearTimeout(timer));
   card._flipTimers = [];
 
+  if (card._flipFrame) {
+    cancelAnimationFrame(card._flipFrame);
+    card._flipFrame = 0;
+  }
+
+  card.getAnimations?.({ subtree: true }).forEach((animation) => animation.cancel());
+
   setHalfValue(card, ".flip-top", currentValue);
   setHalfValue(card, ".flip-bottom", currentValue);
   setHalfValue(card, ".fold-top", currentValue);
   setHalfValue(card, ".fold-bottom", nextValue);
 
   card.classList.remove("is-flipping");
-  void card.offsetWidth;
-  card.classList.add("is-flipping");
   card.dataset.value = nextValue;
   card.setAttribute("aria-label", nextValue);
 
-  card._flipTimers.push(window.setTimeout(() => {
+  if (flipDuration === 0) {
     setHalfValue(card, ".flip-top", nextValue);
-  }, flipDuration / 2));
-
-  card._flipTimers.push(window.setTimeout(() => {
     setHalfValue(card, ".flip-bottom", nextValue);
-    card.classList.remove("is-flipping");
-    card._flipTimers = [];
-  }, flipDuration));
+    return;
+  }
+
+  card._flipFrame = requestAnimationFrame(() => {
+    card._flipFrame = 0;
+    card.classList.add("is-flipping");
+    card._flipTimers.push(window.setTimeout(() => {
+      setHalfValue(card, ".flip-top", nextValue);
+    }, flipDuration / 2));
+
+    card._flipTimers.push(window.setTimeout(() => {
+      setHalfValue(card, ".flip-bottom", nextValue);
+      card.classList.remove("is-flipping");
+      card._flipTimers = [];
+    }, flipDuration));
+  });
 }
 
 function setCardPair(cards, value) {
@@ -1608,6 +1697,7 @@ function openTool(mode) {
     toolPanel.hidden = true;
     equationPanel.hidden = true;
     calculatorPanel.hidden = false;
+    animatePanelIn(calculatorPanel);
     calculatorInput.focus();
     return;
   }
@@ -1617,6 +1707,7 @@ function openTool(mode) {
     toolPanel.hidden = true;
     calculatorPanel.hidden = true;
     equationPanel.hidden = false;
+    animatePanelIn(equationPanel);
     renderEquationShape();
     return;
   }
@@ -1626,6 +1717,7 @@ function openTool(mode) {
   calculatorPanel.hidden = true;
   equationPanel.hidden = true;
   setMode(mode);
+  animatePanelIn(toolPanel);
 }
 
 function showDashboard() {
@@ -1639,6 +1731,7 @@ function showDashboard() {
   calculatorPanel.hidden = true;
   equationPanel.hidden = true;
   dashboard.hidden = false;
+  animateDashboardIn();
 }
 
 function setTimerDuration(minutes) {
@@ -1839,6 +1932,8 @@ window.addEventListener("pagehide", () => {
 });
 
 prepareFlipCards();
+applyRandomDashboardTheme();
+animateDashboardIn();
 renderStopwatch(true);
 renderCalculatorHistory();
 updateCalculatorMemoryStatus();
