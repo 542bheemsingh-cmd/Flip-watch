@@ -17,6 +17,12 @@ const modeButtons = document.querySelectorAll(".mode-button");
 const timerOptions = document.querySelector("[data-timer-options]");
 const presetButtons = document.querySelectorAll("[data-minutes]");
 const customMinutesInput = document.querySelector("[data-custom-minutes]");
+const stopwatchOptions = document.querySelector("[data-stopwatch-options]");
+const stopwatchTypeButtons = document.querySelectorAll("[data-stopwatch-type]");
+const stopwatchCustomTime = document.querySelector(".stopwatch-custom-time");
+const stopwatchHoursInput = document.querySelector("[data-stopwatch-hours]");
+const stopwatchMinutesInput = document.querySelector("[data-stopwatch-minutes]");
+const stopwatchSecondsInput = document.querySelector("[data-stopwatch-seconds]");
 const awakeToggle = document.querySelector("[data-awake-toggle]");
 const wakeStatus = document.querySelector("[data-wake-status]");
 const screenFitButton = document.querySelector("[data-screen-fit]");
@@ -80,6 +86,9 @@ let wakeLockLastError = "";
 let lastRenderedCentiseconds = -1;
 let selectedTimerDuration = 5 * 60 * 1000;
 let timerRemainingBeforeStart = selectedTimerDuration;
+let stopwatchType = "countup";
+let selectedStopwatchStart = 5 * 60 * 1000;
+let stopwatchElapsedBeforeStart = selectedStopwatchStart;
 const flipDuration = 820;
 let calculatorAngleMode = "DEG";
 let calculatorMemory = 0;
@@ -218,6 +227,33 @@ function pad(value, size) {
   return String(value).padStart(size, "0");
 }
 
+function validateCountingInputs(n, r) {
+  if (!Number.isSafeInteger(n) || !Number.isSafeInteger(r) || n < 0 || r < 0) {
+    throw new Error("n and r must be non-negative whole numbers");
+  }
+  if (r > n) throw new Error("r cannot be greater than n");
+  return [n, r];
+}
+
+function calculatePermutation(n, r) {
+  validateCountingInputs(n, r);
+  let result = 1;
+  for (let index = 0; index < r; index += 1) result *= n - index;
+  if (!Number.isFinite(result)) throw new Error("Permutation result is too large");
+  return result;
+}
+
+function calculateCombination(n, r) {
+  validateCountingInputs(n, r);
+  const pairs = Math.min(r, n - r);
+  let result = 1;
+  for (let index = 1; index <= pairs; index += 1) {
+    result = result * (n - pairs + index) / index;
+    if (!Number.isFinite(result)) throw new Error("Combination result is too large");
+  }
+  return result;
+}
+
 const calculatorFunctions = {
   sin: (value) => Math.sin(calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value),
   cos: (value) => Math.cos(calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value),
@@ -272,6 +308,8 @@ const calculatorFunctions = {
   floor: Math.floor,
   ceil: Math.ceil,
   round: (value) => Math.round((value + Math.sign(value) * Number.EPSILON) * 100) / 100,
+  npr: calculatePermutation,
+  ncr: calculateCombination,
   pow: Math.pow,
   mod: (left, right) => left % right,
   min: Math.min,
@@ -1355,6 +1393,14 @@ function getTimerRemaining() {
   return Math.max(0, timerRemainingBeforeStart - (performance.now() - startedAt));
 }
 
+function getCustomStopwatchElapsed() {
+  if (!isRunning) {
+    return stopwatchElapsedBeforeStart;
+  }
+
+  return stopwatchElapsedBeforeStart + performance.now() - startedAt;
+}
+
 function renderDuration(durationMs, force = false) {
   const centiseconds = Math.floor(durationMs / 10);
 
@@ -1378,7 +1424,7 @@ function renderDuration(durationMs, force = false) {
 }
 
 function renderStopwatch(force = false) {
-  const elapsed = getElapsed();
+  const elapsed = stopwatchType === "custom" ? getCustomStopwatchElapsed() : getElapsed();
   const didRender = renderDuration(elapsed, force);
 
   if (!didRender) {
@@ -1431,7 +1477,6 @@ function startCurrentMode() {
   if (activeMode === "timer" && timerRemainingBeforeStart <= 0) {
     timerRemainingBeforeStart = selectedTimerDuration;
   }
-
   isRunning = true;
   startedAt = performance.now();
   startButton.hidden = true;
@@ -1451,6 +1496,8 @@ function stopCurrentMode() {
 
   if (activeMode === "timer") {
     timerRemainingBeforeStart = getTimerRemaining();
+  } else if (stopwatchType === "custom") {
+    stopwatchElapsedBeforeStart = getCustomStopwatchElapsed();
   } else {
     elapsedBeforeStart = getElapsed();
   }
@@ -1470,6 +1517,8 @@ function stopCurrentMode() {
 function resetCurrentMode() {
   if (activeMode === "timer") {
     timerRemainingBeforeStart = selectedTimerDuration;
+  } else if (stopwatchType === "custom") {
+    stopwatchElapsedBeforeStart = selectedStopwatchStart;
   } else {
     elapsedBeforeStart = 0;
   }
@@ -1526,6 +1575,7 @@ function setMode(nextMode) {
   controls.hidden = isClock;
   clockDisplay.hidden = !isClock;
   timerOptions.hidden = !isTimer;
+  stopwatchOptions.hidden = nextMode !== "stopwatch";
 
   cancelAnimationFrame(clockFrame);
   cancelAnimationFrame(stopwatchFrame);
@@ -1607,6 +1657,23 @@ function setTimerDuration(minutes) {
   }
 }
 
+function setStopwatchDuration() {
+  const hours = Math.min(Math.max(Number(stopwatchHoursInput.value) || 0, 0), 99);
+  const minutes = Math.min(Math.max(Number(stopwatchMinutesInput.value) || 0, 0), 59);
+  const seconds = Math.min(Math.max(Number(stopwatchSecondsInput.value) || 0, 0), 59);
+  stopwatchHoursInput.value = String(hours);
+  stopwatchMinutesInput.value = String(minutes);
+  stopwatchSecondsInput.value = String(seconds);
+
+  selectedStopwatchStart = ((hours * 60 + minutes) * 60 + seconds) * 1000;
+  stopwatchElapsedBeforeStart = selectedStopwatchStart;
+  lastRenderedCentiseconds = -1;
+
+  if (activeMode === "stopwatch" && stopwatchType === "custom" && !isRunning) {
+    renderStopwatch(true);
+  }
+}
+
 startButton.addEventListener("click", startCurrentMode);
 stopButton.addEventListener("click", stopCurrentMode);
 resetButton.addEventListener("click", resetCurrentMode);
@@ -1639,6 +1706,30 @@ document.addEventListener("fullscreenchange", () => {
 
 presetButtons.forEach((button) => {
   button.addEventListener("click", () => setTimerDuration(button.dataset.minutes));
+});
+
+stopwatchTypeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    if (isRunning) stopCurrentMode();
+    stopwatchType = button.dataset.stopwatchType;
+    stopwatchCustomTime.hidden = stopwatchType !== "custom";
+    stopwatchTypeButtons.forEach((typeButton) => {
+      const isActive = typeButton.dataset.stopwatchType === stopwatchType;
+      typeButton.classList.toggle("active", isActive);
+      typeButton.setAttribute("aria-selected", String(isActive));
+    });
+    if (stopwatchType === "custom") {
+      setStopwatchDuration();
+    } else {
+      stopwatchElapsedBeforeStart = 0;
+      lastRenderedCentiseconds = -1;
+      renderStopwatch(true);
+    }
+  });
+});
+
+[stopwatchHoursInput, stopwatchMinutesInput, stopwatchSecondsInput].forEach((input) => {
+  input.addEventListener("input", setStopwatchDuration);
 });
 
 customMinutesInput.addEventListener("input", () => setTimerDuration(customMinutesInput.value));

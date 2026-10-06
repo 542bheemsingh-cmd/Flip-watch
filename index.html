@@ -42,7 +42,7 @@
           <button class="tool-card primary-tool" type="button" data-open-tool="stopwatch">
             <span class="tool-icon">00</span>
             <span class="tool-name">Stopwatch</span>
-            <span class="tool-meta">Count up with flip cards</span>
+            <span class="tool-meta">Count up and custom start time</span>
           </button>
 
           <button class="tool-card" type="button" data-open-tool="timer">
@@ -102,6 +102,22 @@
             <span>Custom</span>
             <input type="number" min="1" max="5999" step="1" value="5" data-custom-minutes />
             <span>min</span>
+          </label>
+        </div>
+
+        <div class="stopwatch-options" data-stopwatch-options>
+          <div class="stopwatch-type-row" role="tablist" aria-label="Stopwatch type">
+            <button class="stopwatch-type-button active" type="button" data-stopwatch-type="countup" role="tab" aria-selected="true">Count Up</button>
+            <button class="stopwatch-type-button" type="button" data-stopwatch-type="custom" role="tab" aria-selected="false">Custom Count Up</button>
+          </div>
+          <label class="custom-time stopwatch-custom-time" hidden>
+            <span>Start at</span>
+            <input type="number" min="0" max="99" step="1" value="0" data-stopwatch-hours aria-label="Custom stopwatch starting hours" />
+            <span>h</span>
+            <input type="number" min="0" max="59" step="1" value="5" data-stopwatch-minutes aria-label="Custom stopwatch starting minutes" />
+            <span>m</span>
+            <input type="number" min="0" max="59" step="1" value="0" data-stopwatch-seconds aria-label="Custom stopwatch starting seconds" />
+            <span>s</span>
           </label>
         </div>
 
@@ -236,6 +252,11 @@
               <p>Examples: <code>mod(10,3) = 1</code> and <code>5! = 120</code>. Factorial is for non-negative whole numbers.</p>
             </article>
             <article>
+              <h4>Permutation and combination</h4>
+              <p><code>nPr(n,r)</code> counts ordered arrangements: <code>n!/(n-r)!</code>. <code>nCr(n,r)</code> counts selections where order does not matter: <code>n!/(r!(n-r)!)</code>.</p>
+              <p>Use non-negative whole numbers with <code>r ≤ n</code>. Examples: <code>nPr(5,2) = 20</code> and <code>nCr(5,2) = 10</code>.</p>
+            </article>
+            <article>
               <h4>DEG / RAD</h4>
               <p><strong>DEG</strong> reads angles in degrees. Switch to <strong>RAD</strong> for radians: <code>sin(pi/2) = 1</code>, <code>asin(0.5) = pi/6</code>, and <code>atan(1) = pi/4</code>.</p>
             </article>
@@ -290,6 +311,8 @@
               <button class="calc-function" type="button" data-calc-value="acot(">acot</button>
               <button class="calc-function" type="button" data-calc-value="exp(">exp</button>
               <button class="calc-function" type="button" data-calc-value="mod(">mod</button>
+              <button class="calc-function" type="button" data-calc-value="npr(">nPr</button>
+              <button class="calc-function" type="button" data-calc-value="ncr(">nCr</button>
 
               <button class="calc-action" type="button" data-calc-action="clear">AC</button>
               <button class="calc-action" type="button" data-calc-action="delete">DEL</button>
@@ -494,6 +517,6 @@
       </section>
     </main>
 
-    <script src="script.js?v=inverse-reciprocal-1"></script>
+    <script src="script.js?v=stopwatch-custom-3"></script>
   </body>
 </html>
