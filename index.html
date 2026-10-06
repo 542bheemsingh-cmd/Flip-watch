@@ -210,9 +210,10 @@
               <p>Examples in DEG mode: <code>cosec(30) = 2</code>, <code>sec(60) = 2</code>, and <code>cot(45) = 1</code>. They are undefined when their denominator is zero.</p>
             </article>
             <article>
-              <h4>asin, acos and atan</h4>
+              <h4>Inverse trigonometric functions</h4>
               <p>These inverse functions return an angle from a sine, cosine or tangent value. They are useful for finding a missing angle in a triangle.</p>
-              <p>Examples in DEG mode: <code>asin(0.5) = 30°</code>, <code>acos(0.5) = 60°</code>, and <code>atan(1) = 45°</code>. <code>asin</code> and <code>acos</code> accept values only from <code>-1</code> to <code>1</code>.</p>
+              <p>Examples in DEG mode: <code>asin(0.5) = 30°</code>, <code>acos(0.5) = 60°</code>, and <code>atan(1) = 45°</code>. <code>acosec(x) = asin(1/x)</code>, <code>asec(x) = acos(1/x)</code>, and <code>acot(x)</code> return the inverse of cosec, sec and cot.</p>
+              <p><code>asin</code> and <code>acos</code> accept values from <code>-1</code> to <code>1</code>. <code>acosec</code> and <code>asec</code> require <code>|x| ≥ 1</code>; for example, <code>acosec(2) = 30°</code> and <code>asec(2) = 60°</code> in DEG mode. <code>acot(1) = 45°</code>.</p>
             </article>
             <article>
               <h4>sqrt, abs and exp</h4>
@@ -284,6 +285,9 @@
               <button class="calc-function" type="button" data-calc-value="asin(">asin</button>
               <button class="calc-function" type="button" data-calc-value="acos(">acos</button>
               <button class="calc-function" type="button" data-calc-value="atan(">atan</button>
+              <button class="calc-function" type="button" data-calc-value="acosec(">acosec</button>
+              <button class="calc-function" type="button" data-calc-value="asec(">asec</button>
+              <button class="calc-function" type="button" data-calc-value="acot(">acot</button>
               <button class="calc-function" type="button" data-calc-value="exp(">exp</button>
               <button class="calc-function" type="button" data-calc-value="mod(">mod</button>
 
@@ -343,10 +347,90 @@
           </div>
         </div>
 
-        <div class="equation-section-tabs" role="tablist" aria-label="Area dimension">
+        <div class="equation-section-tabs" role="tablist" aria-label="Equation sections">
           <button class="equation-section-tab active" type="button" data-equation-dimension="2d" role="tab" aria-selected="true">2D Area</button>
           <button class="equation-section-tab" type="button" data-equation-dimension="3d" role="tab" aria-selected="false">3D Surface Area</button>
+          <button class="equation-section-tab" type="button" data-equation-dimension="graphs" role="tab" aria-selected="false">Graphs</button>
         </div>
+
+        <section class="equation-graphs" data-equation-graphs aria-label="Function graphs" hidden>
+          <div class="equation-graph-toolbar">
+            <label class="equation-select-label" for="equation-graph-select">Choose a function</label>
+            <select id="equation-graph-select" class="equation-shape-select" data-equation-graph-select>
+              <optgroup label="Trigonometric">
+                <option value="sin">sin(x)</option>
+                <option value="cos">cos(x)</option>
+                <option value="tan">tan(x)</option>
+                <option value="cosec">cosec(x)</option>
+                <option value="sec">sec(x)</option>
+                <option value="cot">cot(x)</option>
+              </optgroup>
+              <optgroup label="Inverse trigonometric">
+                <option value="asin">asin(x)</option>
+                <option value="acos">acos(x)</option>
+                <option value="atan">atan(x)</option>
+                <option value="acosec">acosec(x)</option>
+                <option value="asec">asec(x)</option>
+                <option value="acot">acot(x)</option>
+              </optgroup>
+              <optgroup label="Other functions">
+                <option value="abs">modulus |x|</option>
+                <option value="ln">ln(x)</option>
+                <option value="log10">logarithmic log₁₀(x)</option>
+                <option value="signum">signum sgn(x)</option>
+                <option value="floor">greatest integer floor(x)</option>
+                <option value="fractional">fractional part {x}</option>
+                <option value="ceil">least integer ceil(x)</option>
+                <option value="exp">eˣ</option>
+                <option value="square">square x²</option>
+                <option value="sqrt">square root √x</option>
+                <option value="reciprocal">reciprocal 1/x</option>
+              </optgroup>
+            </select>
+            <label class="equation-graph-angle-label" for="equation-graph-angle-unit" data-equation-graph-angle-label>Angle unit</label>
+            <select id="equation-graph-angle-unit" class="equation-shape-select equation-graph-angle-select" data-equation-graph-angle-unit>
+              <option value="RAD">RAD</option>
+              <option value="DEG">DEG</option>
+            </select>
+            <label class="equation-graph-input-label" for="equation-graph-input">Input x</label>
+            <input class="equation-graph-input" id="equation-graph-input" data-equation-graph-input type="number" step="any" value="0" inputmode="decimal" />
+            <button class="equation-graph-reset" type="button" data-equation-graph-reset>Reset</button>
+          </div>
+
+          <div class="equation-graph-layout">
+            <section class="equation-graph-card" aria-live="polite">
+              <div class="equation-graph-heading">
+                <div>
+                  <span class="equation-type-label">FUNCTION GRAPH</span>
+                  <h3 data-equation-graph-title>sin(x)</h3>
+                </div>
+                <span class="equation-graph-formula" data-equation-graph-formula>y = sin(x)</span>
+              </div>
+              <div class="equation-plot-wrap">
+                <svg class="equation-plot" data-equation-plot viewBox="0 0 760 440" role="img" aria-label="Function graph"></svg>
+              </div>
+              <div class="equation-graph-readout">
+                <span data-equation-graph-readout>Input x = 0 · Output y = 0</span>
+              </div>
+            </section>
+
+            <aside class="equation-graph-info" aria-label="Graph domain and range">
+              <p class="dashboard-kicker">Graph guide</p>
+              <h3>Domain &amp; Range</h3>
+              <dl class="equation-domain-range">
+                <div>
+                  <dt>Domain</dt>
+                  <dd data-equation-graph-domain>All real numbers</dd>
+                </div>
+                <div>
+                  <dt>Range</dt>
+                  <dd data-equation-graph-range>[-1, 1]</dd>
+                </div>
+              </dl>
+              <p class="equation-graph-note" data-equation-graph-note>Trigonometric graph input is in radians.</p>
+            </aside>
+          </div>
+        </section>
 
         <div class="equation-toolbar">
           <label class="equation-select-label" for="equation-shape-select">Choose a shape</label>
@@ -410,6 +494,6 @@
       </section>
     </main>
 
-    <script src="script.js?v=metric-fields-1"></script>
+    <script src="script.js?v=inverse-reciprocal-1"></script>
   </body>
 </html>

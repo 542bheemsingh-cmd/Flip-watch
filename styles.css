@@ -432,8 +432,8 @@ button {
 
 .equation-section-tabs {
   display: inline-grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: min(440px, 100%);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: min(720px, 100%);
   gap: 4px;
   padding: 4px;
   border: 1px solid rgba(255, 255, 255, 0.09);
@@ -485,6 +485,229 @@ button {
   color: var(--text);
   background: rgba(210, 255, 114, 0.14);
   box-shadow: inset 0 0 0 1px rgba(210, 255, 114, 0.2);
+}
+
+.equation-graphs {
+  display: grid;
+  gap: 16px;
+}
+
+.equation-graph-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.equation-graph-toolbar .equation-shape-select {
+  min-width: 230px;
+}
+
+.equation-graph-toolbar .equation-graph-angle-select {
+  width: 88px;
+  min-width: 88px;
+}
+
+.equation-graph-input-label {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.equation-graph-input {
+  width: 116px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid rgba(210, 255, 114, 0.22);
+  border-radius: 7px;
+  outline: 0;
+  color: var(--text);
+  background: #172820;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.equation-graph-input:focus {
+  border-color: rgba(210, 255, 114, 0.55);
+  box-shadow: 0 0 0 3px rgba(210, 255, 114, 0.1);
+}
+
+.equation-graph-reset {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.equation-graph-reset:hover {
+  color: var(--text);
+  border-color: rgba(210, 255, 114, 0.28);
+}
+
+.equation-graph-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 0.3fr);
+  gap: 16px;
+}
+
+.equation-graph-card,
+.equation-graph-info {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.equation-graph-card {
+  display: grid;
+  gap: 14px;
+  padding: clamp(14px, 2.5vw, 24px);
+}
+
+.equation-graph-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.equation-graph-heading h3 {
+  margin: 5px 0 0;
+  font-size: clamp(1.45rem, 3vw, 2.1rem);
+}
+
+.equation-graph-formula {
+  max-width: 52%;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.86rem;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.equation-plot-wrap {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(210, 255, 114, 0.12);
+  border-radius: 7px;
+  background: #06110d;
+}
+
+.equation-plot {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 300px;
+}
+
+.graph-grid-line {
+  stroke: rgba(255, 255, 255, 0.07);
+  stroke-width: 1;
+}
+
+.graph-axis {
+  stroke: rgba(246, 248, 244, 0.45);
+  stroke-width: 1.5;
+}
+
+.graph-axis-label {
+  fill: rgba(246, 248, 244, 0.58);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+}
+
+.graph-path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.graph-point-halo {
+  fill: rgba(210, 255, 114, 0.2);
+}
+
+.graph-point {
+  fill: var(--accent);
+  stroke: #10200f;
+  stroke-width: 3;
+}
+
+.graph-point-guide {
+  stroke: rgba(210, 255, 114, 0.45);
+  stroke-width: 1;
+  stroke-dasharray: 5 5;
+}
+
+.equation-graph-readout {
+  padding: 12px 14px;
+  border: 1px solid rgba(210, 255, 114, 0.15);
+  border-radius: 7px;
+  color: var(--accent);
+  background: rgba(210, 255, 114, 0.06);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.equation-graph-info {
+  align-self: start;
+  padding: 20px;
+}
+
+.equation-graph-info h3 {
+  margin: 0 0 20px;
+  font-size: 1.3rem;
+}
+
+.equation-domain-range {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+}
+
+.equation-domain-range div {
+  display: grid;
+  gap: 5px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.equation-domain-range dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.equation-domain-range dd {
+  margin: 0;
+  color: var(--text);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.equation-graph-note {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
 }
 
 .equation-toolbar {
@@ -1847,6 +2070,41 @@ body.screen-fit-active {
 
   .equation-shape-select {
     width: 100%;
+  }
+
+  .equation-section-tabs {
+    width: 100%;
+  }
+
+  .equation-section-tab {
+    padding: 0 6px;
+    font-size: 0.76rem;
+  }
+
+  .equation-graph-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .equation-graph-toolbar .equation-shape-select,
+  .equation-graph-input {
+    width: 100%;
+  }
+
+  .equation-graph-toolbar .equation-graph-angle-select {
+    width: 100%;
+  }
+
+  .equation-graph-input-label {
+    margin-left: 0;
+  }
+
+  .equation-graph-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .equation-graph-formula {
+    max-width: 48%;
   }
 
   .equation-shape-grid {

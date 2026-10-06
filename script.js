@@ -37,6 +37,23 @@ const calculatorGuideClose = document.querySelector("[data-calc-guide-close]");
 const equationDimensionButtons = document.querySelectorAll("[data-equation-dimension]");
 const equationMetricButtons = document.querySelectorAll("[data-equation-metric]");
 const equationShapeSelect = document.querySelector("[data-equation-shape]");
+const equationGraphsPanel = document.querySelector("[data-equation-graphs]");
+const equationGraphToolbar = document.querySelector(".equation-toolbar");
+const equationGraphMetricTabs = document.querySelector(".equation-metric-tabs");
+const equationGraphLayout = document.querySelector(".equation-layout");
+const equationGraphReference = document.querySelector(".equation-reference");
+const equationGraphSelect = document.querySelector("[data-equation-graph-select]");
+const equationGraphAngleLabel = document.querySelector("[data-equation-graph-angle-label]");
+const equationGraphAngleUnit = document.querySelector("[data-equation-graph-angle-unit]");
+const equationGraphInput = document.querySelector("[data-equation-graph-input]");
+const equationGraphReset = document.querySelector("[data-equation-graph-reset]");
+const equationGraphTitle = document.querySelector("[data-equation-graph-title]");
+const equationGraphFormula = document.querySelector("[data-equation-graph-formula]");
+const equationPlot = document.querySelector("[data-equation-plot]");
+const equationGraphReadout = document.querySelector("[data-equation-graph-readout]");
+const equationGraphDomain = document.querySelector("[data-equation-graph-domain]");
+const equationGraphRange = document.querySelector("[data-equation-graph-range]");
+const equationGraphNote = document.querySelector("[data-equation-graph-note]");
 const equationType = document.querySelector("[data-equation-type]");
 const equationTitle = document.querySelector("[data-equation-title]");
 const equationFormula = document.querySelector("[data-equation-formula]");
@@ -72,6 +89,7 @@ let soundEnabled = true;
 let audioContext = null;
 let activeEquationDimension = "2d";
 let activeEquationMetric = "primary";
+let previousEquationGraphAngleUnit = "RAD";
 
 function getAudioContext() {
   if (audioContext) return audioContext;
@@ -223,6 +241,24 @@ const calculatorFunctions = {
   asin: (value) => calculatorAngleMode === "DEG" ? Math.asin(value) * 180 / Math.PI : Math.asin(value),
   acos: (value) => calculatorAngleMode === "DEG" ? Math.acos(value) * 180 / Math.PI : Math.acos(value),
   atan: (value) => calculatorAngleMode === "DEG" ? Math.atan(value) * 180 / Math.PI : Math.atan(value),
+  acosec: (value) => {
+    if (Math.abs(value) < 1) throw new Error("acosec is defined only when |x| is at least 1");
+    const radians = Math.asin(1 / value);
+    return calculatorAngleMode === "DEG" ? radians * 180 / Math.PI : radians;
+  },
+  asec: (value) => {
+    if (Math.abs(value) < 1) throw new Error("asec is defined only when |x| is at least 1");
+    const radians = Math.acos(1 / value);
+    return calculatorAngleMode === "DEG" ? radians * 180 / Math.PI : radians;
+  },
+  acot: (value) => {
+    const radians = value === 0
+      ? Math.PI / 2
+      : value > 0
+        ? Math.atan(1 / value)
+        : Math.atan(1 / value) + Math.PI;
+    return calculatorAngleMode === "DEG" ? radians * 180 / Math.PI : radians;
+  },
   sqrt: Math.sqrt,
   abs: Math.abs,
   ln: Math.log,
@@ -494,9 +530,148 @@ const equationMetricFields = {
   },
 };
 
+const equationGraphs = {
+  sin: { title: "sin(x)", formula: "y = sin(x)", angleType: "direct", domain: "All real numbers", domainDeg: "All real numbers", range: "[-1, 1]", rangeDeg: "[-1, 1]", xRange: [-2 * Math.PI, 2 * Math.PI], yRange: [-1.5, 1.5], defaultInput: 0, note: "Trigonometric graph input is in radians.", evaluate: Math.sin },
+  cos: { title: "cos(x)", formula: "y = cos(x)", angleType: "direct", domain: "All real numbers", domainDeg: "All real numbers", range: "[-1, 1]", rangeDeg: "[-1, 1]", xRange: [-2 * Math.PI, 2 * Math.PI], yRange: [-1.5, 1.5], defaultInput: 0, note: "Trigonometric graph input is in radians.", evaluate: Math.cos },
+  tan: { title: "tan(x)", formula: "y = tan(x)", angleType: "direct", domain: "All real numbers except x = π/2 + kπ", domainDeg: "All real numbers except x = 90° + k·180°", range: "All real numbers", rangeDeg: "All real numbers", xRange: [-2 * Math.PI, 2 * Math.PI], yRange: [-5, 5], defaultInput: 0, note: "Vertical asymptotes are shown as breaks. Input is in radians.", evaluate: (x) => Math.abs(Math.cos(x)) < 0.035 ? null : Math.tan(x) },
+  cosec: { title: "cosec(x)", formula: "y = 1 / sin(x)", angleType: "direct", domain: "All real numbers except x = kπ", domainDeg: "All real numbers except x = k·180°", range: "(-∞, -1] ∪ [1, ∞)", rangeDeg: "(-∞, -1] ∪ [1, ∞)", xRange: [-2 * Math.PI, 2 * Math.PI], yRange: [-5, 5], defaultInput: Math.PI / 2, note: "Vertical asymptotes are shown as breaks. Input is in radians.", evaluate: (x) => Math.abs(Math.sin(x)) < 0.035 ? null : 1 / Math.sin(x) },
+  sec: { title: "sec(x)", formula: "y = 1 / cos(x)", angleType: "direct", domain: "All real numbers except x = π/2 + kπ", domainDeg: "All real numbers except x = 90° + k·180°", range: "(-∞, -1] ∪ [1, ∞)", rangeDeg: "(-∞, -1] ∪ [1, ∞)", xRange: [-2 * Math.PI, 2 * Math.PI], yRange: [-5, 5], defaultInput: 0, note: "Vertical asymptotes are shown as breaks. Input is in radians.", evaluate: (x) => Math.abs(Math.cos(x)) < 0.035 ? null : 1 / Math.cos(x) },
+  cot: { title: "cot(x)", formula: "y = cos(x) / sin(x)", angleType: "direct", domain: "All real numbers except x = kπ", domainDeg: "All real numbers except x = k·180°", range: "All real numbers", rangeDeg: "All real numbers", xRange: [-2 * Math.PI, 2 * Math.PI], yRange: [-5, 5], defaultInput: Math.PI / 4, note: "Vertical asymptotes are shown as breaks. Input is in radians.", evaluate: (x) => Math.abs(Math.sin(x)) < 0.035 ? null : Math.cos(x) / Math.sin(x) },
+  asin: { title: "asin(x)", formula: "y = sin⁻¹(x)", angleType: "inverse", domain: "[-1, 1]", domainDeg: "[-1, 1]", range: "[-π/2, π/2]", rangeDeg: "[-90°, 90°]", xRange: [-1, 1], yRange: [-1.8, 1.8], defaultInput: 0.5, note: "Inverse trigonometric output is in radians.", evaluate: (x) => x < -1 || x > 1 ? null : Math.asin(x) },
+  acos: { title: "acos(x)", formula: "y = cos⁻¹(x)", angleType: "inverse", domain: "[-1, 1]", domainDeg: "[-1, 1]", range: "[0, π]", rangeDeg: "[0°, 180°]", xRange: [-1, 1], yRange: [-0.2, 3.4], defaultInput: 0.5, note: "Inverse trigonometric output is in radians.", evaluate: (x) => x < -1 || x > 1 ? null : Math.acos(x) },
+  atan: { title: "atan(x)", formula: "y = tan⁻¹(x)", angleType: "inverse", domain: "All real numbers", domainDeg: "All real numbers", range: "(-π/2, π/2)", rangeDeg: "(-90°, 90°)", xRange: [-6, 6], yRange: [-1.8, 1.8], defaultInput: 1, note: "Inverse trigonometric output is in radians.", evaluate: Math.atan },
+  acosec: { title: "acosec(x)", formula: "y = cosec⁻¹(x)", angleType: "inverse", domain: "(-∞, -1] ∪ [1, ∞)", domainDeg: "(-∞, -1] ∪ [1, ∞)", range: "[-π/2, 0) ∪ (0, π/2]", rangeDeg: "[-90°, 0°) ∪ (0°, 90°]", xRange: [-6, 6], yRange: [-1.8, 1.8], defaultInput: 2, note: "Inverse trigonometric output is in radians. Input must satisfy |x| ≥ 1.", evaluate: (x) => Math.abs(x) < 1 ? null : Math.asin(1 / x) },
+  asec: { title: "asec(x)", formula: "y = sec⁻¹(x)", angleType: "inverse", domain: "(-∞, -1] ∪ [1, ∞)", domainDeg: "(-∞, -1] ∪ [1, ∞)", range: "[0, π/2) ∪ (π/2, π]", rangeDeg: "[0°, 90°) ∪ (90°, 180°]", xRange: [-6, 6], yRange: [-0.2, 3.4], defaultInput: 2, note: "Inverse trigonometric output is in radians. Input must satisfy |x| ≥ 1.", evaluate: (x) => Math.abs(x) < 1 ? null : Math.acos(1 / x) },
+  acot: { title: "acot(x)", formula: "y = cot⁻¹(x)", angleType: "inverse", domain: "All real numbers", domainDeg: "All real numbers", range: "(0, π)", rangeDeg: "(0°, 180°)", xRange: [-6, 6], yRange: [-0.2, 3.4], defaultInput: 1, note: "Inverse trigonometric output is in radians. Principal range is (0, π).", evaluate: (x) => x === 0 ? Math.PI / 2 : x > 0 ? Math.atan(1 / x) : Math.atan(1 / x) + Math.PI },
+  abs: { title: "|x|", formula: "y = |x|", domain: "All real numbers", range: "[0, ∞)", xRange: [-8, 8], yRange: [-1, 8], defaultInput: -3, note: "Modulus returns distance from zero, so output is never negative.", evaluate: Math.abs },
+  ln: { title: "ln(x)", formula: "y = ln(x)", domain: "(0, ∞)", range: "All real numbers", xRange: [0.05, 10], yRange: [-3, 3], defaultInput: 1, note: "Natural logarithm has base e and is defined only for x > 0.", evaluate: (x) => x <= 0 ? null : Math.log(x) },
+  log10: { title: "log₁₀(x)", formula: "y = log₁₀(x)", domain: "(0, ∞)", range: "All real numbers", xRange: [0.05, 10], yRange: [-2, 2], defaultInput: 10, note: "Common logarithm has base 10 and is defined only for x > 0.", evaluate: (x) => x <= 0 ? null : Math.log10(x) },
+  signum: { title: "sgn(x)", formula: "y = -1, 0, or 1", domain: "All real numbers", range: "{-1, 0, 1}", xRange: [-6, 6], yRange: [-1.5, 1.5], defaultInput: 0, note: "Signum returns -1 for negative x, 0 at x = 0 and 1 for positive x.", evaluate: (x) => Math.sign(x) },
+  floor: { title: "floor(x)", formula: "y = ⌊x⌋", domain: "All real numbers", range: "All integers", xRange: [-6, 6], yRange: [-6, 6], defaultInput: 2.6, note: "Greatest integer function rounds down to the next lower integer.", evaluate: Math.floor },
+  fractional: { title: "{x}", formula: "y = x − ⌊x⌋", domain: "All real numbers", range: "[0, 1)", xRange: [-6, 6], yRange: [-0.1, 1.1], defaultInput: 2.6, note: "Fractional part keeps only the part after the decimal point.", evaluate: (x) => x - Math.floor(x) },
+  ceil: { title: "ceil(x)", formula: "y = ⌈x⌉", domain: "All real numbers", range: "All integers", xRange: [-6, 6], yRange: [-6, 6], defaultInput: 2.4, note: "Least integer function rounds up to the next higher integer.", evaluate: Math.ceil },
+  exp: { title: "eˣ", formula: "y = eˣ", domain: "All real numbers", range: "(0, ∞)", xRange: [-3, 3], yRange: [0, 22], defaultInput: 1, note: "The exponential function is always positive and passes through (0, 1).", evaluate: Math.exp },
+  square: { title: "x²", formula: "y = x²", domain: "All real numbers", range: "[0, ∞)", xRange: [-4, 4], yRange: [-1, 17], defaultInput: 2, note: "A quadratic function with a minimum value of 0.", evaluate: (x) => x ** 2 },
+  sqrt: { title: "√x", formula: "y = √x", domain: "[0, ∞)", range: "[0, ∞)", xRange: [0, 16], yRange: [-0.2, 4.5], defaultInput: 4, note: "Square root is defined only for x ≥ 0.", evaluate: (x) => x < 0 ? null : Math.sqrt(x) },
+  reciprocal: { title: "1/x", formula: "y = 1/x", domain: "All real numbers except 0", range: "All real numbers except 0", xRange: [-6, 6], yRange: [-6, 6], defaultInput: 2, note: "The graph has a vertical asymptote at x = 0.", evaluate: (x) => Math.abs(x) < 0.035 ? null : 1 / x },
+};
+
 function formatEquationNumber(value) {
   if (Math.abs(value) < 1e-10) return "0";
   return Number(value.toFixed(2)).toString();
+}
+
+function formatGraphTick(value) {
+  if (Math.abs(value) < 1e-9) return "0";
+  return formatEquationNumber(value);
+}
+
+function getEquationGraphDefaultInput(graph) {
+  if (graph.angleType === "direct" && equationGraphAngleUnit.value === "DEG") {
+    return graph.defaultInput * 180 / Math.PI;
+  }
+  return graph.defaultInput;
+}
+
+function renderEquationGraph() {
+  const graph = equationGraphs[equationGraphSelect.value];
+  if (!graph) return;
+
+  const isAngleGraph = Boolean(graph.angleType);
+  const isDegree = isAngleGraph && equationGraphAngleUnit.value === "DEG";
+  const xRange = graph.angleType === "direct" && isDegree
+    ? graph.xRange.map((value) => value * 180 / Math.PI)
+    : graph.xRange;
+  const yRange = graph.angleType === "inverse" && isDegree
+    ? graph.yRange.map((value) => value * 180 / Math.PI)
+    : graph.yRange;
+  const evaluateDisplayed = (value) => {
+    const calculationInput = graph.angleType === "direct" && isDegree ? value * Math.PI / 180 : value;
+    const result = graph.evaluate(calculationInput);
+    return graph.angleType === "inverse" && isDegree && Number.isFinite(result) ? result * 180 / Math.PI : result;
+  };
+
+  const rawInput = equationGraphInput.value.trim();
+  const inputValue = rawInput === "" ? null : Number(rawInput);
+  const [xMin, xMax] = xRange;
+  const [yMin, yMax] = yRange;
+  const plot = { left: 58, top: 24, width: 650, height: 350 };
+  const xToSvg = (value) => plot.left + ((value - xMin) / (xMax - xMin)) * plot.width;
+  const yToSvg = (value) => plot.top + ((yMax - value) / (yMax - yMin)) * plot.height;
+  const parts = [`<title>${graph.title} graph</title>`];
+
+  for (let index = 0; index <= 8; index += 1) {
+    const value = xMin + ((xMax - xMin) * index) / 8;
+    const x = xToSvg(value);
+    parts.push(`<line class="graph-grid-line" x1="${x}" y1="${plot.top}" x2="${x}" y2="${plot.top + plot.height}"/>`);
+    parts.push(`<text class="graph-axis-label" x="${x}" y="${plot.top + plot.height + 24}" text-anchor="middle">${formatGraphTick(value)}</text>`);
+  }
+
+  for (let index = 0; index <= 6; index += 1) {
+    const value = yMin + ((yMax - yMin) * index) / 6;
+    const y = yToSvg(value);
+    parts.push(`<line class="graph-grid-line" x1="${plot.left}" y1="${y}" x2="${plot.left + plot.width}" y2="${y}"/>`);
+    parts.push(`<text class="graph-axis-label" x="${plot.left - 10}" y="${y + 4}" text-anchor="end">${formatGraphTick(value)}</text>`);
+  }
+
+  if (xMin <= 0 && xMax >= 0) {
+    const x = xToSvg(0);
+    parts.push(`<line class="graph-axis" x1="${x}" y1="${plot.top}" x2="${x}" y2="${plot.top + plot.height}"/>`);
+  }
+  if (yMin <= 0 && yMax >= 0) {
+    const y = yToSvg(0);
+    parts.push(`<line class="graph-axis" x1="${plot.left}" y1="${y}" x2="${plot.left + plot.width}" y2="${y}"/>`);
+  }
+
+  const paths = [];
+  let path = "";
+  const samples = 560;
+  for (let index = 0; index <= samples; index += 1) {
+    const x = xMin + ((xMax - xMin) * index) / samples;
+    const y = evaluateDisplayed(x);
+    const isValid = Number.isFinite(y) && y >= yMin && y <= yMax;
+
+    if (!isValid) {
+      if (path) paths.push(path);
+      path = "";
+      continue;
+    }
+
+    path += `${path ? "L" : "M"}${xToSvg(x).toFixed(2)},${yToSvg(y).toFixed(2)} `;
+  }
+  if (path) paths.push(path);
+  paths.forEach((pathData) => parts.push(`<path class="graph-path" d="${pathData}"/>`));
+
+  let readout = "Enter a number to map an input.";
+  if (inputValue !== null && Number.isFinite(inputValue)) {
+    const output = evaluateDisplayed(inputValue);
+    const insideDomain = inputValue >= xMin && inputValue <= xMax;
+    if (!Number.isFinite(output)) {
+      readout = `Input x = ${formatGraphTick(inputValue)} · Output y = undefined`;
+    } else if (!insideDomain || output < yMin || output > yMax) {
+      readout = `Input x = ${formatGraphTick(inputValue)} · Output y = ${formatEquationNumber(output)} · outside plotted range`;
+    } else {
+      const pointX = xToSvg(inputValue);
+      const pointY = yToSvg(output);
+      parts.push(`<line class="graph-point-guide" x1="${pointX}" y1="${plot.top + plot.height}" x2="${pointX}" y2="${pointY}"/>`);
+      parts.push(`<line class="graph-point-guide" x1="${plot.left}" y1="${pointY}" x2="${pointX}" y2="${pointY}"/>`);
+      parts.push(`<circle class="graph-point-halo" cx="${pointX}" cy="${pointY}" r="10"/>`);
+      parts.push(`<circle class="graph-point" cx="${pointX}" cy="${pointY}" r="5"/>`);
+      readout = `Input x = ${formatGraphTick(inputValue)} · Output y = ${formatEquationNumber(output)}`;
+    }
+  }
+
+  equationGraphTitle.textContent = graph.title;
+  equationGraphFormula.textContent = graph.formula;
+  equationGraphAngleLabel.hidden = !isAngleGraph;
+  equationGraphAngleUnit.hidden = !isAngleGraph;
+  equationGraphDomain.textContent = isDegree ? (graph.domainDeg || graph.domain) : graph.domain;
+  equationGraphRange.textContent = isDegree ? (graph.rangeDeg || graph.range) : graph.range;
+  equationGraphNote.textContent = isAngleGraph
+    ? `${graph.note.replace("in radians", isDegree ? "in degrees" : "in radians")}`
+    : graph.note;
+  equationGraphReadout.textContent = readout;
+  equationPlot.innerHTML = parts.join("");
 }
 
 function getEquationShapesForDimension() {
@@ -684,11 +859,24 @@ function renderEquationShape() {
 function setEquationDimension(dimension) {
   activeEquationDimension = dimension;
   activeEquationMetric = "primary";
+  const isGraphs = dimension === "graphs";
   equationDimensionButtons.forEach((button) => {
     const isActive = button.dataset.equationDimension === dimension;
     button.classList.toggle("active", isActive);
     button.setAttribute("aria-selected", String(isActive));
   });
+
+  equationGraphsPanel.hidden = !isGraphs;
+  equationGraphToolbar.hidden = isGraphs;
+  equationGraphMetricTabs.hidden = isGraphs;
+  equationGraphLayout.hidden = isGraphs;
+  equationGraphReference.hidden = isGraphs;
+
+  if (isGraphs) {
+    renderEquationGraph();
+    return;
+  }
+
   updateEquationShapeOptions();
   renderEquationShape();
 }
@@ -1488,6 +1676,30 @@ equationMetricButtons.forEach((button) => {
 });
 
 equationShapeSelect.addEventListener("change", renderEquationShape);
+equationGraphSelect.addEventListener("change", () => {
+  const graph = equationGraphs[equationGraphSelect.value];
+  equationGraphInput.value = String(getEquationGraphDefaultInput(graph));
+  renderEquationGraph();
+});
+equationGraphAngleUnit.addEventListener("change", () => {
+  const graph = equationGraphs[equationGraphSelect.value];
+  const currentInput = Number(equationGraphInput.value);
+  if (graph.angleType === "direct" && Number.isFinite(currentInput)) {
+    const switchedToDegrees = previousEquationGraphAngleUnit === "RAD" && equationGraphAngleUnit.value === "DEG";
+    equationGraphInput.value = String(switchedToDegrees
+      ? currentInput * 180 / Math.PI
+      : currentInput * Math.PI / 180);
+  }
+  previousEquationGraphAngleUnit = equationGraphAngleUnit.value;
+  renderEquationGraph();
+});
+equationGraphInput.addEventListener("input", renderEquationGraph);
+equationGraphReset.addEventListener("click", () => {
+  const graph = equationGraphs[equationGraphSelect.value];
+  equationGraphInput.value = String(getEquationGraphDefaultInput(graph));
+  renderEquationGraph();
+  equationGraphInput.focus();
+});
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !calculatorGuidePanel.hidden) {
