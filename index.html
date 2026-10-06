@@ -33,9 +33,9 @@
         <div class="dashboard-header">
           <div>
             <p class="dashboard-kicker">Flip Watch</p>
-            <h1>Time Tools</h1>
+            <h1>Useful Tools</h1>
           </div>
-          <span class="dashboard-badge">5 Tools</span>
+          <span class="dashboard-badge">6 Tools</span>
         </div>
 
         <div class="tool-grid">
@@ -67,6 +67,12 @@
             <span class="tool-icon calculator-icon">&#x00B1;</span>
             <span class="tool-name">Calculator</span>
             <span class="tool-meta">Scientific, percentage and memory calculations</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="equation">
+            <span class="tool-icon equation-icon">A²</span>
+            <span class="tool-name">Equation Calculator</span>
+            <span class="tool-meta">2D area and 3D surface-area formulas</span>
           </button>
         </div>
       </section>
@@ -325,8 +331,85 @@
           </aside>
         </div>
       </section>
+
+      <section class="equation-panel" data-equation-panel aria-label="Equation Calculator" hidden>
+        <button class="back-button" type="button" data-equation-back>Dashboard</button>
+
+        <div class="equation-heading">
+          <div>
+            <p class="dashboard-kicker">Shape formulas</p>
+            <h2>Equation Calculator</h2>
+            <p class="equation-intro">Calculate area and perimeter for 2D shapes, plus total surface area for 3D solids.</p>
+          </div>
+        </div>
+
+        <div class="equation-section-tabs" role="tablist" aria-label="Area dimension">
+          <button class="equation-section-tab active" type="button" data-equation-dimension="2d" role="tab" aria-selected="true">2D Area</button>
+          <button class="equation-section-tab" type="button" data-equation-dimension="3d" role="tab" aria-selected="false">3D Surface Area</button>
+        </div>
+
+        <div class="equation-toolbar">
+          <label class="equation-select-label" for="equation-shape-select">Choose a shape</label>
+          <select id="equation-shape-select" class="equation-shape-select" data-equation-shape>
+            <option value="square">Square</option>
+            <option value="rectangle">Rectangle</option>
+            <option value="triangle">Triangle</option>
+            <option value="circle">Circle</option>
+            <option value="parallelogram">Parallelogram</option>
+            <option value="trapezium">Trapezium</option>
+            <option value="ellipse">Ellipse</option>
+            <option value="regular-polygon">Regular Polygon</option>
+          </select>
+        </div>
+
+        <div class="equation-metric-tabs" role="tablist" aria-label="Measurement type">
+          <button class="equation-metric-tab active" type="button" data-equation-metric="primary" role="tab" aria-selected="true">Area</button>
+          <button class="equation-metric-tab" type="button" data-equation-metric="secondary" role="tab" aria-selected="false">Perimeter</button>
+        </div>
+
+        <div class="equation-layout">
+          <section class="equation-form-card" aria-live="polite">
+            <div class="equation-card-heading">
+              <div>
+                <span class="equation-type-label" data-equation-type>2D AREA</span>
+                <h3 data-equation-title>Square</h3>
+              </div>
+              <span class="equation-result-unit" data-equation-unit>square units</span>
+            </div>
+
+            <div class="equation-formula" data-equation-formula>A = s²</div>
+            <p class="equation-description" data-equation-description>Area of a square is side multiplied by side.</p>
+            <div class="equation-fields" data-equation-fields></div>
+
+            <div class="equation-result" data-equation-result aria-live="polite">
+              <span data-equation-result-label>Area</span>
+              <strong data-equation-result-value>0 square units</strong>
+            </div>
+          </section>
+
+          <section class="equation-visual-card" aria-label="Shape preview">
+            <div class="equation-visual-heading">
+              <span>Shape preview</span>
+              <span data-equation-dimension-label>2D</span>
+            </div>
+            <div class="equation-visual" data-equation-visual></div>
+            <p class="equation-hint">Enter the measurements to update the result instantly.</p>
+          </section>
+        </div>
+
+        <section class="equation-reference" aria-label="Formula reference">
+          <div class="equation-reference-heading">
+            <div>
+              <p class="dashboard-kicker">Quick reference</p>
+              <h3>Available shapes</h3>
+            </div>
+            <span data-equation-reference-count>8 formulas</span>
+          </div>
+          <div class="equation-shape-grid" data-equation-shape-grid></div>
+        </section>
+      </section>
     </main>
 
-    <script src="script.js?v=round-2dp-1"></script>
+    <script src="script.js?v=metric-fields-1"></script>
   </body>
 </html>

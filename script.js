@@ -3,6 +3,7 @@ const appShell = document.querySelector("[data-app-shell]");
 const dashboard = document.querySelector("[data-dashboard]");
 const toolPanel = document.querySelector("[data-tool-panel]");
 const calculatorPanel = document.querySelector("[data-calculator-panel]");
+const equationPanel = document.querySelector("[data-equation-panel]");
 const toolCards = document.querySelectorAll("[data-open-tool]");
 const backDashboardButton = document.querySelector("[data-back-dashboard]");
 const clockDisplay = document.querySelector(".clock-display");
@@ -33,6 +34,22 @@ const calculatorAngleButton = document.querySelector("[data-calc-angle]");
 const calculatorGuideButton = document.querySelector("[data-calc-guide]");
 const calculatorGuidePanel = document.querySelector("[data-calc-guide-panel]");
 const calculatorGuideClose = document.querySelector("[data-calc-guide-close]");
+const equationDimensionButtons = document.querySelectorAll("[data-equation-dimension]");
+const equationMetricButtons = document.querySelectorAll("[data-equation-metric]");
+const equationShapeSelect = document.querySelector("[data-equation-shape]");
+const equationType = document.querySelector("[data-equation-type]");
+const equationTitle = document.querySelector("[data-equation-title]");
+const equationFormula = document.querySelector("[data-equation-formula]");
+const equationDescription = document.querySelector("[data-equation-description]");
+const equationFields = document.querySelector("[data-equation-fields]");
+const equationResultLabel = document.querySelector("[data-equation-result-label]");
+const equationResultValue = document.querySelector("[data-equation-result-value]");
+const equationResultUnit = document.querySelector("[data-equation-unit]");
+const equationDimensionLabel = document.querySelector("[data-equation-dimension-label]");
+const equationVisual = document.querySelector("[data-equation-visual]");
+const equationShapeGrid = document.querySelector("[data-equation-shape-grid]");
+const equationReferenceCount = document.querySelector("[data-equation-reference-count]");
+const equationBackButton = document.querySelector("[data-equation-back]");
 
 let elapsedBeforeStart = 0;
 let startedAt = 0;
@@ -53,6 +70,8 @@ let calculatorHistory = [];
 let calculatorLastAnswer = 0;
 let soundEnabled = true;
 let audioContext = null;
+let activeEquationDimension = "2d";
+let activeEquationMetric = "primary";
 
 function getAudioContext() {
   if (audioContext) return audioContext;
@@ -222,6 +241,462 @@ const calculatorFunctions = {
   min: Math.min,
   max: Math.max,
 };
+
+const equationShapes = {
+  square: {
+    dimension: "2d",
+    label: "Square",
+    formula: "A = s²",
+    perimeterFormula: "P = 4s",
+    description: "Area of a square is side multiplied by side.",
+    fields: [{ key: "side", label: "Side (s)", value: 5 }],
+    calculate: ({ side }) => side ** 2,
+    calculatePerimeter: ({ side }) => 4 * side,
+    visual: () => `<svg viewBox="0 0 320 240" role="img" aria-label="Square diagram"><rect class="shape-fill" x="82" y="42" width="156" height="156" rx="3"/><path class="shape-line" d="M82 215h156"/><text class="shape-label" x="160" y="232">s</text></svg>`,
+  },
+  rectangle: {
+    dimension: "2d",
+    label: "Rectangle",
+    formula: "A = l × w",
+    perimeterFormula: "P = 2(l + w)",
+    description: "Area is the product of the rectangle's length and width.",
+    fields: [
+      { key: "length", label: "Length (l)", value: 8 },
+      { key: "width", label: "Width (w)", value: 5 },
+    ],
+    calculate: ({ length, width }) => length * width,
+    calculatePerimeter: ({ length, width }) => 2 * (length + width),
+    visual: () => `<svg viewBox="0 0 320 240" role="img" aria-label="Rectangle diagram"><rect class="shape-fill" x="50" y="70" width="220" height="100" rx="3"/><path class="shape-line" d="M50 195h220M35 70v100"/><text class="shape-label" x="160" y="216">l</text><text class="shape-label" x="18" y="125">w</text></svg>`,
+  },
+  triangle: {
+    dimension: "2d",
+    label: "Triangle",
+    formula: "A = ½ × b × h",
+    perimeterFormula: "P = a + b + c",
+    description: "Use the base, perpendicular height and the other two sides.",
+    fields: [
+      { key: "base", label: "Base (b)", value: 8 },
+      { key: "height", label: "Height (h)", value: 4 },
+      { key: "sideA", label: "Side 1 (a)", value: 5 },
+      { key: "sideB", label: "Side 2 (c)", value: 5 },
+    ],
+    calculate: ({ base, height }) => 0.5 * base * height,
+    calculatePerimeter: ({ base, sideA, sideB }) => base + sideA + sideB,
+    visual: () => `<svg viewBox="0 0 320 240" role="img" aria-label="Triangle diagram"><path class="shape-fill" d="M55 190L160 42L265 190Z"/><path class="shape-line" d="M55 207h210M160 42v148"/><text class="shape-label" x="160" y="228">b</text><text class="shape-label" x="177" y="125">h</text></svg>`,
+  },
+  circle: {
+    dimension: "2d",
+    label: "Circle",
+    formula: "A = πr²",
+    perimeterFormula: "P = 2πr",
+    description: "Multiply pi by the radius squared.",
+    fields: [{ key: "radius", label: "Radius (r)", value: 5 }],
+    calculate: ({ radius }) => Math.PI * radius ** 2,
+    calculatePerimeter: ({ radius }) => 2 * Math.PI * radius,
+    visual: () => `<svg viewBox="0 0 320 240" role="img" aria-label="Circle diagram"><circle class="shape-fill" cx="150" cy="120" r="78"/><path class="shape-line" d="M150 120h78"/><text class="shape-label" x="190" y="110">r</text></svg>`,
+  },
+  parallelogram: {
+    dimension: "2d",
+    label: "Parallelogram",
+    formula: "A = b × h",
+    perimeterFormula: "P = 2(a + b)",
+    description: "Area uses the base and height; perimeter uses the base and side length.",
+    fields: [
+      { key: "base", label: "Base (b)", value: 8 },
+      { key: "height", label: "Height (h)", value: 4 },
+      { key: "side", label: "Side (a)", value: 5 },
+    ],
+    calculate: ({ base, height }) => base * height,
+    calculatePerimeter: ({ base, side }) => 2 * (base + side),
+    visual: () => `<svg viewBox="0 0 320 240" role="img" aria-label="Parallelogram diagram"><path class="shape-fill" d="M88 55H270L232 185H50Z"/><path class="shape-line" d="M50 204h182M88 55v130"/><text class="shape-label" x="141" y="225">b</text><text class="shape-label" x="101" y="126">h</text></svg>`,
+  },
+  trapezium: {
+    dimension: "2d",
+    label: "Trapezium",
+    formula: "A = ½(a + b)h",
+    perimeterFormula: "P = a + b + c + d",
+    description: "Use the two parallel sides, height and both non-parallel sides.",
+    fields: [
+      { key: "baseA", label: "Base 1 (a)", value: 8 },
+      { key: "baseB", label: "Base 2 (b)", value: 5 },
+      { key: "height", label: "Height (h)", value: 4 },
+      { key: "legA", label: "Side 1 (c)", value: 4 },
+      { key: "legB", label: "Side 2 (d)", value: 4 },
+    ],
+    calculate: ({ baseA, baseB, height }) => 0.5 * (baseA + baseB) * height,
+    calculatePerimeter: ({ baseA, baseB, legA, legB }) => baseA + baseB + legA + legB,
+    visual: () => `<svg viewBox="0 0 320 240" role="img" aria-label="Trapezium diagram"><path class="shape-fill" d="M92 48H228L270 190H50Z"/><path class="shape-line" d="M50 210h220M160 48v142"/><text class="shape-label" x="160" y="230">h</text><text class="shape-label" x="160" y="38">a</text><text class="shape-label" x="160" y="207">b</text></svg>`,
+  },
+  ellipse: {
+    dimension: "2d",
+    label: "Ellipse",
+    formula: "A = πab",
+    perimeterFormula: "P ≈ π[3(a + b) − √((3a + b)(a + 3b))]",
+    description: "Multiply pi by the semi-major axis and semi-minor axis.",
+    fields: [
+      { key: "semiMajor", label: "Semi-major axis (a)", value: 7 },
+      { key: "semiMinor", label: "Semi-minor axis (b)", value: 4 },
+    ],
+    calculate: ({ semiMajor, semiMinor }) => Math.PI * semiMajor * semiMinor,
+    calculatePerimeter: ({ semiMajor, semiMinor }) => Math.PI * (3 * (semiMajor + semiMinor) - Math.sqrt((3 * semiMajor + semiMinor) * (semiMajor + 3 * semiMinor))),
+    visual: () => `<svg viewBox="0 0 320 240" role="img" aria-label="Ellipse diagram"><ellipse class="shape-fill" cx="160" cy="120" rx="112" ry="66"/><path class="shape-line" d="M48 120h224M160 54v132"/><text class="shape-label" x="214" y="110">a</text><text class="shape-label" x="174" y="86">b</text></svg>`,
+  },
+  "regular-polygon": {
+    dimension: "2d",
+    label: "Regular Polygon",
+    formula: "A = ns² / (4 tan(π/n))",
+    perimeterFormula: "P = ns",
+    description: "Use the number of equal sides and the side length.",
+    fields: [
+      { key: "sides", label: "Number of sides (n)", value: 6 },
+      { key: "side", label: "Side length (s)", value: 4 },
+    ],
+    calculate: ({ sides, side }) => (sides * side ** 2) / (4 * Math.tan(Math.PI / sides)),
+    calculatePerimeter: ({ sides, side }) => sides * side,
+    visual: () => `<svg viewBox="0 0 320 240" role="img" aria-label="Regular polygon diagram"><polygon class="shape-fill" points="160,38 238,83 238,157 160,202 82,157 82,83"/><path class="shape-line" d="M82 83h156M160 120v82"/><text class="shape-label" x="160" y="226">s</text><text class="shape-label" x="253" y="124">n sides</text></svg>`,
+  },
+  cone: {
+    dimension: "3d",
+    label: "Cone",
+    formula: "TSA = πr(r + l)",
+    description: "Total surface area includes the circular base and curved surface. l is slant height.",
+    fields: [
+      { key: "radius", label: "Radius (r)", value: 5 },
+      { key: "slant", label: "Slant height (l)", value: 8 },
+      { key: "height", label: "Vertical height (h)", value: 6 },
+    ],
+    calculate: ({ radius, slant }) => Math.PI * radius * (radius + slant),
+    volumeFormula: "V = ⅓πr²h",
+    calculateVolume: ({ radius, height }) => (Math.PI * radius ** 2 * height) / 3,
+    visual: () => `<svg viewBox="0 0 320 240" role="img" aria-label="Cone diagram"><path class="shape-fill" d="M160 36L62 188Q160 226 258 188Z"/><ellipse class="shape-fill" cx="160" cy="188" rx="98" ry="30"/><path class="shape-line" d="M160 36L258 188"/><text class="shape-label" x="213" y="108">l</text><text class="shape-label" x="211" y="195">r</text></svg>`,
+  },
+  cube: {
+    dimension: "3d",
+    label: "Cube",
+    formula: "TSA = 6a²",
+    description: "A cube has six equal square faces.",
+    fields: [{ key: "edge", label: "Edge (a)", value: 4 }],
+    calculate: ({ edge }) => 6 * edge ** 2,
+    volumeFormula: "V = a³",
+    calculateVolume: ({ edge }) => edge ** 3,
+    visual: () => `<svg viewBox="0 0 320 240" role="img" aria-label="Cube diagram"><path class="shape-fill" d="M78 82L160 42L242 82L160 122Z"/><path class="shape-fill" d="M78 82v92l82 42v-94Z"/><path class="shape-fill" d="M242 82v92l-82 42v-94Z"/><path class="shape-line" d="M78 190h82M160 215v-94"/><text class="shape-label" x="119" y="231">a</text></svg>`,
+  },
+  cuboid: {
+    dimension: "3d",
+    label: "Cuboid",
+    formula: "TSA = 2(lw + wh + hl)",
+    description: "Add the three pairwise face areas and multiply by two.",
+    fields: [
+      { key: "length", label: "Length (l)", value: 6 },
+      { key: "width", label: "Width (w)", value: 4 },
+      { key: "height", label: "Height (h)", value: 3 },
+    ],
+    calculate: ({ length, width, height }) => 2 * (length * width + width * height + height * length),
+    volumeFormula: "V = l × w × h",
+    calculateVolume: ({ length, width, height }) => length * width * height,
+    visual: () => `<svg viewBox="0 0 320 240" role="img" aria-label="Cuboid diagram"><path class="shape-fill" d="M65 78L178 42L255 78L142 116Z"/><path class="shape-fill" d="M65 78v100l77 38v-100Z"/><path class="shape-fill" d="M255 78v100l-113 38v-100Z"/><path class="shape-line" d="M65 194h77M142 216v-100"/><text class="shape-label" x="104" y="228">l</text><text class="shape-label" x="220" y="67">w</text><text class="shape-label" x="150" y="160">h</text></svg>`,
+  },
+  sphere: {
+    dimension: "3d",
+    label: "Sphere",
+    formula: "TSA = 4πr²",
+    description: "Surface area of a sphere is four times pi times radius squared.",
+    fields: [{ key: "radius", label: "Radius (r)", value: 5 }],
+    calculate: ({ radius }) => 4 * Math.PI * radius ** 2,
+    volumeFormula: "V = ⁴⁄₃πr³",
+    calculateVolume: ({ radius }) => (4 * Math.PI * radius ** 3) / 3,
+    visual: () => `<svg viewBox="0 0 320 240" role="img" aria-label="Sphere diagram"><circle class="shape-fill" cx="160" cy="120" r="82"/><ellipse class="shape-line" cx="160" cy="120" rx="82" ry="30"/><path class="shape-line" d="M160 38v164M78 120h164"/><text class="shape-label" x="204" y="110">r</text></svg>`,
+  },
+  cylinder: {
+    dimension: "3d",
+    label: "Cylinder",
+    formula: "TSA = 2πr(r + h)",
+    description: "Total surface area includes two circular bases and the curved surface.",
+    fields: [
+      { key: "radius", label: "Radius (r)", value: 4 },
+      { key: "height", label: "Height (h)", value: 8 },
+    ],
+    calculate: ({ radius, height }) => 2 * Math.PI * radius * (radius + height),
+    volumeFormula: "V = πr²h",
+    calculateVolume: ({ radius, height }) => Math.PI * radius ** 2 * height,
+    visual: () => `<svg viewBox="0 0 320 240" role="img" aria-label="Cylinder diagram"><path class="shape-fill" d="M78 62v116M242 62v116"/><ellipse class="shape-fill" cx="160" cy="62" rx="82" ry="27"/><ellipse class="shape-fill" cx="160" cy="178" rx="82" ry="27"/><path class="shape-line" d="M78 62v116M242 62v116M160 62v116"/><text class="shape-label" x="207" y="54">r</text><text class="shape-label" x="178" y="126">h</text></svg>`,
+  },
+  pyramid: {
+    dimension: "3d",
+    label: "Regular Pyramid",
+    formula: "TSA = B + ½Pℓ",
+    description: "For a regular pyramid, B is base area, P is base perimeter and ℓ is slant height.",
+    fields: [
+      { key: "sides", label: "Base sides (n)", value: 4 },
+      { key: "side", label: "Base side (s)", value: 5 },
+      { key: "slant", label: "Slant height (ℓ)", value: 7 },
+      { key: "height", label: "Vertical height (h)", value: 6 },
+    ],
+    calculate: ({ sides, side, slant }) => {
+      const baseArea = (sides * side ** 2) / (4 * Math.tan(Math.PI / sides));
+      return baseArea + 0.5 * sides * side * slant;
+    },
+    volumeFormula: "V = ⅓Bh",
+    calculateVolume: ({ sides, side, height }) => {
+      const baseArea = (sides * side ** 2) / (4 * Math.tan(Math.PI / sides));
+      return (baseArea * height) / 3;
+    },
+    visual: () => `<svg viewBox="0 0 320 240" role="img" aria-label="Regular pyramid diagram"><polygon class="shape-fill" points="160,35 75,165 160,125"/><polygon class="shape-fill" points="160,35 160,125 245,165"/><polygon class="shape-fill" points="160,35 245,165 160,207"/><polygon class="shape-fill" points="160,35 160,207 75,165"/><polygon class="shape-fill" points="75,165 160,125 245,165 160,207"/><path class="shape-line" d="M160 35L160 125M160 35L245 165M75 165h85M160 207h0"/><text class="shape-label" x="205" y="108">ℓ</text><text class="shape-label" x="118" y="226">s</text></svg>`,
+  },
+  prism: {
+    dimension: "3d",
+    label: "General Prism",
+    formula: "TSA = 2B + Ph",
+    description: "Use the base area B, base perimeter P and prism height h.",
+    fields: [
+      { key: "baseArea", label: "Base area (B)", value: 20 },
+      { key: "perimeter", label: "Base perimeter (P)", value: 18 },
+      { key: "height", label: "Height (h)", value: 8 },
+    ],
+    calculate: ({ baseArea, perimeter, height }) => 2 * baseArea + perimeter * height,
+    volumeFormula: "V = Bh",
+    calculateVolume: ({ baseArea, height }) => baseArea * height,
+    visual: () => `<svg viewBox="0 0 320 240" role="img" aria-label="General prism diagram"><polygon class="shape-fill" points="70,170 125,55 180,170"/><polygon class="shape-fill" points="140,190 195,75 250,190"/><polygon class="shape-fill" points="70,170 125,55 195,75 140,190"/><polygon class="shape-fill" points="125,55 180,170 250,190 195,75"/><polygon class="shape-fill" points="70,170 180,170 250,190 140,190"/><path class="shape-line" d="M70 170L140 190M125 55L195 75M180 170L250 190"/><text class="shape-label" x="125" y="146">B</text><text class="shape-label" x="218" y="138">h</text></svg>`,
+  },
+  hemisphere: {
+    dimension: "3d",
+    label: "Hemisphere",
+    formula: "TSA = 3πr²",
+    description: "Total surface area includes the curved half-sphere and its circular base.",
+    fields: [{ key: "radius", label: "Radius (r)", value: 5 }],
+    calculate: ({ radius }) => 3 * Math.PI * radius ** 2,
+    volumeFormula: "V = ⅔πr³",
+    calculateVolume: ({ radius }) => (2 * Math.PI * radius ** 3) / 3,
+    visual: () => `<svg viewBox="0 0 320 240" role="img" aria-label="Hemisphere diagram"><path class="shape-fill" d="M68 135a92 72 0 0 1 184 0Z"/><ellipse class="shape-fill" cx="160" cy="135" rx="92" ry="25"/><path class="shape-line" d="M160 135V63"/><text class="shape-label" x="180" y="101">r</text></svg>`,
+  },
+};
+
+const equationMetricFields = {
+  triangle: {
+    primary: ["base", "height"],
+    secondary: ["base", "sideA", "sideB"],
+  },
+  parallelogram: {
+    primary: ["base", "height"],
+    secondary: ["base", "side"],
+  },
+  trapezium: {
+    primary: ["baseA", "baseB", "height"],
+    secondary: ["baseA", "baseB", "legA", "legB"],
+  },
+  cone: {
+    primary: ["radius", "slant"],
+    secondary: ["radius", "height"],
+  },
+  pyramid: {
+    primary: ["sides", "side", "slant"],
+    secondary: ["sides", "side", "height"],
+  },
+};
+
+function formatEquationNumber(value) {
+  if (Math.abs(value) < 1e-10) return "0";
+  return Number(value.toFixed(2)).toString();
+}
+
+function getEquationShapesForDimension() {
+  return Object.entries(equationShapes).filter(([, shape]) => shape.dimension === activeEquationDimension);
+}
+
+function getEquationFields(shape) {
+  const shapeId = equationShapeSelect.value;
+  const metricKeys = equationMetricFields[shapeId]?.[activeEquationMetric];
+  if (!metricKeys) return shape.fields;
+  return shape.fields.filter((field) => metricKeys.includes(field.key));
+}
+
+function readEquationValues(shape) {
+  const values = {};
+
+  getEquationFields(shape).forEach((field) => {
+    const input = equationFields.querySelector(`[data-equation-field="${field.key}"]`);
+    const value = Number(input.value);
+
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new Error(`${field.label} must be greater than 0.`);
+    }
+    if (field.key === "sides" && (!Number.isInteger(value) || value < 3)) {
+      throw new Error("Number of sides must be a whole number of 3 or more.");
+    }
+
+    values[field.key] = value;
+  });
+
+  return values;
+}
+
+function getEquationMetric(shape) {
+  if (shape.dimension === "2d") {
+    if (activeEquationMetric === "secondary") {
+      return {
+        label: "Perimeter",
+        type: "2D PERIMETER",
+        formula: shape.perimeterFormula,
+        unit: "linear units",
+        calculate: shape.calculatePerimeter,
+      };
+    }
+
+    return {
+      label: "Area",
+      type: "2D AREA",
+      formula: shape.formula,
+      unit: "square units",
+      calculate: shape.calculate,
+    };
+  }
+
+  if (activeEquationMetric === "secondary") {
+    return {
+      label: "Volume",
+      type: "3D VOLUME",
+      formula: shape.volumeFormula,
+      unit: "cubic units",
+      calculate: shape.calculateVolume,
+    };
+  }
+
+  return {
+    label: "Total surface area",
+    type: "3D SURFACE AREA",
+    formula: shape.formula,
+    unit: "square units",
+    calculate: shape.calculate,
+  };
+}
+
+function calculateEquation() {
+  const shape = equationShapes[equationShapeSelect.value];
+  if (!shape) return;
+
+  try {
+    const values = readEquationValues(shape);
+    const metric = getEquationMetric(shape);
+    const result = metric.calculate(values);
+    equationResultValue.textContent = `${formatEquationNumber(result)} ${metric.unit}`;
+    equationResultValue.removeAttribute("data-error");
+  } catch (error) {
+    equationResultValue.textContent = error.message || "Enter valid measurements.";
+    equationResultValue.setAttribute("data-error", "true");
+  }
+}
+
+function renderEquationFields(shape) {
+  const previousValues = new Map(
+    [...equationFields.querySelectorAll("[data-equation-field]")].map((input) => [input.dataset.equationField, input.value]),
+  );
+  const fields = getEquationFields(shape);
+  equationFields.replaceChildren();
+
+  fields.forEach((field) => {
+    const label = document.createElement("label");
+    const labelText = document.createElement("span");
+    const input = document.createElement("input");
+
+    label.className = "equation-field";
+    labelText.textContent = field.label;
+    input.type = "number";
+    input.min = "0";
+    input.step = field.key === "sides" ? "1" : "any";
+    input.value = previousValues.get(field.key) ?? String(field.value);
+    input.inputMode = "decimal";
+    input.setAttribute("data-equation-field", field.key);
+    input.addEventListener("input", calculateEquation);
+
+    label.append(labelText, input);
+    equationFields.append(label);
+  });
+}
+
+function renderEquationReference() {
+  const shapes = getEquationShapesForDimension();
+  equationReferenceCount.textContent = `${shapes.length} formulas`;
+  equationShapeGrid.replaceChildren();
+
+  shapes.forEach(([id, shape]) => {
+    const button = document.createElement("button");
+    const title = document.createElement("strong");
+    const formula = document.createElement("span");
+
+    button.className = "equation-shape-card";
+    button.type = "button";
+    button.dataset.equationReference = id;
+    button.classList.toggle("active", id === equationShapeSelect.value);
+    title.textContent = shape.label;
+    formula.textContent = activeEquationMetric === "secondary"
+      ? (shape.dimension === "2d" ? shape.perimeterFormula : shape.volumeFormula)
+      : shape.formula;
+    button.append(title, formula);
+    button.addEventListener("click", () => {
+      equationShapeSelect.value = id;
+      renderEquationShape();
+    });
+    equationShapeGrid.append(button);
+  });
+}
+
+function updateEquationShapeOptions() {
+  const shapes = getEquationShapesForDimension();
+  const nextShapeId = shapes.some(([id]) => id === equationShapeSelect.value) ? equationShapeSelect.value : shapes[0][0];
+
+  equationShapeSelect.replaceChildren();
+  shapes.forEach(([id, shape]) => {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = shape.label;
+    equationShapeSelect.append(option);
+  });
+  equationShapeSelect.value = nextShapeId;
+}
+
+function renderEquationShape() {
+  const shape = equationShapes[equationShapeSelect.value];
+  if (!shape) return;
+
+  const metric = getEquationMetric(shape);
+  equationMetricButtons.forEach((button) => {
+    const isPrimary = button.dataset.equationMetric === "primary";
+    button.textContent = shape.dimension === "2d"
+      ? (isPrimary ? "Area" : "Perimeter")
+      : (isPrimary ? "Surface Area" : "Volume");
+    button.setAttribute("aria-selected", String((isPrimary ? "primary" : "secondary") === activeEquationMetric));
+    button.classList.toggle("active", (isPrimary ? "primary" : "secondary") === activeEquationMetric);
+  });
+
+  equationType.textContent = metric.type;
+  equationTitle.textContent = shape.label;
+  equationFormula.textContent = metric.formula;
+  equationDescription.textContent = shape.description;
+  equationResultLabel.textContent = metric.label;
+  equationResultUnit.textContent = metric.unit;
+  equationDimensionLabel.textContent = shape.dimension.toUpperCase();
+  equationVisual.innerHTML = shape.visual();
+  renderEquationFields(shape);
+  renderEquationReference();
+  calculateEquation();
+}
+
+function setEquationDimension(dimension) {
+  activeEquationDimension = dimension;
+  activeEquationMetric = "primary";
+  equationDimensionButtons.forEach((button) => {
+    const isActive = button.dataset.equationDimension === dimension;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+  updateEquationShapeOptions();
+  renderEquationShape();
+}
+
+function setEquationMetric(metric) {
+  activeEquationMetric = metric;
+  renderEquationShape();
+}
 
 function tokenizeCalculator(expression) {
   const tokens = [];
@@ -893,13 +1368,25 @@ function openTool(mode) {
   if (mode === "calculator") {
     dashboard.hidden = true;
     toolPanel.hidden = true;
+    equationPanel.hidden = true;
     calculatorPanel.hidden = false;
     calculatorInput.focus();
     return;
   }
 
+  if (mode === "equation") {
+    dashboard.hidden = true;
+    toolPanel.hidden = true;
+    calculatorPanel.hidden = true;
+    equationPanel.hidden = false;
+    renderEquationShape();
+    return;
+  }
+
   dashboard.hidden = true;
   toolPanel.hidden = false;
+  calculatorPanel.hidden = true;
+  equationPanel.hidden = true;
   setMode(mode);
 }
 
@@ -912,6 +1399,7 @@ function showDashboard() {
   cancelAnimationFrame(stopwatchFrame);
   toolPanel.hidden = true;
   calculatorPanel.hidden = true;
+  equationPanel.hidden = true;
   dashboard.hidden = false;
 }
 
@@ -945,6 +1433,7 @@ toolCards.forEach((card) => {
 
 backDashboardButton.addEventListener("click", showDashboard);
 document.querySelector("[data-calculator-back]").addEventListener("click", showDashboard);
+equationBackButton.addEventListener("click", showDashboard);
 screenFitButton.addEventListener("click", () => {
   void toggleScreenFit();
 });
@@ -989,6 +1478,16 @@ calculatorGuideClose.addEventListener("click", () => {
   setCalculatorGuide(false);
   calculatorGuideButton.focus();
 });
+
+equationDimensionButtons.forEach((button) => {
+  button.addEventListener("click", () => setEquationDimension(button.dataset.equationDimension));
+});
+
+equationMetricButtons.forEach((button) => {
+  button.addEventListener("click", () => setEquationMetric(button.dataset.equationMetric));
+});
+
+equationShapeSelect.addEventListener("change", renderEquationShape);
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !calculatorGuidePanel.hidden) {
@@ -1042,3 +1541,4 @@ renderCalculatorHistory();
 updateCalculatorMemoryStatus();
 updateSoundToggle();
 setWakeIndicator(wakeLockSupported ? "idle" : "warning", wakeLockSupported ? "Screen Awake: Off" : "Wake Lock Unsupported");
+setEquationDimension("2d");
