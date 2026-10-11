@@ -1,3 +1,5 @@
+import { createListButton } from "./utils.js";
+
 export class TOCController {
   constructor(viewer, list) {
     this.viewer = viewer;
@@ -20,10 +22,8 @@ export class TOCController {
   }
 
   async createItem(item, depth) {
-    const button = document.createElement("button");
-    button.className = "list-item";
+    const button = createListButton(item.title || "Untitled", "Jump to section");
     button.style.marginLeft = `${depth * 12}px`;
-    button.innerHTML = `<strong>${item.title || "Untitled"}</strong><small>Jump to section</small>`;
     button.addEventListener("click", async () => {
       try {
         const destination = Array.isArray(item.dest) ? item.dest : await this.viewer.pdf.getDestination(item.dest);
