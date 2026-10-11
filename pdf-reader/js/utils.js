@@ -46,3 +46,16 @@ export function addRipple(event) {
 export async function fileToArrayBuffer(file) {
   return await file.arrayBuffer();
 }
+
+// Build a list button from plain text so untrusted values (PDF outline titles,
+// file names) are inserted as text and never parsed as HTML.
+export function createListButton(primary, secondary) {
+  const button = document.createElement("button");
+  button.className = "list-item";
+  const strong = document.createElement("strong");
+  strong.textContent = primary;
+  const small = document.createElement("small");
+  small.textContent = secondary;
+  button.append(strong, small);
+  return button;
+}

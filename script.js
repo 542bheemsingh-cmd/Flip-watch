@@ -321,7 +321,11 @@ function calculateCombination(n, r) {
 const calculatorFunctions = {
   sin: (value) => Math.sin(calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value),
   cos: (value) => Math.cos(calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value),
-  tan: (value) => Math.tan(calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value),
+  tan: (value) => {
+    const radians = calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value;
+    if (Math.abs(Math.cos(radians)) < 1e-12) throw new Error("tan is undefined at this angle");
+    return Math.tan(radians);
+  },
   cosec: (value) => {
     const result = Math.sin(calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value);
     if (Math.abs(result) < 1e-12) throw new Error("cosec is undefined at this angle");
@@ -1044,10 +1048,10 @@ function evaluateCalculatorExpression(expression) {
   }
 
   function parseTerm() {
-    let value = parsePower();
+    let value = parseUnary();
     while (peek()?.value === "*" || peek()?.value === "/") {
       const operator = tokens[position++].value;
-      const right = parsePower();
+      const right = parseUnary();
       if (operator === "/" && right === 0) {
         throw new Error("Cannot divide by zero");
       }
@@ -1057,10 +1061,10 @@ function evaluateCalculatorExpression(expression) {
   }
 
   function parsePower() {
-    const value = parseUnary();
+    const value = parsePostfix();
     if (peek()?.value === "^") {
       position += 1;
-      return Math.pow(value, parsePower());
+      return Math.pow(value, parseUnary());
     }
     return value;
   }
@@ -1074,7 +1078,7 @@ function evaluateCalculatorExpression(expression) {
       position += 1;
       return -parseUnary();
     }
-    return parsePostfix();
+    return parsePower();
   }
 
   function parsePostfix() {
