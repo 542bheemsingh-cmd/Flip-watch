@@ -27,6 +27,7 @@ const awakeToggle = document.querySelector("[data-awake-toggle]");
 const wakeStatus = document.querySelector("[data-wake-status]");
 const screenFitButton = document.querySelector("[data-screen-fit]");
 const soundToggle = document.querySelector("[data-sound-toggle]");
+const themeToggle = document.querySelector("[data-theme-toggle]");
 const hourCards = document.querySelectorAll('[data-unit="hours"] .flip-card');
 const minuteCards = document.querySelectorAll('[data-unit="minutes"] .flip-card');
 const secondCards = document.querySelectorAll('[data-unit="seconds"] .flip-card');
@@ -239,6 +240,34 @@ function updateSoundToggle() {
   soundToggle.querySelector("span").textContent = soundEnabled ? "🔊" : "🔇";
 }
 
+const themeStorageKey = "flip-watch-color-theme";
+
+function updateThemeToggle(theme) {
+  if (!themeToggle) return;
+  const isLight = theme === "light";
+  themeToggle.setAttribute("aria-pressed", String(isLight));
+  themeToggle.setAttribute("aria-label", isLight ? "Switch to dark theme" : "Switch to light theme");
+  themeToggle.title = isLight ? "Switch to dark theme" : "Switch to light theme";
+  themeToggle.querySelector("span").textContent = isLight ? "☀" : "☾";
+}
+
+function applyTheme(theme, persist = true) {
+  const nextTheme = theme === "light" ? "light" : "dark";
+  document.documentElement.dataset.theme = nextTheme;
+  updateThemeToggle(nextTheme);
+  if (persist) {
+    try {
+      localStorage.setItem(themeStorageKey, nextTheme);
+    } catch (error) {
+      // Storage can be unavailable in private browsing; the theme still applies.
+    }
+  }
+}
+
+function toggleTheme() {
+  applyTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
+}
+
 document.addEventListener("click", (event) => {
   const button = event.target.closest("button");
   if (!button || button.disabled) return;
@@ -321,7 +350,11 @@ function calculateCombination(n, r) {
 const calculatorFunctions = {
   sin: (value) => Math.sin(calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value),
   cos: (value) => Math.cos(calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value),
-  tan: (value) => Math.tan(calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value),
+  tan: (value) => {
+    const radians = calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value;
+    if (Math.abs(Math.cos(radians)) < 1e-12) throw new Error("tan is undefined at this angle");
+    return Math.tan(radians);
+  },
   cosec: (value) => {
     const result = Math.sin(calculatorAngleMode === "DEG" ? value * Math.PI / 180 : value);
     if (Math.abs(result) < 1e-12) throw new Error("cosec is undefined at this angle");
@@ -1044,10 +1077,10 @@ function evaluateCalculatorExpression(expression) {
   }
 
   function parseTerm() {
-    let value = parsePower();
+    let value = parseUnary();
     while (peek()?.value === "*" || peek()?.value === "/") {
       const operator = tokens[position++].value;
-      const right = parsePower();
+      const right = parseUnary();
       if (operator === "/" && right === 0) {
         throw new Error("Cannot divide by zero");
       }
@@ -1057,10 +1090,10 @@ function evaluateCalculatorExpression(expression) {
   }
 
   function parsePower() {
-    const value = parseUnary();
+    const value = parsePostfix();
     if (peek()?.value === "^") {
       position += 1;
-      return Math.pow(value, parsePower());
+      return Math.pow(value, parseUnary());
     }
     return value;
   }
@@ -1074,7 +1107,7 @@ function evaluateCalculatorExpression(expression) {
       position += 1;
       return -parseUnary();
     }
-    return parsePostfix();
+    return parsePower();
   }
 
   function parsePostfix() {
@@ -1791,6 +1824,10 @@ soundToggle.addEventListener("click", () => {
   updateSoundToggle();
 });
 
+if (themeToggle) {
+  themeToggle.addEventListener("click", toggleTheme);
+}
+
 document.addEventListener("fullscreenchange", () => {
   if (document.fullscreenElement === appShell) {
     updateScreenFitControl(true);
@@ -1938,5 +1975,6 @@ renderStopwatch(true);
 renderCalculatorHistory();
 updateCalculatorMemoryStatus();
 updateSoundToggle();
+applyTheme(document.documentElement.dataset.theme || "dark", false);
 setWakeIndicator(wakeLockSupported ? "idle" : "warning", wakeLockSupported ? "Screen Awake: Off" : "Wake Lock Unsupported");
 setEquationDimension("2d");
