@@ -27,6 +27,7 @@ const awakeToggle = document.querySelector("[data-awake-toggle]");
 const wakeStatus = document.querySelector("[data-wake-status]");
 const screenFitButton = document.querySelector("[data-screen-fit]");
 const soundToggle = document.querySelector("[data-sound-toggle]");
+const themeToggle = document.querySelector("[data-theme-toggle]");
 const hourCards = document.querySelectorAll('[data-unit="hours"] .flip-card');
 const minuteCards = document.querySelectorAll('[data-unit="minutes"] .flip-card');
 const secondCards = document.querySelectorAll('[data-unit="seconds"] .flip-card');
@@ -237,6 +238,34 @@ function updateSoundToggle() {
   soundToggle.setAttribute("aria-label", soundEnabled ? "Turn sound effects off" : "Turn sound effects on");
   soundToggle.title = soundEnabled ? "Turn sound effects off" : "Turn sound effects on";
   soundToggle.querySelector("span").textContent = soundEnabled ? "🔊" : "🔇";
+}
+
+const themeStorageKey = "flip-watch-color-theme";
+
+function updateThemeToggle(theme) {
+  if (!themeToggle) return;
+  const isLight = theme === "light";
+  themeToggle.setAttribute("aria-pressed", String(isLight));
+  themeToggle.setAttribute("aria-label", isLight ? "Switch to dark theme" : "Switch to light theme");
+  themeToggle.title = isLight ? "Switch to dark theme" : "Switch to light theme";
+  themeToggle.querySelector("span").textContent = isLight ? "☀" : "☾";
+}
+
+function applyTheme(theme, persist = true) {
+  const nextTheme = theme === "light" ? "light" : "dark";
+  document.documentElement.dataset.theme = nextTheme;
+  updateThemeToggle(nextTheme);
+  if (persist) {
+    try {
+      localStorage.setItem(themeStorageKey, nextTheme);
+    } catch (error) {
+      // Storage can be unavailable in private browsing; the theme still applies.
+    }
+  }
+}
+
+function toggleTheme() {
+  applyTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
 }
 
 document.addEventListener("click", (event) => {
@@ -1795,6 +1824,10 @@ soundToggle.addEventListener("click", () => {
   updateSoundToggle();
 });
 
+if (themeToggle) {
+  themeToggle.addEventListener("click", toggleTheme);
+}
+
 document.addEventListener("fullscreenchange", () => {
   if (document.fullscreenElement === appShell) {
     updateScreenFitControl(true);
@@ -1942,5 +1975,6 @@ renderStopwatch(true);
 renderCalculatorHistory();
 updateCalculatorMemoryStatus();
 updateSoundToggle();
+applyTheme(document.documentElement.dataset.theme || "dark", false);
 setWakeIndicator(wakeLockSupported ? "idle" : "warning", wakeLockSupported ? "Screen Awake: Off" : "Wake Lock Unsupported");
 setEquationDimension("2d");
