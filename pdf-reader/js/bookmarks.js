@@ -1,4 +1,5 @@
 import { storage } from "./storage.js";
+import { createListButton } from "./utils.js";
 
 export class BookmarkController {
   constructor(viewer, list) {
@@ -37,9 +38,7 @@ export class BookmarkController {
       return;
     }
     marks.forEach((mark) => {
-      const button = document.createElement("button");
-      button.className = "list-item";
-      button.innerHTML = `<strong>Page ${mark.page}</strong><small>${mark.documentName}</small>`;
+      const button = createListButton(`Page ${mark.page}`, mark.documentName);
       button.addEventListener("click", () => this.viewer.goToPage(mark.page));
       this.list.append(button);
     });
