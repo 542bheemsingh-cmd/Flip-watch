@@ -1,5 +1,5 @@
 import { storage } from "./storage.js";
-import { addRipple, formatBytes } from "./utils.js";
+import { addRipple, createListButton, formatBytes } from "./utils.js";
 
 export class ToolbarController {
   constructor(viewer, elements) {
@@ -45,9 +45,7 @@ export class ToolbarController {
       return;
     }
     recents.forEach((doc) => {
-      const item = document.createElement("button");
-      item.className = "list-item";
-      item.innerHTML = `<strong>${doc.name}</strong><small>${formatBytes(doc.size)} • page ${doc.lastPage}/${doc.totalPages}</small>`;
+      const item = createListButton(doc.name, `${formatBytes(doc.size)} • page ${doc.lastPage}/${doc.totalPages}`);
       item.addEventListener("click", async () => {
         const saved = await storage.get("documents", doc.id);
         await this.viewer.loadStoredDocument(saved);
