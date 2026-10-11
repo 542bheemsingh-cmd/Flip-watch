@@ -607,3 +607,45 @@
     width: auto;
   }
 }
+
+/* ---------------------------------------------------------- phone layout */
+@media (max-width: 520px) {
+  .top-app-bar {
+    min-height: 58px;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .icon-button {
+    width: 38px;
+    height: 38px;
+  }
+
+  .bottom-nav {
+    gap: 6px;
+    min-height: 60px;
+    padding: 8px 10px;
+  }
+
+  .page-slider { min-width: 64px; }
+  .zoom-label { display: none; }
+
+  .fab-stack {
+    right: 10px;
+    bottom: 74px;
+    gap: 8px;
+  }
+
+  .fab {
+    width: 42px;
+    height: 42px;
+  }
+
+  .side-panel,
+  .settings-sheet {
+    top: 62px;
+    bottom: 66px;
+    left: 6px;
+    right: 6px;
+  }
+}

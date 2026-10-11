@@ -1,4 +1,4 @@
-import { PDFViewer } from "./viewer.js?v=stpageflip-3";
+import { PDFViewer } from "./viewer.js?v=render-6";
 import { SettingsController } from "./settings.js";
 import { SearchController } from "./search.js";
 import { BookmarkController } from "./bookmarks.js";
@@ -56,8 +56,16 @@ function navigateToDashboard() {
 }
 
 settings.bind(settingsPanel);
+// Only settings that change the page layout need a full re-render. Brightness, font
+// size, animation speed and theme are pure CSS, so dragging their sliders must not
+// tear down and re-render every visible page (that is what made the reader stutter).
+const RERENDER_KEYS = ["scrollMode", "fitMode", "pageFlip", "direction"];
+let previousSettings = { ...settings.settings };
 settings.onChange(async (next) => {
+  const needsRerender = RERENDER_KEYS.some((key) => next[key] !== previousSettings[key]);
+  previousSettings = { ...next };
   Object.assign(viewer.settings, next);
+  if (!needsRerender) return;
   viewer.applyMode();
   await viewer.rerenderVisible();
 });

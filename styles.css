@@ -3322,3 +3322,51 @@ html[data-theme="light"] .calculator-panel .calculator-keypad .calc-action {
   color: #b0331a;
   background: rgba(220, 38, 38, 0.09);
 }
+
+/* ---------------------------------------------------------- phone layout */
+@media (max-width: 520px) {
+  html[data-theme] .theme-toggle {
+    top: 10px;
+    right: 102px;
+    width: 38px;
+    height: 38px;
+  }
+
+  /* give the fixed top-right controls their own band so they never sit on the header */
+  .dashboard,
+  .watch-panel,
+  .calculator-panel,
+  .equation-panel {
+    padding-top: 60px;
+  }
+
+  .dashboard h1 {
+    font-size: clamp(1.9rem, 11vw, 3rem);
+  }
+
+  .tool-name { font-size: 1.2rem; }
+  .tool-meta { font-size: 0.88rem; }
+
+  .calculator-input { font-size: clamp(1.6rem, 8vw, 2.6rem); }
+
+  /* comfortable tap targets */
+  .back-button,
+  .preset-button,
+  .stopwatch-type-button,
+  .angle-button,
+  .guide-button,
+  .control-button,
+  .calculator-memory button,
+  .calculator-history-heading button {
+    min-height: 42px;
+  }
+}
+
+/* --------------------------------------------------------- tablet layout */
+@media (min-width: 521px) and (max-width: 900px) {
+  .dashboard h1 { font-size: clamp(2.2rem, 7vw, 3.6rem); }
+  .dashboard,
+  .watch-panel,
+  .calculator-panel,
+  .equation-panel { padding-top: 64px; }
+}

@@ -38,6 +38,7 @@ export class PDFViewer {
     this.isSyncingStPageFlip = false;
     this.animationActive = false;
     this.deferredRenderPages = new Set();
+    this.deferredFlushScheduled = false;
     this.suppressFlipClickUntil = 0;
     this.bookPageRatio = null;
     this.bookPageBaseWidth = null;
@@ -45,10 +46,22 @@ export class PDFViewer {
     this.bookPageBoxKey = "";
     this.visibleSpreadPages = new Set();
     this.visibleObserver = new IntersectionObserver((entries) => this.onVisible(entries), {
-      root: this.shell,
+      root: null,
       rootMargin: "900px 0px",
       threshold: 0.01,
     });
+
+    // Belt-and-braces lazy loading for the scrolling layouts: on scroll, render the
+    // few pages around the viewport centre. Constant work per frame, and independent
+    // of IntersectionObserver timing, so pages never stay blank while scrolling.
+    let scrollFrame = 0;
+    this.shell.addEventListener("scroll", () => {
+      if (scrollFrame) return;
+      scrollFrame = window.requestAnimationFrame(() => {
+        scrollFrame = 0;
+        this.renderVisibleRange();
+      });
+    }, { passive: true });
   }
 
   async loadFile(file) {
@@ -83,6 +96,11 @@ export class PDFViewer {
     this.pdf = await loadingTask.promise;
     this.total = this.pdf.numPages;
     this.currentPage = (await this.restoreLastPage()) || 1;
+    this.rotation = 0;
+    this.bookPageRatio = null;
+    this.bookPageBaseWidth = null;
+    this.bookPageBox = null;
+    this.bookPageBoxKey = "";
     await this.initializeBookMetrics();
     this.rendered.clear();
     this.rendering.clear();
@@ -246,19 +264,24 @@ export class PDFViewer {
   }
 
   destroyStPageFlip() {
-    if (!this.stPageFlip) {
-      this.stPageFlipReady = false;
-      return;
+    if (this.stPageFlip) {
+      try {
+        this.stPageFlip.clear?.();
+        this.stPageFlip.getUI?.().destroy?.();
+      } catch (error) {
+        console.warn("[PDFReader] StPageFlip cleanup failed", error);
+      }
+      this.stPageFlip = null;
     }
-    try {
-      this.stPageFlip.clear?.();
-      this.stPageFlip.getUI?.().destroy?.();
-    } catch (error) {
-      console.warn("[PDFReader] StPageFlip cleanup failed", error);
-    }
-    this.stPageFlip = null;
     this.stPageFlipReady = false;
     this.animationActive = false;
+    // StPageFlip writes inline styles (cssText) directly onto the page cards. Those
+    // survive teardown and leave every page absolutely positioned on top of the others,
+    // which collapses the scroll height and makes later pages render blank. Clear them
+    // so the normal grid / flex layout is restored whenever we leave book mode.
+    this.track.querySelectorAll(".page-card").forEach((card) => {
+      card.style.cssText = "";
+    });
   }
 
   syncCurrentPageFromStPageFlip(pageIndex) {
@@ -302,6 +325,12 @@ export class PDFViewer {
       this.deferredRenderPages.add(pageNumber);
       return;
     }
+    // Cap how many page renders run at once so a fast scroll cannot flood the main
+    // thread with pdf.js work; the overflow waits in the deferred queue.
+    if (this.rendering.size >= 2) {
+      this.deferredRenderPages.add(pageNumber);
+      return;
+    }
     const container = this.track.querySelector(`[data-page="${pageNumber}"]`);
     if (!container) return;
 
@@ -315,8 +344,9 @@ export class PDFViewer {
       }
 
       const fitScale = this.computeFitScale(baseViewport);
-      const outputScale = Math.min(window.devicePixelRatio || 1, 2);
       const viewport = page.getViewport({ scale: fitScale * this.scale, rotation: this.rotation });
+      // Bound the canvas pixel size so a wide or zoomed page cannot blow up render time.
+      const outputScale = Math.min(window.devicePixelRatio || 1, 1.5, 1800 / viewport.width);
       const canvas = container.querySelector("canvas");
       const context = canvas.getContext("2d", { alpha: false });
 
@@ -338,6 +368,7 @@ export class PDFViewer {
       console.warn("[PDFReader] Render failed", error);
     } finally {
       this.rendering.delete(pageNumber);
+      this.scheduleDeferredFlush();
     }
   }
 
@@ -352,7 +383,7 @@ export class PDFViewer {
 
   async renderBookPage(page, baseViewport, container, pageNumber) {
     const box = this.computeBookPageBox(baseViewport);
-    const outputScale = Math.min(window.devicePixelRatio || 1, 2);
+    const outputScale = Math.min(window.devicePixelRatio || 1, 1.5);
     const contentScale = Math.min(box.width / baseViewport.width, box.height / baseViewport.height);
     const viewport = page.getViewport({ scale: contentScale, rotation: this.rotation });
     const canvas = container.querySelector("canvas");
@@ -493,6 +524,7 @@ export class PDFViewer {
     this.bookPageBoxKey = "";
     this.track.querySelectorAll(".page-card").forEach((card) => {
       card.className = "page-card loading";
+      card.style.cssText = "";
       const canvas = card.querySelector("canvas");
       if (canvas) {
         const context = canvas.getContext("2d");
@@ -541,6 +573,18 @@ export class PDFViewer {
       this.renderPage(spreadStart),
       spreadStart < this.total ? this.renderPage(spreadStart + 1) : Promise.resolve(),
     ]);
+  }
+
+  renderVisibleRange() {
+    if (!this.pdf || this.settings.pageFlip === "realistic") return;
+    const total = this.total;
+    if (!total) return;
+    const averageHeight = this.shell.scrollHeight / total;
+    if (!averageHeight) return;
+    const centre = Math.round((this.shell.scrollTop + this.shell.clientHeight / 2) / averageHeight) + 1;
+    const start = Math.max(1, centre - 3);
+    const end = Math.min(total, centre + 4);
+    for (let page = start; page <= end; page += 1) void this.renderPage(page);
   }
 
   renderNearbyInBackground() {
@@ -849,7 +893,10 @@ export class PDFViewer {
 
   flushDeferredRenders() {
     if (!this.deferredRenderPages.size || !this.pdf) return;
-    const pages = Array.from(this.deferredRenderPages).filter((page) => !this.rendered.has(page));
+    // Render the pages closest to where the reader is looking first.
+    const pages = Array.from(this.deferredRenderPages)
+      .filter((page) => !this.rendered.has(page))
+      .sort((a, b) => Math.abs(a - this.currentPage) - Math.abs(b - this.currentPage));
     this.deferredRenderPages.clear();
     const renderNext = () => {
       const page = pages.shift();
@@ -859,6 +906,17 @@ export class PDFViewer {
       });
     };
     window.requestIdleCallback?.(renderNext) ?? window.setTimeout(renderNext, 40);
+  }
+
+  scheduleDeferredFlush() {
+    if (this.deferredFlushScheduled || !this.deferredRenderPages.size) return;
+    this.deferredFlushScheduled = true;
+    const run = () => {
+      this.deferredFlushScheduled = false;
+      if (this.rendering.size >= 2 || !this.deferredRenderPages.size) return;
+      this.flushDeferredRenders();
+    };
+    window.requestIdleCallback?.(run) ?? window.setTimeout(run, 60);
   }
 
   nextFrame() {

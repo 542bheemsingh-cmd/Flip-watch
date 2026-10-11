@@ -79,7 +79,7 @@ const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
 let elapsedBeforeStart = 0;
 let startedAt = 0;
 let stopwatchFrame = 0;
-let clockFrame = 0;
+let clockTimer = 0;
 let isRunning = false;
 let activeMode = "stopwatch";
 let wakeLock = null;
@@ -1673,10 +1673,18 @@ function renderClock() {
     month: "long",
     year: "numeric",
   });
+}
 
-  if (activeMode === "clock") {
-    clockFrame = requestAnimationFrame(renderClock);
-  }
+// A wall clock only changes once a second, so tick on the second boundary instead of
+// repainting on every animation frame (the old 60fps loop kept the CPU busy for nothing).
+function scheduleClockTick() {
+  window.clearTimeout(clockTimer);
+  const delay = 1000 - (Date.now() % 1000) + 20;
+  clockTimer = window.setTimeout(() => {
+    if (activeMode !== "clock") return;
+    renderClock();
+    scheduleClockTick();
+  }, delay);
 }
 
 function setMode(nextMode) {
@@ -1699,13 +1707,14 @@ function setMode(nextMode) {
   timerOptions.hidden = !isTimer;
   stopwatchOptions.hidden = nextMode !== "stopwatch";
 
-  cancelAnimationFrame(clockFrame);
+  window.clearTimeout(clockTimer);
   cancelAnimationFrame(stopwatchFrame);
   lastRenderedCentiseconds = -1;
 
   if (isClock) {
     void releaseWakeLock("clock mode");
     renderClock();
+    scheduleClockTick();
   } else if (isTimer) {
     renderTimer(true);
     if (isRunning) {
@@ -1758,7 +1767,7 @@ function showDashboard() {
     stopCurrentMode();
   }
 
-  cancelAnimationFrame(clockFrame);
+  window.clearTimeout(clockTimer);
   cancelAnimationFrame(stopwatchFrame);
   toolPanel.hidden = true;
   calculatorPanel.hidden = true;
