@@ -3370,3 +3370,66 @@ html[data-theme="light"] .calculator-panel .calculator-keypad .calc-action {
   .calculator-panel,
   .equation-panel { padding-top: 64px; }
 }
+
+/* ------------------------------------------------ live time + 12/24h toggle */
+html[data-theme] .status-row {
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+html[data-theme] .live-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+html[data-theme] .live-clock-time {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-glass);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+
+html[data-theme] .hour-format-button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-glass);
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: color var(--motion-fast) ease, border-color var(--motion-fast) ease, transform var(--motion-fast) var(--ease-standard);
+}
+
+html[data-theme] .hour-format-button:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+html[data-theme] .hour-format-button[aria-pressed="true"] {
+  color: var(--accent);
+  border-color: var(--border-strong);
+}
+
+/* the time panel now reads as a compact popup instead of a full-width sheet */
+html[data-theme] .watch-panel {
+  width: min(880px, 100%);
+  gap: clamp(18px, 3vw, 26px);
+  padding: clamp(18px, 4vw, 38px);
+}

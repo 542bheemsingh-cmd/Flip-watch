@@ -19,7 +19,7 @@
     </script>
     <link rel="icon" href="favicon-new.png?v=2" type="image/png">
     <link rel="preconnect" href="https://images.unsplash.com" />
-    <link rel="stylesheet" href="styles.css?v=premium-2" />
+    <link rel="stylesheet" href="styles.css?v=premium-3" />
   </head>
   <body>
     <main class="app-shell" data-app-shell>
@@ -104,8 +104,19 @@
       <section class="watch-panel" data-tool-panel aria-label="Time tool" hidden>
         <button class="back-button" type="button" data-back-dashboard>Dashboard</button>
 
-        <div class="status-row" aria-live="polite">
-          <span class="awake-indicator" data-wake-status="idle">Screen Awake: Off</span>
+        <div class="status-row">
+          <span class="awake-indicator" data-wake-status="idle" aria-live="polite">Screen Awake: Off</span>
+          <div class="live-clock">
+            <span class="live-clock-time" data-live-time aria-hidden="true">--:--:--</span>
+            <button
+              class="hour-format-button"
+              type="button"
+              data-hour-format
+              aria-pressed="false"
+              aria-label="Switch to 12-hour time"
+              title="Switch to 12-hour time"
+            >24H</button>
+          </div>
         </div>
 
         <div class="mode-row" role="tablist" aria-label="Timer mode">
@@ -541,6 +552,6 @@
       </section>
     </main>
 
-    <script src="script.js?v=premium-2"></script>
+    <script src="script.js?v=premium-3"></script>
   </body>
 </html>

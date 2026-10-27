@@ -28,6 +28,8 @@ const wakeStatus = document.querySelector("[data-wake-status]");
 const screenFitButton = document.querySelector("[data-screen-fit]");
 const soundToggle = document.querySelector("[data-sound-toggle]");
 const themeToggle = document.querySelector("[data-theme-toggle]");
+const liveTime = document.querySelector("[data-live-time]");
+const hourFormatButton = document.querySelector("[data-hour-format]");
 const hourCards = document.querySelectorAll('[data-unit="hours"] .flip-card');
 const minuteCards = document.querySelectorAll('[data-unit="minutes"] .flip-card');
 const secondCards = document.querySelectorAll('[data-unit="seconds"] .flip-card');
@@ -1659,14 +1661,49 @@ function resetCurrentMode() {
   void releaseWakeLock("reset");
 }
 
-function renderClock() {
-  const now = new Date();
-  clockTime.textContent = now.toLocaleTimeString("en-IN", {
+let hourFormat = "24";
+const hourFormatStorageKey = "flip-watch-hour-format";
+
+function formatClockTime(date) {
+  return date.toLocaleTimeString("en-IN", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-    hour12: false,
+    hour12: hourFormat === "12",
   });
+}
+
+function renderLiveTime() {
+  if (liveTime) liveTime.textContent = formatClockTime(new Date());
+}
+
+function updateHourFormatButton() {
+  if (!hourFormatButton) return;
+  const is12 = hourFormat === "12";
+  hourFormatButton.textContent = is12 ? "12H" : "24H";
+  hourFormatButton.setAttribute("aria-pressed", String(is12));
+  const label = is12 ? "Switch to 24-hour time" : "Switch to 12-hour time";
+  hourFormatButton.setAttribute("aria-label", label);
+  hourFormatButton.title = label;
+}
+
+function setHourFormat(format, persist = true) {
+  hourFormat = format === "12" ? "12" : "24";
+  updateHourFormatButton();
+  renderLiveTime();
+  if (activeMode === "clock") renderClock();
+  if (persist) {
+    try {
+      localStorage.setItem(hourFormatStorageKey, hourFormat);
+    } catch (error) {
+      // Storage can be unavailable in private browsing; the format still applies.
+    }
+  }
+}
+
+function renderClock() {
+  const now = new Date();
+  clockTime.textContent = formatClockTime(now);
   clockDate.textContent = now.toLocaleDateString("en-IN", {
     weekday: "long",
     day: "2-digit",
@@ -1676,13 +1713,15 @@ function renderClock() {
 }
 
 // A wall clock only changes once a second, so tick on the second boundary instead of
-// repainting on every animation frame (the old 60fps loop kept the CPU busy for nothing).
+// repainting on every animation frame. The same ticker keeps the live time readout in
+// the status row fresh while any time tool is open.
 function scheduleClockTick() {
   window.clearTimeout(clockTimer);
   const delay = 1000 - (Date.now() % 1000) + 20;
   clockTimer = window.setTimeout(() => {
-    if (activeMode !== "clock") return;
-    renderClock();
+    if (toolPanel.hidden) return;
+    renderLiveTime();
+    if (activeMode === "clock") renderClock();
     scheduleClockTick();
   }, delay);
 }
@@ -1711,10 +1750,12 @@ function setMode(nextMode) {
   cancelAnimationFrame(stopwatchFrame);
   lastRenderedCentiseconds = -1;
 
+  renderLiveTime();
+  scheduleClockTick();
+
   if (isClock) {
     void releaseWakeLock("clock mode");
     renderClock();
-    scheduleClockTick();
   } else if (isTimer) {
     renderTimer(true);
     if (isRunning) {
@@ -1729,6 +1770,7 @@ function setMode(nextMode) {
 }
 
 function openTool(mode) {
+  window.clearTimeout(clockTimer);
   if (mode === "pdf") {
     window.location.href = "pdf-reader/index.html";
     return;
@@ -1835,6 +1877,10 @@ soundToggle.addEventListener("click", () => {
 
 if (themeToggle) {
   themeToggle.addEventListener("click", toggleTheme);
+}
+
+if (hourFormatButton) {
+  hourFormatButton.addEventListener("click", () => setHourFormat(hourFormat === "12" ? "24" : "12"));
 }
 
 document.addEventListener("fullscreenchange", () => {
@@ -1985,5 +2031,12 @@ renderCalculatorHistory();
 updateCalculatorMemoryStatus();
 updateSoundToggle();
 applyTheme(document.documentElement.dataset.theme || "dark", false);
+try {
+  const storedHourFormat = localStorage.getItem(hourFormatStorageKey);
+  if (storedHourFormat === "12" || storedHourFormat === "24") hourFormat = storedHourFormat;
+} catch (error) {
+  // Storage can be unavailable; the default 24-hour format still applies.
+}
+setHourFormat(hourFormat, false);
 setWakeIndicator(wakeLockSupported ? "idle" : "warning", wakeLockSupported ? "Screen Awake: Off" : "Wake Lock Unsupported");
 setEquationDimension("2d");
