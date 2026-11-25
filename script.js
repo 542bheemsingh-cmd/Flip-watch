@@ -5924,32 +5924,102 @@ if (utilityBody) {
 }
 
 /* ---------------------------------------------------- tool search */
+const TOOL_CATEGORIES = {
+  stopwatch: "Time",
+  timer: "Time",
+  clock: "Time",
+  dates: "Dates",
+  calendar: "Dates",
+  calculator: "Maths",
+  equation: "Maths",
+  converter: "Maths",
+  stats: "Maths",
+  prime: "Maths",
+  gst: "Money",
+  emi: "Money",
+  fuel: "Money",
+  wordcount: "Text",
+  findreplace: "Text",
+  textpad: "Text",
+  json: "Developer",
+  base64: "Developer",
+  qrcode: "Developer",
+  imgcompress: "Images",
+  imgresize: "Images",
+  imgconvert: "Images",
+  imgcrop: "Images",
+  imgcolour: "Images",
+  color: "Images",
+  password: "Security",
+  pwstrength: "Security",
+  todo: "Productivity",
+  random: "Fun",
+  pdf: "Files",
+};
+
+const CATEGORY_ORDER = ["All", "Time", "Dates", "Maths", "Money", "Text", "Images", "Developer", "Security", "Productivity", "Fun", "Files"];
+
 const toolSearchInput = document.querySelector("[data-tool-search]");
 const toolSearchCount = document.querySelector("[data-tool-search-count]");
 const toolSearchEmpty = document.querySelector("[data-tool-search-empty]");
+const toolFiltersEl = document.querySelector("[data-tool-filters]");
 
 if (toolSearchInput) {
   const cards = Array.from(document.querySelectorAll("[data-open-tool]"));
+  cards.forEach((card) => {
+    card.dataset.category = TOOL_CATEGORIES[card.dataset.openTool] || "Other";
+  });
+
+  let activeCategory = "All";
 
   const applyFilter = () => {
     const query = toolSearchInput.value.trim().toLowerCase();
     let shown = 0;
     cards.forEach((card) => {
-      const haystack = `${card.textContent} ${card.dataset.openTool}`.toLowerCase();
-      const match = !query || haystack.includes(query);
-      card.classList.toggle("is-hidden", !match);
-      if (match) shown += 1;
+      const haystack = `${card.textContent} ${card.dataset.openTool} ${card.dataset.category}`.toLowerCase();
+      const matchesQuery = !query || haystack.includes(query);
+      const matchesCategory = activeCategory === "All" || card.dataset.category === activeCategory;
+      const visible = matchesQuery && matchesCategory;
+      card.classList.toggle("is-hidden", !visible);
+      if (visible) shown += 1;
     });
     if (toolSearchCount) {
-      toolSearchCount.textContent = query ? `${shown} of ${cards.length}` : `${cards.length} tools`;
+      toolSearchCount.textContent = query || activeCategory !== "All" ? `${shown} of ${cards.length}` : `${cards.length} tools`;
     }
     if (toolSearchEmpty) toolSearchEmpty.hidden = shown > 0;
+    if (toolFiltersEl) {
+      toolFiltersEl.querySelectorAll("[data-filter]").forEach((chip) => {
+        chip.setAttribute("aria-pressed", String(chip.dataset.filter === activeCategory));
+      });
+    }
   };
+
+  if (toolFiltersEl) {
+    const counts = cards.reduce((acc, card) => {
+      acc[card.dataset.category] = (acc[card.dataset.category] || 0) + 1;
+      return acc;
+    }, {});
+    toolFiltersEl.innerHTML = CATEGORY_ORDER
+      .filter((name) => name === "All" || counts[name])
+      .map((name) => {
+        const total = name === "All" ? cards.length : counts[name];
+        return `<button type="button" class="filter-chip" data-filter="${name}" aria-pressed="${name === "All"}">${name}<span>${total}</span></button>`;
+      })
+      .join("");
+
+    toolFiltersEl.addEventListener("click", (event) => {
+      const chip = event.target.closest("[data-filter]");
+      if (!chip) return;
+      activeCategory = chip.dataset.filter;
+      applyFilter();
+    });
+  }
 
   toolSearchInput.addEventListener("input", applyFilter);
   toolSearchInput.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       toolSearchInput.value = "";
+      activeCategory = "All";
       applyFilter();
       toolSearchInput.blur();
     }

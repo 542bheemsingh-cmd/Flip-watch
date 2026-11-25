@@ -4508,3 +4508,44 @@ html[data-theme] .to-top:hover { transform: translateY(-2px); }
 @media (max-width: 520px) {
   html[data-theme] .to-top { right: 12px; bottom: 12px; width: 42px; height: 42px; }
 }
+
+/* ---- dashboard category filters ---- */
+html[data-theme] .tool-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+
+html[data-theme] .filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: color var(--motion-fast) ease, border-color var(--motion-fast) ease, transform var(--motion-fast) var(--ease-standard);
+}
+
+html[data-theme] .filter-chip span {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(127, 127, 127, 0.18);
+  font-size: 0.68rem;
+}
+
+html[data-theme] .filter-chip:hover { color: var(--text); transform: translateY(-1px); }
+
+html[data-theme] .filter-chip[aria-pressed="true"] {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--grad-a), var(--grad-c));
+}
+
+html[data-theme] .filter-chip[aria-pressed="true"] span { background: rgba(255, 255, 255, 0.24); }
