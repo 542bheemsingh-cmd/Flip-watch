@@ -2425,7 +2425,7 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
    Extra utilities: unit converter, password generator, word counter,
    to-do list and date calculator.
    ===================================================================== */
-const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates", "gst", "emi", "fuel", "json", "base64", "color", "random", "findreplace", "textpad", "pwstrength", "imgcompress", "imgresize", "imgconvert", "imgcrop", "imgcolour", "qrcode", "stats", "prime", "calendar"];
+const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates", "gst", "emi", "fuel", "json", "base64", "color", "random", "findreplace", "textpad", "pwstrength", "imgcompress", "imgresize", "imgconvert", "imgcrop", "imgcolour", "qrcode", "stats", "prime", "calendar", "pdf2img", "img2pdf"];
 const utilityPanel = document.querySelector("[data-utility-panel]");
 const utilityKicker = document.querySelector("[data-utility-kicker]");
 const utilityTitle = document.querySelector("[data-utility-title]");
@@ -2457,6 +2457,8 @@ const utilityMeta = {
   stats: { kicker: "Numbers", title: "Statistics Calculator", sub: "Mean, median, mode, spread and quartiles." },
   prime: { kicker: "Numbers", title: "Prime Checker & Factoriser", sub: "Is it prime? See its prime factorisation." },
   calendar: { kicker: "Dates", title: "Generate Calendar", sub: "A month grid you can read or print." },
+  pdf2img: { kicker: "Files", title: "PDF to Images", sub: "Turn PDF pages into PNG or JPEG files, zipped if you like." },
+  img2pdf: { kicker: "Files", title: "Images to PDF", sub: "Combine photos into one PDF, in the order you choose." },
 };
 
 const UTIL_KEYS = {
@@ -2510,6 +2512,8 @@ function renderUtility(kind) {
   else if (kind === "stats") renderStatistics();
   else if (kind === "prime") renderPrime();
   else if (kind === "calendar") renderCalendar();
+  else if (kind === "pdf2img") renderPdfToImages();
+  else if (kind === "img2pdf") renderImagesToPdf();
 }
 
 /* ------------------------------------------------------- shared helpers */
@@ -6253,6 +6257,475 @@ document.addEventListener("click", (event) => {
     scrollPageToTop();
   }
 });
+
+/* --------------------------------------------------- PDF → images */
+function renderPdfToImages() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="p2i-file">PDF file</label>
+      <input id="p2i-file" class="util-file" type="file" accept="application/pdf" data-p2i-file />
+    </div>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="p2i-from">From page</label>
+        <input id="p2i-from" type="number" inputmode="numeric" min="1" value="1" data-p2i-from />
+      </div>
+      <div class="util-field">
+        <label for="p2i-to">To page</label>
+        <input id="p2i-to" type="number" inputmode="numeric" min="1" data-p2i-to />
+      </div>
+    </div>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="p2i-format">Format</label>
+        <select id="p2i-format" data-p2i-format>
+          <option value="image/png" selected>PNG (sharp)</option>
+          <option value="image/jpeg">JPEG (smaller)</option>
+        </select>
+      </div>
+      <div class="util-field">
+        <label for="p2i-scale">Quality</label>
+        <select id="p2i-scale" data-p2i-scale>
+          <option value="1">1× (screen)</option>
+          <option value="2" selected>2× (print)</option>
+          <option value="3">3× (high)</option>
+        </select>
+      </div>
+    </div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-p2i-run>Convert pages</button>
+      <button class="util-btn" type="button" data-p2i-zip disabled>Download all (ZIP)</button>
+    </div>
+    <p class="util-note" data-p2i-status>Choose a PDF to begin.</p>
+    <div class="thumb-grid" data-p2i-thumbs></div>
+  `;
+
+  const fileEl = utilityBody.querySelector("[data-p2i-file]");
+  const fromEl = utilityBody.querySelector("[data-p2i-from]");
+  const toEl = utilityBody.querySelector("[data-p2i-to]");
+  const formatEl = utilityBody.querySelector("[data-p2i-format]");
+  const scaleEl = utilityBody.querySelector("[data-p2i-scale]");
+  const statusEl = utilityBody.querySelector("[data-p2i-status]");
+  const thumbsEl = utilityBody.querySelector("[data-p2i-thumbs]");
+  const zipBtn = utilityBody.querySelector("[data-p2i-zip]");
+  let pdfDoc = null;
+  let results = [];
+
+  fileEl.addEventListener("change", async () => {
+    const file = fileEl.files[0];
+    if (!file) return;
+    statusEl.textContent = "Reading the PDF…";
+    thumbsEl.innerHTML = "";
+    results = [];
+    zipBtn.disabled = true;
+    try {
+      const pdfjs = await import("./pdf-reader/vendor/pdf.js");
+      pdfjs.GlobalWorkerOptions.workerSrc = "./pdf-reader/vendor/pdf.worker.js?v=2";
+      const data = new Uint8Array(await file.arrayBuffer());
+      pdfDoc = await pdfjs.getDocument({ data }).promise;
+      fromEl.max = String(pdfDoc.numPages);
+      toEl.max = String(pdfDoc.numPages);
+      fromEl.value = "1";
+      toEl.value = String(pdfDoc.numPages);
+      statusEl.textContent = `${pdfDoc.numPages} ${pdfDoc.numPages === 1 ? "page" : "pages"} ready — press Convert.`;
+    } catch (error) {
+      pdfDoc = null;
+      statusEl.textContent = `Could not open that PDF — ${error.message}`;
+    }
+  });
+
+  const convert = async () => {
+    if (!pdfDoc) {
+      statusEl.textContent = "Choose a PDF first.";
+      return;
+    }
+    const total = pdfDoc.numPages;
+    const from = Math.max(1, Math.min(total, Math.floor(Number(fromEl.value) || 1)));
+    const to = Math.max(from, Math.min(total, Math.floor(Number(toEl.value) || total)));
+    const format = formatEl.value;
+    const scale = Number(scaleEl.value);
+    const extension = format === "image/png" ? "png" : "jpg";
+
+    results = [];
+    thumbsEl.innerHTML = "";
+    statusEl.textContent = `Converting ${to - from + 1} page(s)…`;
+
+    for (let number = from; number <= to; number += 1) {
+      statusEl.textContent = `Converting page ${number} of ${to}…`;
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+      const page = await pdfDoc.getPage(number);
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(viewport.width);
+      canvas.height = Math.round(viewport.height);
+      const context = canvas.getContext("2d");
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: context, viewport }).promise;
+
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, format, 0.92));
+      const item = {
+        name: `page-${String(number).padStart(3, "0")}.${extension}`,
+        blob,
+        url: URL.createObjectURL(blob),
+        width: canvas.width,
+        height: canvas.height,
+      };
+      results.push(item);
+
+      const card = document.createElement("figure");
+      card.className = "thumb-card";
+      card.innerHTML = `<img alt="Page ${number}" src="${item.url}" /><figcaption>Page ${number}<span>${canvas.width}×${canvas.height}</span></figcaption>`;
+      const link = document.createElement("a");
+      link.href = item.url;
+      link.download = item.name;
+      link.className = "util-btn";
+      link.textContent = "Save";
+      card.append(link);
+      thumbsEl.append(card);
+    }
+
+    zipBtn.disabled = results.length === 0;
+    statusEl.textContent = `${results.length} page(s) converted · ${extension.toUpperCase()} · ${scale}×`;
+  };
+
+  utilityBody.querySelector("[data-p2i-run]").addEventListener("click", convert);
+
+  zipBtn.addEventListener("click", async () => {
+    if (!results.length) return;
+    statusEl.textContent = "Building the ZIP…";
+    const files = [];
+    for (const item of results) {
+      files.push({ name: item.name, data: new Uint8Array(await item.blob.arrayBuffer()) });
+    }
+    const zip = buildZip(files);
+    const url = URL.createObjectURL(zip);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "pdf-pages.zip";
+    link.click();
+    URL.revokeObjectURL(url);
+    statusEl.textContent = `${results.length} images packed into pdf-pages.zip`;
+  });
+}
+
+/* minimal store-only ZIP writer */
+function buildZip(files) {
+  const encoder = new TextEncoder();
+  const chunks = [];
+  const central = [];
+  let offset = 0;
+
+  const push = (data) => {
+    const bytes = typeof data === "string" ? encoder.encode(data) : data;
+    chunks.push(bytes);
+    offset += bytes.length;
+  };
+
+  const crcTable = (() => {
+    const table = new Uint32Array(256);
+    for (let i = 0; i < 256; i += 1) {
+      let c = i;
+      for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      table[i] = c >>> 0;
+    }
+    return table;
+  })();
+
+  const crc32 = (bytes) => {
+    let crc = 0xffffffff;
+    for (let i = 0; i < bytes.length; i += 1) crc = crcTable[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+    return (crc ^ 0xffffffff) >>> 0;
+  };
+
+  files.forEach((file) => {
+    const nameBytes = encoder.encode(file.name);
+    const crc = crc32(file.data);
+    const localOffset = offset;
+    const header = new Uint8Array(30 + nameBytes.length);
+    const view = new DataView(header.buffer);
+    view.setUint32(0, 0x04034b50, true);
+    view.setUint16(4, 20, true);
+    view.setUint16(6, 0, true);
+    view.setUint16(8, 0, true);
+    view.setUint16(10, 0, true);
+    view.setUint16(12, 0, true);
+    view.setUint32(14, crc, true);
+    view.setUint32(18, file.data.length, true);
+    view.setUint32(22, file.data.length, true);
+    view.setUint16(26, nameBytes.length, true);
+    view.setUint16(28, 0, true);
+    header.set(nameBytes, 30);
+    push(header);
+    push(file.data);
+    central.push({ nameBytes, crc, size: file.data.length, localOffset });
+  });
+
+  const centralStart = offset;
+  central.forEach((entry) => {
+    const record = new Uint8Array(46 + entry.nameBytes.length);
+    const view = new DataView(record.buffer);
+    view.setUint32(0, 0x02014b50, true);
+    view.setUint16(4, 20, true);
+    view.setUint16(6, 20, true);
+    view.setUint16(8, 0, true);
+    view.setUint16(10, 0, true);
+    view.setUint16(12, 0, true);
+    view.setUint16(14, 0, true);
+    view.setUint32(16, entry.crc, true);
+    view.setUint32(20, entry.size, true);
+    view.setUint32(24, entry.size, true);
+    view.setUint16(28, entry.nameBytes.length, true);
+    view.setUint16(30, 0, true);
+    view.setUint16(32, 0, true);
+    view.setUint16(34, 0, true);
+    view.setUint16(36, 0, true);
+    view.setUint32(38, 0, true);
+    view.setUint32(42, entry.localOffset, true);
+    record.set(entry.nameBytes, 46);
+    push(record);
+  });
+
+  const centralSize = offset - centralStart;
+  const end = new Uint8Array(22);
+  const endView = new DataView(end.buffer);
+  endView.setUint32(0, 0x06054b50, true);
+  endView.setUint16(8, central.length, true);
+  endView.setUint16(10, central.length, true);
+  endView.setUint32(12, centralSize, true);
+  endView.setUint32(16, centralStart, true);
+  push(end);
+
+  return new Blob(chunks, { type: "application/zip" });
+}
+
+/* --------------------------------------------------- images → PDF */
+function createPdfFromImages(pages) {
+  const encoder = new TextEncoder();
+  const chunks = [];
+  const offsets = [];
+  let length = 0;
+
+  const push = (data) => {
+    const bytes = typeof data === "string" ? encoder.encode(data) : data;
+    chunks.push(bytes);
+    length += bytes.length;
+    return length;
+  };
+
+  const binary = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a, 0x25, 0xe2, 0xe3, 0xcf, 0xd3, 0x0a]);
+  push(binary);
+
+  const object = (id, body, stream) => {
+    offsets[id] = length;
+    push(`${id} 0 obj\n${body}\n`);
+    if (stream) {
+      push("stream\n");
+      push(stream);
+      push("\nendstream\n");
+    }
+    push("endobj\n");
+  };
+
+  const pageCount = pages.length;
+  const kids = pages.map((_, index) => `${3 + index * 3} 0 R`).join(" ");
+
+  object(1, "<< /Type /Catalog /Pages 2 0 R >>");
+  object(2, `<< /Type /Pages /Kids [${kids}] /Count ${pageCount} >>`);
+
+  pages.forEach((page, index) => {
+    const pageId = 3 + index * 3;
+    const contentId = pageId + 1;
+    const imageId = pageId + 2;
+    const content = `q\n${page.drawWidth.toFixed(2)} 0 0 ${page.drawHeight.toFixed(2)} ${page.x.toFixed(2)} ${page.y.toFixed(2)} cm\n/Im0 Do\nQ\n`;
+
+    object(pageId, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${page.pageWidth.toFixed(2)} ${page.pageHeight.toFixed(2)}] /Resources << /XObject << /Im0 ${imageId} 0 R >> >> /Contents ${contentId} 0 R >>`);
+    object(contentId, `<< /Length ${encoder.encode(content).length} >>`, content);
+    object(
+      imageId,
+      `<< /Type /XObject /Subtype /Image /Width ${page.width} /Height ${page.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${page.bytes.length} >>`,
+      page.bytes
+    );
+  });
+
+  const totalObjects = 2 + pageCount * 3;
+  const xrefStart = length;
+  let xref = `xref\n0 ${totalObjects + 1}\n0000000000 65535 f \n`;
+  for (let id = 1; id <= totalObjects; id += 1) {
+    xref += `${String(offsets[id] || 0).padStart(10, "0")} 00000 n \n`;
+  }
+  push(xref);
+  push(`trailer\n<< /Size ${totalObjects + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`);
+
+  return new Blob(chunks, { type: "application/pdf" });
+}
+
+function renderImagesToPdf() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="i2p-files">Images (JPG, PNG, WebP)</label>
+      <input id="i2p-files" class="util-file" type="file" accept="image/*" multiple data-i2p-files />
+    </div>
+    <p class="util-note">Add images in the order you want them in the PDF. Drag and drop works too.</p>
+    <div class="image-list" data-i2p-list></div>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="i2p-size">Page size</label>
+        <select id="i2p-size" data-i2p-size>
+          <option value="fit" selected>Fit to each image</option>
+          <option value="a4p">A4 portrait</option>
+          <option value="a4l">A4 landscape</option>
+          <option value="letter">US Letter</option>
+        </select>
+      </div>
+      <div class="util-field">
+        <label for="i2p-margin">Margin (mm)</label>
+        <input id="i2p-margin" type="number" inputmode="numeric" min="0" max="40" value="0" data-i2p-margin />
+      </div>
+    </div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-i2p-run disabled>Create PDF</button>
+      <button class="util-btn" type="button" data-i2p-clear>Clear list</button>
+    </div>
+    <p class="util-note" data-i2p-status>Add at least one image.</p>
+  `;
+
+  const fileEl = utilityBody.querySelector("[data-i2p-files]");
+  const listEl = utilityBody.querySelector("[data-i2p-list]");
+  const sizeEl = utilityBody.querySelector("[data-i2p-size]");
+  const marginEl = utilityBody.querySelector("[data-i2p-margin]");
+  const statusEl = utilityBody.querySelector("[data-i2p-status]");
+  const runBtn = utilityBody.querySelector("[data-i2p-run]");
+  let items = [];
+
+  const paint = () => {
+    listEl.innerHTML = "";
+    items.forEach((item, index) => {
+      const row = document.createElement("div");
+      row.className = "image-row";
+      row.innerHTML = `<img alt="${item.name}" src="${item.url}" /><span class="image-row__name">${item.name}</span>`;
+      const actions = document.createElement("span");
+      actions.className = "image-row__actions";
+      const up = document.createElement("button");
+      up.type = "button";
+      up.textContent = "↑";
+      up.setAttribute("aria-label", `Move ${item.name} up`);
+      up.disabled = index === 0;
+      up.addEventListener("click", () => {
+        [items[index - 1], items[index]] = [items[index], items[index - 1]];
+        paint();
+      });
+      const down = document.createElement("button");
+      down.type = "button";
+      down.textContent = "↓";
+      down.setAttribute("aria-label", `Move ${item.name} down`);
+      down.disabled = index === items.length - 1;
+      down.addEventListener("click", () => {
+        [items[index + 1], items[index]] = [items[index], items[index + 1]];
+        paint();
+      });
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "×";
+      remove.setAttribute("aria-label", `Remove ${item.name}`);
+      remove.addEventListener("click", () => {
+        URL.revokeObjectURL(item.url);
+        items = items.filter((entry) => entry !== item);
+        paint();
+      });
+      actions.append(up, down, remove);
+      row.append(actions);
+      listEl.append(row);
+    });
+    runBtn.disabled = items.length === 0;
+    statusEl.textContent = items.length ? `${items.length} image(s) ready.` : "Add at least one image.";
+  };
+
+  const addFiles = async (fileList) => {
+    for (const file of Array.from(fileList)) {
+      if (!file.type.startsWith("image/")) continue;
+      try {
+        const image = await loadImageFile(file);
+        items.push({ file, image, url: URL.createObjectURL(file), name: file.name });
+      } catch (error) {
+        statusEl.textContent = `Skipped ${file.name} — ${error.message}`;
+      }
+    }
+    paint();
+  };
+
+  fileEl.addEventListener("change", () => addFiles(fileEl.files));
+
+  const PAGE_SIZES = {
+    a4p: [595.28, 841.89],
+    a4l: [841.89, 595.28],
+    letter: [612, 792],
+  };
+
+  runBtn.addEventListener("click", async () => {
+    if (!items.length) return;
+    statusEl.textContent = "Building the PDF…";
+    const marginMm = Math.max(0, Math.min(40, Number(marginEl.value) || 0));
+    const margin = (marginMm / 25.4) * 72;
+    const pages = [];
+
+    for (const item of items) {
+      const canvas = document.createElement("canvas");
+      canvas.width = item.image.naturalWidth;
+      canvas.height = item.image.naturalHeight;
+      const context = canvas.getContext("2d");
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(item.image, 0, 0);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+
+      let pageWidth;
+      let pageHeight;
+      if (sizeEl.value === "fit") {
+        pageWidth = canvas.width * 0.75 + margin * 2;
+        pageHeight = canvas.height * 0.75 + margin * 2;
+      } else {
+        [pageWidth, pageHeight] = PAGE_SIZES[sizeEl.value];
+      }
+
+      const availableWidth = Math.max(1, pageWidth - margin * 2);
+      const availableHeight = Math.max(1, pageHeight - margin * 2);
+      const scale = Math.min(availableWidth / canvas.width, availableHeight / canvas.height);
+      const drawWidth = canvas.width * scale;
+      const drawHeight = canvas.height * scale;
+
+      pages.push({
+        bytes,
+        width: canvas.width,
+        height: canvas.height,
+        pageWidth,
+        pageHeight,
+        drawWidth,
+        drawHeight,
+        x: (pageWidth - drawWidth) / 2,
+        y: (pageHeight - drawHeight) / 2,
+      });
+    }
+
+    const pdf = createPdfFromImages(pages);
+    const url = URL.createObjectURL(pdf);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "images.pdf";
+    link.click();
+    URL.revokeObjectURL(url);
+    statusEl.textContent = `${pages.length} page PDF created (${(pdf.size / 1024).toFixed(0)} KB).`;
+  });
+
+  utilityBody.querySelector("[data-i2p-clear]").addEventListener("click", () => {
+    items.forEach((item) => URL.revokeObjectURL(item.url));
+    items = [];
+    paint();
+  });
+
+  paint();
+}
 
 if (utilityPanel) {
   const backButton = utilityPanel.querySelector("[data-utility-back]");

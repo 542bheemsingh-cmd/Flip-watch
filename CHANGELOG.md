@@ -5,6 +5,8 @@ All notable changes to Flip Watch are recorded here.
 ## [Unreleased]
 
 ### Added
+- **PDF to Images**: render any page range of a PDF to PNG or JPEG at 1×/2×/3×, with per-page download and a store-only ZIP of all pages.
+- **Images to PDF**: combine JPG/PNG/WebP files into a single PDF, reorder or remove them, and pick fit-to-image, A4 or Letter pages with an optional margin. The PDF is written in the browser with no library.
 - **Dashboard navigation**: tool search (`/`), category chips with counts, a recent-tools row, arrow-key movement between cards, a two-column phone grid and a back-to-top button.
 - **Keyboard**: `Escape` returns to the dashboard from any tool.
 - **31 upgrades across the twelve technical tools**: live match counts, replace-one and undo for Find & Replace with regex presets; numbered/wrapped repeats; password reveal, three attack-speed estimates, character-class chips and a "suggest a strong one" button; drag & drop for every image tool; resize presets (Instagram, Story, Twitter, HD); crop aspect ratios with numeric selection boxes; average-colour and copy-as-CSS; QR colour pickers, Wi-Fi/email/phone presets, SVG export and recent history; sample vs population deviation with a histogram; previous/next prime and range listing; Monday week start, month navigation and a full year view for the calendar.

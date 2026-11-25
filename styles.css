@@ -4642,3 +4642,82 @@ html[data-theme] .dashboard-sub {
 @media (max-width: 520px) {
   html[data-theme] .dashboard-sub { font-size: 0.84rem; }
 }
+
+/* ---- PDF ↔ image tools ---- */
+html[data-theme] .thumb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+html[data-theme] .thumb-card {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card-bg);
+}
+
+html[data-theme] .thumb-card img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  background: #fff;
+}
+
+html[data-theme] .thumb-card figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+html[data-theme] .thumb-card figcaption span { font-variant-numeric: tabular-nums; }
+
+html[data-theme] .image-list { display: grid; gap: 8px; }
+
+html[data-theme] .image-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+}
+
+html[data-theme] .image-row img {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #fff;
+}
+
+html[data-theme] .image-row__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.86rem;
+}
+
+html[data-theme] .image-row__actions { display: flex; gap: 2px; }
+
+html[data-theme] .image-row__actions button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+html[data-theme] .image-row__actions button:disabled { opacity: 0.4; cursor: not-allowed; }

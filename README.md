@@ -16,7 +16,7 @@
 
 ## ✨ What's inside
 
-Flip Watch is a single-page web app that opens into a dashboard of thirty tools. Every tool shares the same design system: an animated flip clock, light/dark themes, and a colour palette that slowly drifts through the spectrum.
+Flip Watch is a single-page web app that opens into a dashboard of thirty-two tools. Every tool shares the same design system: an animated flip clock, light/dark themes, and a colour palette that slowly drifts through the spectrum.
 
 | Tool | What it does |
 | --- | --- |
@@ -50,6 +50,8 @@ Flip Watch is a single-page web app that opens into a dashboard of thirty tools.
 | 📊 **Statistics Calculator** | Mean, median, mode, spread and quartiles |
 | 🔢 **Prime Checker & Factoriser** | Prime test and full prime factorisation |
 | 🗓 **Generate Calendar** | A printable month grid |
+| 🖼 **PDF to Images** | Save PDF pages as PNG or JPEG, with a ZIP of all pages |
+| 📄 **Images to PDF** | Combine photos into one PDF, in the order you choose |
 
 <div align="center">
 <img src="assets/stopwatch-laps.png" alt="Stopwatch with laps" width="420">
