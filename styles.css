@@ -4110,14 +4110,17 @@ html[data-theme] .about-button {
   transition: transform var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) ease;
 }
 
-html[data-theme] .install-button { position: fixed; right: 168px; }
-html[data-theme] .about-button { position: fixed; right: 218px; }
+/* Sit flush with the existing top-right cluster: theme is at right:118px and
+   each button is 42px wide with an 8px gap, so about goes at 168px and the
+   (usually hidden) install button continues the row at 218px. */
+html[data-theme] .about-button { position: fixed; right: 168px; }
+html[data-theme] .install-button { position: fixed; right: 218px; }
 html[data-theme] .install-button:hover,
 html[data-theme] .about-button:hover { transform: translateY(-2px); border-color: var(--border-strong); }
 
 @media (max-width: 520px) {
-  html[data-theme] .install-button { right: 146px; top: 10px; width: 38px; height: 38px; }
-  html[data-theme] .about-button { right: 190px; top: 10px; width: 38px; height: 38px; }
+  html[data-theme] .about-button { right: 148px; top: 10px; width: 38px; height: 38px; }
+  html[data-theme] .install-button { right: 194px; top: 10px; width: 38px; height: 38px; }
 }
 
 html[data-theme] .app-dialog {
