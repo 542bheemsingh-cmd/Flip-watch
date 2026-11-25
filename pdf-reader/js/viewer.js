@@ -128,13 +128,54 @@ export class PDFViewer {
 
   async initializeBookMetrics() {
     if (!this.pdf) return;
-    const firstPage = await this.pdf.getPage(1);
-    const viewport = firstPage.getViewport({ scale: 1, rotation: this.rotation });
-    this.bookPageRatio = viewport.height / viewport.width;
-    this.bookPageBaseWidth = viewport.width;
+    const sample = await this.sampleBookPages();
+    this.bookPageRatio = sample.ratio;
+    this.bookPageBaseWidth = sample.width;
     this.bookPageBox = this.computeBookPageBoxFromShell();
     this.bookPageBoxKey = this.getBookPageBoxKey();
     this.applyBookPageBoxVars();
+  }
+
+  // The flip engine needs one uniform page size, so derive it from the *dominant*
+  // page shape rather than blindly from page 1. A landscape cover in front of a
+  // portrait document then no longer shrinks every page into a letterboxed sliver.
+  async sampleBookPages() {
+    const total = this.total || 1;
+    const target = Math.min(total, 12);
+    const step = Math.max(1, Math.floor(total / target));
+    const sizes = [];
+
+    for (let pageNumber = 1; pageNumber <= total && sizes.length < target; pageNumber += step) {
+      try {
+        const page = await this.pdf.getPage(pageNumber);
+        const viewport = page.getViewport({ scale: 1, rotation: this.rotation });
+        if (viewport.width > 0 && viewport.height > 0) {
+          sizes.push({
+            width: viewport.width,
+            ratio: viewport.height / viewport.width,
+          });
+        }
+      } catch (error) {
+        // Skip pages that fail to load; the rest still give a usable sample.
+      }
+    }
+
+    if (!sizes.length) {
+      const firstPage = await this.pdf.getPage(1);
+      const viewport = firstPage.getViewport({ scale: 1, rotation: this.rotation });
+      return { width: viewport.width, ratio: viewport.height / viewport.width };
+    }
+
+    // Median ratio ignores a single outlier page (a cover, a fold-out, etc.).
+    const sortedRatios = sizes.map((size) => size.ratio).sort((a, b) => a - b);
+    const medianRatio = sortedRatios[Math.floor(sortedRatios.length / 2)];
+    const base = sizes.reduce(
+      (best, size) =>
+        Math.abs(size.ratio - medianRatio) < Math.abs(best.ratio - medianRatio) ? size : best,
+      sizes[0]
+    );
+
+    return { width: base.width, ratio: base.ratio };
   }
 
   buildPlaceholders() {
@@ -1067,6 +1108,8 @@ export class PDFViewer {
     this.bookPageBaseWidth = null;
     this.bookPageBox = null;
     this.bookPageBoxKey = "";
+    // Re-sample so the book size follows the rotation instead of page 1 alone.
+    await this.initializeBookMetrics();
     await this.rerenderVisible();
   }
 

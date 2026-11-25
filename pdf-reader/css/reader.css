@@ -682,3 +682,34 @@ body[data-theme="sepia"] { --accent: hsl(var(--hue-accent, 75) 88% 66%); }
 @media (prefers-reduced-motion: reduce) {
   body { animation: none; }
 }
+
+/* in-app toast (replaces the old alert() for load errors) */
+.reader-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 92px;
+  z-index: 60;
+  max-width: min(92vw, 420px);
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-strong);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 0.92rem;
+  line-height: 1.35;
+  text-align: center;
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+
+.reader-toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+@media (max-width: 520px) {
+  .reader-toast { bottom: 78px; }
+}

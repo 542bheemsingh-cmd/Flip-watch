@@ -32,7 +32,7 @@
     <link rel="apple-touch-icon" href="../apple-touch-icon.png" />
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/theme.css" />
-    <link rel="stylesheet" href="css/reader.css?v=render-7" />
+    <link rel="stylesheet" href="css/reader.css?v=render-8" />
     <link rel="stylesheet" href="css/animations.css" />
   </head>
   <body data-theme="dark">
@@ -165,12 +165,14 @@
       </div>
 
       <button class="reader-ui-reveal" data-action="toggle-ui" aria-label="Show reader interface">◰</button>
+
+      <div class="reader-toast" data-toast role="status" aria-live="polite" hidden></div>
     </div>
 
     <script src="vendor/gsap.min.js"></script>
     <script src="vendor/hammer.min.js"></script>
     <script src="vendor/page-flip.browser.min.js"></script>
-    <script type="module" src="js/app.js?v=render-6"></script>
+    <script type="module" src="js/app.js?v=render-8"></script>
     <script>
       if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
         window.addEventListener("load", function () {

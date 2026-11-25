@@ -1,4 +1,4 @@
-import { PDFViewer } from "./viewer.js?v=render-6";
+import { PDFViewer } from "./viewer.js?v=render-8";
 import { SettingsController } from "./settings.js";
 import { SearchController } from "./search.js";
 import { BookmarkController } from "./bookmarks.js";
@@ -148,12 +148,29 @@ document.addEventListener("reader:pagechange", () => {
 
 await toolbar.renderRecent(recentList);
 
+const toastElement = $("[data-toast]");
+let toastTimer = 0;
+
+function showToast(message) {
+  if (!toastElement) return;
+  toastElement.textContent = message;
+  toastElement.hidden = false;
+  window.requestAnimationFrame(() => toastElement.classList.add("is-visible"));
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => {
+    toastElement.classList.remove("is-visible");
+    window.setTimeout(() => {
+      toastElement.hidden = true;
+    }, 220);
+  }, 4200);
+}
+
 async function openFile(file) {
   try {
     await viewer.loadFile(file);
   } catch (error) {
     console.error("[PDFReader] Could not open PDF", error);
-    alert(error.message || "Could not open PDF.");
+    showToast(error.message || "Could not open PDF.");
   }
 }
 

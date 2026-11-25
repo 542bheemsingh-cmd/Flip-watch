@@ -105,6 +105,10 @@ let activeEquationDimension = "2d";
 let activeEquationMetric = "primary";
 let previousEquationGraphAngleUnit = "RAD";
 
+// Live tab title while a stopwatch or timer is running.
+const defaultDocumentTitle = document.title;
+let lastTitleSecond = -1;
+
 function restartMotion(element, className) {
   if (!element) return;
 
@@ -1528,6 +1532,32 @@ function getCustomStopwatchElapsed() {
   return stopwatchElapsedBeforeStart + performance.now() - startedAt;
 }
 
+function formatTitleClock(durationMs) {
+  const total = Math.max(0, Math.floor(durationMs / 1000));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  return hours > 0
+    ? `${hours}:${pad(minutes, 2)}:${pad(seconds, 2)}`
+    : `${pad(minutes, 2)}:${pad(seconds, 2)}`;
+}
+
+// Show the running time in the browser tab so it is visible from any tab.
+function updateDocumentTitle(durationMs) {
+  if (!isRunning || activeMode === "clock") {
+    if (lastTitleSecond !== -1) {
+      lastTitleSecond = -1;
+      document.title = defaultDocumentTitle;
+    }
+    return;
+  }
+  const totalSeconds = Math.floor(durationMs / 1000);
+  if (totalSeconds === lastTitleSecond) return;
+  lastTitleSecond = totalSeconds;
+  const label = activeMode === "timer" ? "Timer" : "Stopwatch";
+  document.title = `(${formatTitleClock(durationMs)}) ${label} — Flip Watch`;
+}
+
 function renderDuration(durationMs, force = false) {
   const centiseconds = Math.floor(durationMs / 10);
 
@@ -1536,6 +1566,7 @@ function renderDuration(durationMs, force = false) {
   }
 
   lastRenderedCentiseconds = centiseconds;
+  updateDocumentTitle(durationMs);
 
   const hours = Math.floor(durationMs / 3600000) % 100;
   const minutes = Math.floor((durationMs % 3600000) / 60000);
