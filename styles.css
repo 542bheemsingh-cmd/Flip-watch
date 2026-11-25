@@ -4630,3 +4630,15 @@ html[data-theme] .app-dialog__privacy {
 }
 
 html[data-theme] .app-dialog__actions { gap: 10px; align-items: center; }
+
+html[data-theme] .dashboard-sub {
+  margin: 6px 0 0;
+  max-width: 46ch;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 520px) {
+  html[data-theme] .dashboard-sub { font-size: 0.84rem; }
+}
