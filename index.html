@@ -81,7 +81,7 @@
     <meta name="theme-color" content="#0a0b16" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="preconnect" href="https://images.unsplash.com" />
-    <link rel="stylesheet" href="styles.css?v=premium-4" />
+    <link rel="stylesheet" href="styles.css?v=premium-5" />
   </head>
   <body>
     <main class="app-shell" data-app-shell>
@@ -163,7 +163,7 @@
         </div>
       </section>
 
-      <section class="watch-panel" data-tool-panel aria-label="Time tool" hidden>
+      <section class="watch-panel" data-tool-panel aria-label="Time tool" tabindex="-1" hidden>
         <button class="back-button" type="button" data-back-dashboard>Dashboard</button>
 
         <div class="status-row">
@@ -181,10 +181,10 @@
           </div>
         </div>
 
-        <div class="mode-row" role="tablist" aria-label="Timer mode">
-          <button class="mode-button active" type="button" data-mode="stopwatch">Stopwatch</button>
-          <button class="mode-button" type="button" data-mode="timer">Timer</button>
-          <button class="mode-button" type="button" data-mode="clock">Clock</button>
+        <div class="mode-row" role="group" aria-label="Timer mode">
+          <button class="mode-button active" type="button" data-mode="stopwatch" aria-pressed="true">Stopwatch</button>
+          <button class="mode-button" type="button" data-mode="timer" aria-pressed="false">Timer</button>
+          <button class="mode-button" type="button" data-mode="clock" aria-pressed="false">Clock</button>
         </div>
 
         <div class="timer-options" data-timer-options hidden>
@@ -203,9 +203,9 @@
         </div>
 
         <div class="stopwatch-options" data-stopwatch-options>
-          <div class="stopwatch-type-row" role="tablist" aria-label="Stopwatch type">
-            <button class="stopwatch-type-button active" type="button" data-stopwatch-type="countup" role="tab" aria-selected="true">Count Up</button>
-            <button class="stopwatch-type-button" type="button" data-stopwatch-type="custom" role="tab" aria-selected="false">Custom Count Up</button>
+          <div class="stopwatch-type-row" role="group" aria-label="Stopwatch type">
+            <button class="stopwatch-type-button active" type="button" data-stopwatch-type="countup" aria-pressed="true">Count Up</button>
+            <button class="stopwatch-type-button" type="button" data-stopwatch-type="custom" aria-pressed="false">Custom Count Up</button>
           </div>
           <label class="custom-time stopwatch-custom-time" hidden>
             <span>Start at</span>
@@ -284,7 +284,7 @@
         </div>
       </section>
 
-      <section class="calculator-panel" data-calculator-panel aria-label="Calculator" hidden>
+      <section class="calculator-panel" data-calculator-panel aria-label="Calculator" tabindex="-1" hidden>
         <button class="back-button" type="button" data-calculator-back>Dashboard</button>
 
         <div class="calculator-heading">
@@ -456,7 +456,7 @@
         </div>
       </section>
 
-      <section class="equation-panel" data-equation-panel aria-label="Equation Calculator" hidden>
+      <section class="equation-panel" data-equation-panel aria-label="Equation Calculator" tabindex="-1" hidden>
         <button class="back-button" type="button" data-equation-back>Dashboard</button>
 
         <div class="equation-heading">
@@ -467,10 +467,10 @@
           </div>
         </div>
 
-        <div class="equation-section-tabs" role="tablist" aria-label="Equation sections">
-          <button class="equation-section-tab active" type="button" data-equation-dimension="2d" role="tab" aria-selected="true">2D Area</button>
-          <button class="equation-section-tab" type="button" data-equation-dimension="3d" role="tab" aria-selected="false">3D Surface Area</button>
-          <button class="equation-section-tab" type="button" data-equation-dimension="graphs" role="tab" aria-selected="false">Graphs</button>
+        <div class="equation-section-tabs" role="group" aria-label="Equation sections">
+          <button class="equation-section-tab active" type="button" data-equation-dimension="2d" aria-pressed="true">2D Area</button>
+          <button class="equation-section-tab" type="button" data-equation-dimension="3d" aria-pressed="false">3D Surface Area</button>
+          <button class="equation-section-tab" type="button" data-equation-dimension="graphs" aria-pressed="false">Graphs</button>
         </div>
 
         <section class="equation-graphs" data-equation-graphs aria-label="Function graphs" hidden>
@@ -566,9 +566,9 @@
           </select>
         </div>
 
-        <div class="equation-metric-tabs" role="tablist" aria-label="Measurement type">
-          <button class="equation-metric-tab active" type="button" data-equation-metric="primary" role="tab" aria-selected="true">Area</button>
-          <button class="equation-metric-tab" type="button" data-equation-metric="secondary" role="tab" aria-selected="false">Perimeter</button>
+        <div class="equation-metric-tabs" role="group" aria-label="Measurement type">
+          <button class="equation-metric-tab active" type="button" data-equation-metric="primary" aria-pressed="true">Area</button>
+          <button class="equation-metric-tab" type="button" data-equation-metric="secondary" aria-pressed="false">Perimeter</button>
         </div>
 
         <div class="equation-layout">
@@ -614,6 +614,6 @@
       </section>
     </main>
 
-    <script src="script.js?v=premium-5"></script>
+    <script src="script.js?v=premium-6"></script>
   </body>
 </html>

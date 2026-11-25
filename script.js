@@ -981,7 +981,7 @@ function renderEquationShape() {
     button.textContent = shape.dimension === "2d"
       ? (isPrimary ? "Area" : "Perimeter")
       : (isPrimary ? "Surface Area" : "Volume");
-    button.setAttribute("aria-selected", String((isPrimary ? "primary" : "secondary") === activeEquationMetric));
+    button.setAttribute("aria-pressed", String((isPrimary ? "primary" : "secondary") === activeEquationMetric));
     button.classList.toggle("active", (isPrimary ? "primary" : "secondary") === activeEquationMetric);
   });
 
@@ -1007,7 +1007,7 @@ function setEquationDimension(dimension) {
   equationDimensionButtons.forEach((button) => {
     const isActive = button.dataset.equationDimension === dimension;
     button.classList.toggle("active", isActive);
-    button.setAttribute("aria-selected", String(isActive));
+    button.setAttribute("aria-pressed", String(isActive));
   });
 
   equationGraphsPanel.hidden = !isGraphs;
@@ -1740,7 +1740,9 @@ function setMode(nextMode) {
   const isTimer = nextMode === "timer";
 
   modeButtons.forEach((button) => {
-    button.classList.toggle("active", button.dataset.mode === nextMode);
+    const isActive = button.dataset.mode === nextMode;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
   });
 
   display.hidden = isClock;
@@ -1772,12 +1774,26 @@ function setMode(nextMode) {
   }
 }
 
+let lastToolTrigger = null;
+
+// Move focus into a freshly opened panel so keyboard and screen-reader users are
+// not left on the (now hidden) tool card.
+function focusPanel(panel) {
+  if (!panel) return;
+  window.requestAnimationFrame(() => {
+    if (!panel.hidden) panel.focus({ preventScroll: true });
+  });
+}
+
 function openTool(mode) {
   window.clearTimeout(clockTimer);
   if (mode === "pdf") {
     window.location.href = "pdf-reader/index.html";
     return;
   }
+
+  // Remember what opened the panel so focus can return to it on "Dashboard".
+  lastToolTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
   if (mode === "calculator") {
     dashboard.hidden = true;
@@ -1796,6 +1812,7 @@ function openTool(mode) {
     equationPanel.hidden = false;
     animatePanelIn(equationPanel);
     renderEquationShape();
+    focusPanel(equationPanel);
     return;
   }
 
@@ -1805,6 +1822,7 @@ function openTool(mode) {
   equationPanel.hidden = true;
   setMode(mode);
   animatePanelIn(toolPanel);
+  focusPanel(toolPanel);
 }
 
 function showDashboard() {
@@ -1819,6 +1837,9 @@ function showDashboard() {
   equationPanel.hidden = true;
   dashboard.hidden = false;
   animateDashboardIn();
+  if (lastToolTrigger && document.contains(lastToolTrigger) && !lastToolTrigger.hidden) {
+    lastToolTrigger.focus({ preventScroll: true });
+  }
 }
 
 function setTimerDuration(minutes) {
@@ -1904,7 +1925,7 @@ stopwatchTypeButtons.forEach((button) => {
     stopwatchTypeButtons.forEach((typeButton) => {
       const isActive = typeButton.dataset.stopwatchType === stopwatchType;
       typeButton.classList.toggle("active", isActive);
-      typeButton.setAttribute("aria-selected", String(isActive));
+      typeButton.setAttribute("aria-pressed", String(isActive));
     });
     if (stopwatchType === "custom") {
       setStopwatchDuration();
@@ -1952,6 +1973,29 @@ equationDimensionButtons.forEach((button) => {
 
 equationMetricButtons.forEach((button) => {
   button.addEventListener("click", () => setEquationMetric(button.dataset.equationMetric));
+});
+
+// Arrow-key navigation inside each segmented control (Home/End jump to the ends).
+const keyboardGroups = document.querySelectorAll(
+  ".mode-row, .stopwatch-type-row, .equation-section-tabs, .equation-metric-tabs"
+);
+keyboardGroups.forEach((group) => {
+  group.addEventListener("keydown", (event) => {
+    const handled = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
+    if (!handled.includes(event.key)) return;
+    const buttons = Array.from(group.querySelectorAll("button")).filter(
+      (button) => !button.disabled && button.offsetParent !== null
+    );
+    const current = buttons.indexOf(document.activeElement);
+    if (current === -1) return;
+    event.preventDefault();
+    let next = current;
+    if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (current - 1 + buttons.length) % buttons.length;
+    else if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (current + 1) % buttons.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = buttons.length - 1;
+    buttons[next].focus();
+  });
 });
 
 equationShapeSelect.addEventListener("change", renderEquationShape);

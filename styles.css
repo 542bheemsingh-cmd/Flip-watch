@@ -3555,3 +3555,11 @@ html[data-theme] body::before {
   html[data-theme] { animation: none; }
   html[data-theme] body::before { animation: none; }
 }
+
+/* keyboard focus landing for panels opened from the dashboard */
+[data-tool-panel]:focus-visible,
+[data-calculator-panel]:focus-visible,
+[data-equation-panel]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
