@@ -3563,3 +3563,116 @@ html[data-theme] body::before {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
 }
+
+/* ---------------------------------------------------------------- laps */
+html[data-theme] .lap-panel {
+  width: min(440px, 100%);
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card-bg);
+  text-align: left;
+}
+
+html[data-theme] .lap-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+html[data-theme] .lap-clear {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-glass);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+html[data-theme] .lap-clear:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+html[data-theme] .lap-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  max-height: 172px;
+  overflow: auto;
+}
+
+html[data-theme] .lap-row {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 9px;
+  border-radius: 10px;
+  background: var(--surface-glass);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-theme] .lap-index { color: var(--muted); font-weight: 800; }
+html[data-theme] .lap-split { color: var(--text); font-weight: 700; }
+html[data-theme] .lap-total { color: var(--muted); text-align: right; }
+html[data-theme] .lap-row.is-best .lap-split { color: hsl(140 80% 55%); }
+html[data-theme] .lap-row.is-worst .lap-split { color: hsl(0 80% 62%); }
+
+/* --------------------------------------------------------- app toast */
+html[data-theme] .app-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(92vw, 460px);
+  padding: 12px 14px 12px 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--panel-strong);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.92rem;
+  line-height: 1.35;
+  opacity: 0;
+  transform: translateX(-50%) translateY(12px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+html[data-theme] .app-toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+html[data-theme] .app-toast button {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--grad-a), var(--grad-c));
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* pause the colour cycle while the tab is in the background */
+html[data-theme].is-tab-hidden,
+html[data-theme].is-tab-hidden body::before {
+  animation-play-state: paused;
+}

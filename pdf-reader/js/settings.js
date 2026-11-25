@@ -11,6 +11,7 @@ export const defaultSettings = {
   fontSize: 100,
   animationSpeed: 100,
   highContrast: false,
+  nightMode: false,
 };
 
 export class SettingsController {
@@ -59,6 +60,7 @@ export class SettingsController {
   apply() {
     document.body.dataset.theme = this.settings.theme;
     document.body.classList.toggle("high-contrast", this.settings.highContrast);
+    document.body.classList.toggle("night-mode", Boolean(this.settings.nightMode));
     document.documentElement.style.setProperty("--brightness", String(this.settings.brightness / 100));
     document.documentElement.style.setProperty("--ui-scale", String(this.settings.fontSize / 100));
     document.documentElement.style.setProperty("--anim-scale", String(this.settings.animationSpeed / 100));

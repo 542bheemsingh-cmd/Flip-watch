@@ -72,12 +72,17 @@ export class PDFViewer {
     this.file = file;
     this.fileBuffer = await fileToArrayBuffer(file);
     this.documentId = await makeDocumentId(file);
+    // Keep the raw bytes only for reasonably sized files; IndexedDB quota is
+    // limited and a single huge PDF could otherwise break saving entirely.
+    const MAX_STORED_BYTES = 25 * 1024 * 1024;
+    const canStoreData = file.size <= MAX_STORED_BYTES;
     await storage.set("documents", {
       id: this.documentId,
       name: file.name,
       size: file.size,
       lastModified: file.lastModified,
-      data: this.fileBuffer.slice(0),
+      ...(canStoreData ? { data: this.fileBuffer.slice(0) } : {}),
+      dataOmitted: !canStoreData,
       lastPage: 1,
       totalPages: 0,
       updatedAt: Date.now(),
@@ -118,12 +123,13 @@ export class PDFViewer {
   }
 
   async loadStoredDocument(record) {
-    if (!record?.data) return;
+    if (!record?.data) return false;
     const file = new File([record.data], record.name, {
       type: "application/pdf",
       lastModified: record.lastModified || Date.now(),
     });
     await this.loadFile(file);
+    return true;
   }
 
   async initializeBookMetrics() {

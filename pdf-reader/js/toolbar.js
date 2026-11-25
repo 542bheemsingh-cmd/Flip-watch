@@ -55,7 +55,13 @@ export class ToolbarController {
       const item = createListButton(doc.name, `${formatBytes(doc.size)} • page ${doc.lastPage}/${doc.totalPages}`);
       item.addEventListener("click", async () => {
         const saved = await storage.get("documents", doc.id);
-        await this.viewer.loadStoredDocument(saved);
+        const loaded = await this.viewer.loadStoredDocument(saved);
+        if (!loaded) {
+          document.dispatchEvent(new CustomEvent("reader:notice", {
+            detail: { message: "This file is too large to reopen from history — please open it again." },
+          }));
+          return;
+        }
         await this.viewer.goToPage(doc.lastPage || 1);
       });
       list.append(item);

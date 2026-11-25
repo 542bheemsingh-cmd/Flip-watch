@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Page not found — Flip Watch</title>
+    <meta name="robots" content="noindex" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/Flip-watch/favicon-32.png" />
+    <link rel="manifest" href="/Flip-watch/manifest.json" />
+    <meta name="theme-color" content="#0a0b16" />
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        color: #f4f6ff;
+        background:
+          radial-gradient(60% 50% at 15% 10%, rgba(124, 58, 237, 0.35), transparent 60%),
+          radial-gradient(55% 55% at 85% 15%, rgba(34, 211, 238, 0.28), transparent 62%),
+          linear-gradient(160deg, #070713, #120e2a 48%, #08161d);
+      }
+      .card {
+        width: min(560px, 100%);
+        text-align: center;
+        padding: clamp(28px, 6vw, 52px);
+        border: 1px solid rgba(148, 163, 255, 0.18);
+        border-radius: 24px;
+        background: rgba(22, 24, 44, 0.66);
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(22px);
+      }
+      .code {
+        font-size: clamp(3.4rem, 16vw, 6rem);
+        font-weight: 900;
+        line-height: 1;
+        margin: 0 0 8px;
+        background: linear-gradient(100deg, #fff 10%, #d946ef 55%, #22d3ee 95%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+      }
+      h1 { margin: 0 0 10px; font-size: clamp(1.3rem, 4vw, 1.8rem); }
+      p { margin: 0 0 24px; color: #b6bcd4; line-height: 1.5; }
+      a {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 22px;
+        border-radius: 14px;
+        font-weight: 800;
+        text-decoration: none;
+        color: #10160a;
+        background: linear-gradient(135deg, #a3e635, #22d3ee);
+        box-shadow: 0 12px 26px rgba(124, 58, 237, 0.35);
+      }
+      a:focus-visible { outline: 2px solid #c6ff5e; outline-offset: 3px; }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <p class="code">404</p>
+      <h1>This page wandered off</h1>
+      <p>The link may be broken, or the page may have moved. Everything else is still right here.</p>
+      <a href="/Flip-watch/">Back to Flip Watch</a>
+    </main>
+  </body>
+</html>

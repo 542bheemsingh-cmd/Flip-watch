@@ -76,12 +76,14 @@
         }
       })();
     </script>
-    <link rel="icon" href="favicon-new.png?v=2" type="image/png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="favicon-96.png" />
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#0a0b16" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="preconnect" href="https://images.unsplash.com" />
-    <link rel="stylesheet" href="styles.css?v=premium-5" />
+    <link rel="stylesheet" href="styles.css?v=premium-6" />
   </head>
   <body>
     <main class="app-shell" data-app-shell>
@@ -280,7 +282,16 @@
         <div class="controls" data-controls>
           <button class="control-button primary" type="button" data-action="start">Start</button>
           <button class="control-button primary" type="button" data-action="stop" hidden>Stop</button>
+          <button class="control-button" type="button" data-action="lap" hidden>Lap</button>
           <button class="control-button" type="button" data-action="reset">Reset</button>
+        </div>
+
+        <div class="lap-panel" data-lap-panel hidden>
+          <div class="lap-heading">
+            <span>Laps</span>
+            <button class="lap-clear" type="button" data-action="lap-clear">Clear</button>
+          </div>
+          <ol class="lap-list" data-laps></ol>
         </div>
       </section>
 
@@ -614,6 +625,6 @@
       </section>
     </main>
 
-    <script src="script.js?v=premium-7"></script>
+    <script src="script.js?v=premium-8"></script>
   </body>
 </html>

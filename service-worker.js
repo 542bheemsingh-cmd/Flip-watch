@@ -7,7 +7,7 @@
  *    refreshed in the background so updates still arrive.
  *  - Cross-origin requests (e.g. Unsplash) are left to the network.
  */
-const CACHE = "flip-watch-v1";
+const CACHE = "flip-watch-v2";
 
 const CORE = [
   "./",
@@ -86,4 +86,11 @@ self.addEventListener("fetch", (event) => {
       return cached || network;
     })
   );
+});
+
+// The page asks a waiting worker to take over when the user taps "Reload".
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });

@@ -713,3 +713,10 @@ body[data-theme="sepia"] { --accent: hsl(var(--hue-accent, 75) 88% 66%); }
 @media (max-width: 520px) {
   .reader-toast { bottom: 78px; }
 }
+
+/* night mode: invert rendered pages for comfortable reading in the dark */
+body.night-mode .page-card canvas,
+body.night-mode .page-flip-layer canvas,
+body.night-mode .thumb-item canvas {
+  filter: invert(1) hue-rotate(180deg);
+}

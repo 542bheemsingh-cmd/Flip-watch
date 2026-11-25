@@ -32,7 +32,7 @@
     <link rel="apple-touch-icon" href="../apple-touch-icon.png" />
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/theme.css" />
-    <link rel="stylesheet" href="css/reader.css?v=render-8" />
+    <link rel="stylesheet" href="css/reader.css?v=render-9" />
     <link rel="stylesheet" href="css/animations.css" />
   </head>
   <body data-theme="dark">
@@ -144,6 +144,7 @@
         <label>UI font size <input type="range" min="85" max="125" value="100" data-setting="fontSize" /></label>
         <label>Animation speed <input type="range" min="60" max="140" value="100" data-setting="animationSpeed" /></label>
         <label class="switch-row"><input type="checkbox" data-setting="highContrast" /> High contrast</label>
+        <label class="switch-row"><input type="checkbox" data-setting="nightMode" /> Night mode (invert pages)</label>
       </aside>
 
       <nav class="bottom-nav" data-bottom-nav>
@@ -172,7 +173,7 @@
     <script src="vendor/gsap.min.js"></script>
     <script src="vendor/hammer.min.js"></script>
     <script src="vendor/page-flip.browser.min.js"></script>
-    <script type="module" src="js/app.js?v=render-8"></script>
+    <script type="module" src="js/app.js?v=render-9"></script>
     <script>
       if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
         window.addEventListener("load", function () {

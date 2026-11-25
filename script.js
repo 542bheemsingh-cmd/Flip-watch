@@ -30,6 +30,10 @@ const soundToggle = document.querySelector("[data-sound-toggle]");
 const themeToggle = document.querySelector("[data-theme-toggle]");
 const liveTime = document.querySelector("[data-live-time]");
 const hourFormatButton = document.querySelector("[data-hour-format]");
+const lapButton = document.querySelector('[data-action="lap"]');
+const lapClearButton = document.querySelector('[data-action="lap-clear"]');
+const lapPanel = document.querySelector("[data-lap-panel]");
+const lapList = document.querySelector("[data-laps]");
 const hourCards = document.querySelectorAll('[data-unit="hours"] .flip-card');
 const minuteCards = document.querySelectorAll('[data-unit="minutes"] .flip-card');
 const secondCards = document.querySelectorAll('[data-unit="seconds"] .flip-card');
@@ -108,6 +112,19 @@ let previousEquationGraphAngleUnit = "RAD";
 // Live tab title while a stopwatch or timer is running.
 const defaultDocumentTitle = document.title;
 let lastTitleSecond = -1;
+
+// Stopwatch laps.
+let laps = [];
+let lastLapAt = 0;
+
+// Persisted state keys.
+const storageKeys = {
+  calcHistory: "flip-watch-calc-history",
+  calcMemory: "flip-watch-calc-memory",
+  timerMinutes: "flip-watch-timer-minutes",
+  stopwatchStart: "flip-watch-stopwatch-start",
+  session: "flip-watch-session",
+};
 
 function restartMotion(element, className) {
   if (!element) return;
@@ -1245,6 +1262,7 @@ function evaluateCalculator() {
     calculatorPrevious.textContent = `${expression} =`;
     calculatorInput.value = result;
     calculatorHistory = [{ expression, result }, ...calculatorHistory].slice(0, 30);
+    writeStored(storageKeys.calcHistory, calculatorHistory);
     renderCalculatorHistory();
     clearCalculatorError();
     restartMotion(calculatorPrevious, "result-pop");
@@ -1324,6 +1342,7 @@ function handleCalculatorAction(action) {
       return;
     }
   }
+  writeStored(storageKeys.calcMemory, calculatorMemory);
   updateCalculatorMemoryStatus();
 }
 
@@ -1558,6 +1577,187 @@ function updateDocumentTitle(durationMs) {
   document.title = `(${formatTitleClock(durationMs)}) ${label} — Flip Watch`;
 }
 
+/* ---------------------------------------------------------------- laps */
+function formatLapTime(ms) {
+  const total = Math.max(0, Math.floor(ms / 10));
+  const centis = total % 100;
+  const seconds = Math.floor(total / 100) % 60;
+  const minutes = Math.floor(total / 6000) % 60;
+  const hours = Math.floor(total / 360000);
+  const base = hours > 0
+    ? `${hours}:${pad(minutes, 2)}:${pad(seconds, 2)}`
+    : `${pad(minutes, 2)}:${pad(seconds, 2)}`;
+  return `${base}.${pad(centis, 2)}`;
+}
+
+function currentStopwatchElapsed() {
+  return stopwatchType === "custom" ? getCustomStopwatchElapsed() : getElapsed();
+}
+
+function updateLapControls() {
+  if (lapButton) lapButton.hidden = !(activeMode === "stopwatch" && isRunning);
+  if (lapPanel) lapPanel.hidden = !(activeMode === "stopwatch" && laps.length > 0);
+}
+
+function renderLaps() {
+  if (!lapList) return;
+  lapList.replaceChildren();
+  if (!laps.length) {
+    updateLapControls();
+    return;
+  }
+  const splits = laps.map((lap) => lap.split);
+  const best = Math.min(...splits);
+  const worst = Math.max(...splits);
+  laps.forEach((lap) => {
+    const row = document.createElement("li");
+    row.className = "lap-row";
+    if (laps.length > 1 && lap.split === best) row.classList.add("is-best");
+    else if (laps.length > 1 && lap.split === worst) row.classList.add("is-worst");
+    const index = document.createElement("span");
+    index.className = "lap-index";
+    index.textContent = String(lap.index);
+    const split = document.createElement("span");
+    split.className = "lap-split";
+    split.textContent = formatLapTime(lap.split);
+    const total = document.createElement("span");
+    total.className = "lap-total";
+    total.textContent = formatLapTime(lap.total);
+    row.append(index, split, total);
+    lapList.append(row);
+  });
+  updateLapControls();
+}
+
+function recordLap() {
+  if (!isRunning || activeMode !== "stopwatch") return;
+  const total = currentStopwatchElapsed();
+  laps.push({ index: laps.length + 1, split: total - lastLapAt, total });
+  lastLapAt = total;
+  renderLaps();
+}
+
+function clearLaps() {
+  laps = [];
+  lastLapAt = 0;
+  renderLaps();
+}
+
+/* --------------------------------------------------------- persistence */
+function readStored(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw === null ? fallback : JSON.parse(raw);
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function writeStored(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    // Storage can be unavailable; the app keeps working without it.
+  }
+}
+
+function saveSession() {
+  writeStored(storageKeys.session, {
+    mode: activeMode,
+    stopwatchType,
+    elapsed: elapsedBeforeStart,
+    customElapsed: stopwatchElapsedBeforeStart,
+    timerRemaining: timerRemainingBeforeStart,
+    timerDuration: selectedTimerDuration,
+    customStart: selectedStopwatchStart,
+  });
+}
+
+function restoreSession() {
+  const saved = readStored(storageKeys.session, null);
+  if (saved && typeof saved === "object") {
+    if (Number.isFinite(saved.elapsed)) elapsedBeforeStart = saved.elapsed;
+    if (Number.isFinite(saved.customElapsed)) stopwatchElapsedBeforeStart = saved.customElapsed;
+    if (Number.isFinite(saved.timerRemaining)) timerRemainingBeforeStart = saved.timerRemaining;
+    if (Number.isFinite(saved.timerDuration) && saved.timerDuration > 0) selectedTimerDuration = saved.timerDuration;
+    if (Number.isFinite(saved.customStart)) selectedStopwatchStart = saved.customStart;
+    if (saved.stopwatchType === "custom") stopwatchType = "custom";
+    if (["stopwatch", "timer", "clock"].includes(saved.mode)) activeMode = saved.mode;
+  }
+
+  const history = readStored(storageKeys.calcHistory, null);
+  if (Array.isArray(history)) {
+    calculatorHistory = history
+      .filter((item) => item && typeof item.expression === "string" && typeof item.result === "string")
+      .slice(0, 30);
+  }
+  const memory = readStored(storageKeys.calcMemory, null);
+  if (Number.isFinite(memory)) calculatorMemory = memory;
+
+  const savedMinutes = readStored(storageKeys.timerMinutes, null);
+  const minutes = Number.isFinite(savedMinutes)
+    ? savedMinutes
+    : Math.max(1, Math.round(selectedTimerDuration / 60000));
+  setTimerDuration(minutes);
+
+  const totalSeconds = Math.max(0, Math.round(selectedStopwatchStart / 1000));
+  stopwatchHoursInput.value = String(Math.min(99, Math.floor(totalSeconds / 3600)));
+  stopwatchMinutesInput.value = String(Math.floor((totalSeconds % 3600) / 60));
+  stopwatchSecondsInput.value = String(totalSeconds % 60);
+  setStopwatchDuration();
+
+  stopwatchCustomTime.hidden = stopwatchType !== "custom";
+  stopwatchTypeButtons.forEach((button) => {
+    const isActive = button.dataset.stopwatchType === stopwatchType;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+  toolPanel.dataset.activeMode = activeMode;
+  modeButtons.forEach((button) => {
+    const isActive = button.dataset.mode === activeMode;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+/* --------------------------------------------------------------- toast */
+let appToastTimer = 0;
+
+function hideAppToast() {
+  const toast = document.querySelector(".app-toast");
+  if (!toast) return;
+  toast.classList.remove("is-visible");
+  window.clearTimeout(appToastTimer);
+}
+
+function showAppToast(message, action) {
+  let toast = document.querySelector(".app-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.className = "app-toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    document.body.append(toast);
+  }
+  toast.replaceChildren();
+  const text = document.createElement("span");
+  text.textContent = message;
+  toast.append(text);
+  if (action) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = action.label;
+    button.addEventListener("click", () => {
+      hideAppToast();
+      action.onClick();
+    });
+    toast.append(button);
+  }
+  window.requestAnimationFrame(() => toast.classList.add("is-visible"));
+  window.clearTimeout(appToastTimer);
+  appToastTimer = window.setTimeout(hideAppToast, action ? 15000 : 5000);
+}
+
 function renderDuration(durationMs, force = false) {
   const centiseconds = Math.floor(durationMs / 10);
 
@@ -1635,10 +1835,13 @@ function startCurrentMode() {
   if (activeMode === "timer" && timerRemainingBeforeStart <= 0) {
     timerRemainingBeforeStart = selectedTimerDuration;
   }
+  lastLapAt = stopwatchType === "custom" ? stopwatchElapsedBeforeStart : elapsedBeforeStart;
   isRunning = true;
   startedAt = performance.now();
   startButton.hidden = true;
   stopButton.hidden = false;
+  updateLapControls();
+  saveSession();
   if (activeMode === "timer") {
     renderTimer(true);
   } else {
@@ -1664,6 +1867,8 @@ function stopCurrentMode() {
   cancelAnimationFrame(stopwatchFrame);
   startButton.hidden = false;
   stopButton.hidden = true;
+  updateLapControls();
+  saveSession();
   if (activeMode === "timer") {
     renderTimer(true);
   } else {
@@ -1687,6 +1892,9 @@ function resetCurrentMode() {
   lastRenderedCentiseconds = -1;
   startButton.hidden = false;
   stopButton.hidden = true;
+  clearLaps();
+  updateLapControls();
+  saveSession();
   if (activeMode === "timer") {
     renderTimer(true);
   } else {
@@ -1788,6 +1996,8 @@ function setMode(nextMode) {
 
   renderLiveTime();
   scheduleClockTick();
+  updateLapControls();
+  saveSession();
 
   if (isClock) {
     void releaseWakeLock("clock mode");
@@ -1878,6 +2088,7 @@ function setTimerDuration(minutes) {
   selectedTimerDuration = safeMinutes * 60 * 1000;
   timerRemainingBeforeStart = selectedTimerDuration;
   customMinutesInput.value = String(safeMinutes);
+  writeStored(storageKeys.timerMinutes, safeMinutes);
   lastRenderedCentiseconds = -1;
 
   presetButtons.forEach((button) => {
@@ -1899,6 +2110,7 @@ function setStopwatchDuration() {
 
   selectedStopwatchStart = ((hours * 60 + minutes) * 60 + seconds) * 1000;
   stopwatchElapsedBeforeStart = selectedStopwatchStart;
+  writeStored(storageKeys.stopwatchStart, { hours, minutes, seconds });
   lastRenderedCentiseconds = -1;
 
   if (activeMode === "stopwatch" && stopwatchType === "custom" && !isRunning) {
@@ -1909,6 +2121,8 @@ function setStopwatchDuration() {
 startButton.addEventListener("click", startCurrentMode);
 stopButton.addEventListener("click", stopCurrentMode);
 resetButton.addEventListener("click", resetCurrentMode);
+if (lapButton) lapButton.addEventListener("click", recordLap);
+if (lapClearButton) lapClearButton.addEventListener("click", clearLaps);
 
 modeButtons.forEach((button) => {
   button.addEventListener("click", () => setMode(button.dataset.mode));
@@ -2055,6 +2269,30 @@ equationGraphReset.addEventListener("click", () => {
   equationGraphInput.focus();
 });
 
+// Space starts/stops, R resets, L records a lap while a time tool is open.
+document.addEventListener("keydown", (event) => {
+  if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+  const target = event.target;
+  if (target && target.closest && target.closest("input, textarea, select, [contenteditable='true']")) return;
+  if (toolPanel.hidden) return;
+
+  if (event.key === " " || event.code === "Space") {
+    event.preventDefault();
+    if (isRunning) stopCurrentMode();
+    else startCurrentMode();
+    return;
+  }
+  if (event.key === "r" || event.key === "R") {
+    event.preventDefault();
+    resetCurrentMode();
+    return;
+  }
+  if ((event.key === "l" || event.key === "L") && activeMode === "stopwatch") {
+    event.preventDefault();
+    recordLap();
+  }
+});
+
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !calculatorGuidePanel.hidden) {
     setCalculatorGuide(false);
@@ -2089,6 +2327,7 @@ awakeToggle.addEventListener("change", () => {
 });
 
 document.addEventListener("visibilitychange", () => {
+  document.documentElement.classList.toggle("is-tab-hidden", document.hidden);
   if (document.visibilityState === "visible") {
     console.info("[WakeLock] Tab visible; checking wake lock state.");
     void requestWakeLock();
@@ -2098,12 +2337,14 @@ document.addEventListener("visibilitychange", () => {
 });
 
 window.addEventListener("pagehide", () => {
+  saveSession();
   void releaseWakeLock("page hidden");
 });
 
 prepareFlipCards();
 applyRandomDashboardTheme();
 animateDashboardIn();
+restoreSession();
 renderStopwatch(true);
 renderCalculatorHistory();
 updateCalculatorMemoryStatus();
@@ -2119,11 +2360,36 @@ setHourFormat(hourFormat, false);
 setWakeIndicator(wakeLockSupported ? "idle" : "warning", wakeLockSupported ? "Screen Awake: Off" : "Wake Lock Unsupported");
 setEquationDimension("2d");
 
-// Register the service worker so the app can be installed and works offline.
+// Register the service worker so the app can be installed and works offline,
+// and offer a reload when a new version has been downloaded.
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("service-worker.js").catch((error) => {
+  window.addEventListener("load", async () => {
+    try {
+      const registration = await navigator.serviceWorker.register("service-worker.js");
+      const promptUpdate = (worker) => {
+        showAppToast("A new version is available.", {
+          label: "Reload",
+          onClick: () => worker.postMessage({ type: "SKIP_WAITING" }),
+        });
+      };
+      if (registration.waiting) promptUpdate(registration.waiting);
+      registration.addEventListener("updatefound", () => {
+        const worker = registration.installing;
+        if (!worker) return;
+        worker.addEventListener("statechange", () => {
+          if (worker.state === "installed" && navigator.serviceWorker.controller) {
+            promptUpdate(worker);
+          }
+        });
+      });
+      let reloading = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (reloading) return;
+        reloading = true;
+        window.location.reload();
+      });
+    } catch (error) {
       console.warn("[PWA] Service worker registration failed.", error);
-    });
+    }
   });
 }
