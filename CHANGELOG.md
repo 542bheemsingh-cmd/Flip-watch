@@ -31,6 +31,8 @@ All notable changes to Flip Watch are recorded here.
 - **Docs**: rewritten README with screenshots, CONTRIBUTING guide and this changelog.
 
 ### Fixed
+- **Dashboard on phones**: the category chips wrapped to 197px and pushed the first tool to y=583; they now sit on one swipeable row, moving tools up by ~165px. The floating top-right controls also gained a solid background so they stay legible over the bright header.
+- **Categories**: PDF to Images and Images to PDF were missing from the category map, and an uncategorised tool can no longer disappear from the filters.
 - **PDF reader**: the search box stretched to fill the whole panel, and the floating page buttons drew on top of the search and settings panels.
 - **PDF to Images** failed offline because pdf.js and its worker were not precached; both are now in the service-worker cache (v7).
 - **File tools**: converting again leaked the previous page blobs, and the same image could not be added twice in a row.
