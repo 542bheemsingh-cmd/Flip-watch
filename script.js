@@ -6295,6 +6295,7 @@ function renderPdfToImages() {
     <div class="util-actions">
       <button class="control-button primary" type="button" data-p2i-run>Convert pages</button>
       <button class="util-btn" type="button" data-p2i-zip disabled>Download all (ZIP)</button>
+      <button class="util-btn" type="button" data-p2i-all>All pages</button>
     </div>
     <p class="util-note" data-p2i-status>Choose a PDF to begin.</p>
     <div class="thumb-grid" data-p2i-thumbs></div>
@@ -6346,6 +6347,7 @@ function renderPdfToImages() {
     const scale = Number(scaleEl.value);
     const extension = format === "image/png" ? "png" : "jpg";
 
+    results.forEach((item) => URL.revokeObjectURL(item.url));
     results = [];
     thumbsEl.innerHTML = "";
     statusEl.textContent = `Converting ${to - from + 1} page(s)…`;
@@ -6390,6 +6392,15 @@ function renderPdfToImages() {
   };
 
   utilityBody.querySelector("[data-p2i-run]").addEventListener("click", convert);
+  utilityBody.querySelector("[data-p2i-all]").addEventListener("click", () => {
+    if (!pdfDoc) {
+      statusEl.textContent = "Choose a PDF first.";
+      return;
+    }
+    fromEl.value = "1";
+    toEl.value = String(pdfDoc.numPages);
+    statusEl.textContent = `Whole document selected — ${pdfDoc.numPages} page(s).`;
+  });
 
   zipBtn.addEventListener("click", async () => {
     if (!results.length) return;
@@ -6638,7 +6649,12 @@ function renderImagesToPdf() {
       listEl.append(row);
     });
     runBtn.disabled = items.length === 0;
-    statusEl.textContent = items.length ? `${items.length} image(s) ready.` : "Add at least one image.";
+    if (!items.length) {
+      statusEl.textContent = "Add at least one image.";
+      return;
+    }
+    const totalBytes = items.reduce((sum, item) => sum + item.file.size, 0);
+    statusEl.textContent = `${items.length} image(s) ready · about ${(totalBytes / 1024).toFixed(0)} KB → one ${items.length}-page PDF.`;
   };
 
   const addFiles = async (fileList) => {
@@ -6654,7 +6670,11 @@ function renderImagesToPdf() {
     paint();
   };
 
-  fileEl.addEventListener("change", () => addFiles(fileEl.files));
+  fileEl.addEventListener("change", async () => {
+    await addFiles(fileEl.files);
+    // Reset so the same file can be added twice in a row.
+    fileEl.value = "";
+  });
 
   const PAGE_SIZES = {
     a4p: [595.28, 841.89],
