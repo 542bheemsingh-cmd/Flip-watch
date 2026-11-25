@@ -3133,10 +3133,106 @@ function renderTodo() {
 }
 
 /* ------------------------------------------------------ date calculator */
+function dateFieldHTML(key, labelText) {
+  return `
+    <div class="util-field">
+      <label>${labelText}</label>
+      <div class="date-input" data-date-field="${key}">
+        <input type="number" inputmode="numeric" placeholder="DD" min="1" max="31" data-date-part="day" aria-label="${labelText} — day" />
+        <span class="date-sep" aria-hidden="true">/</span>
+        <input type="number" inputmode="numeric" placeholder="MM" min="1" max="12" data-date-part="month" aria-label="${labelText} — month" />
+        <span class="date-sep" aria-hidden="true">/</span>
+        <input type="number" inputmode="numeric" placeholder="YYYY" min="1900" max="2100" data-date-part="year" aria-label="${labelText} — year" />
+      </div>
+    </div>`;
+}
+
+function readDateField(container) {
+  if (!container) return null;
+  const day = Number(container.querySelector('[data-date-part="day"]').value);
+  const month = Number(container.querySelector('[data-date-part="month"]').value);
+  const year = Number(container.querySelector('[data-date-part="year"]').value);
+  if (!day || !month || !year || year < 1900 || year > 2100) return null;
+  const date = new Date(year, month - 1, day);
+  const valid = date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+  return valid ? date : null;
+}
+
+function dateFieldFilled(container) {
+  if (!container) return false;
+  return ["day", "month", "year"].every(
+    (part) => container.querySelector(`[data-date-part="${part}"]`).value !== ""
+  );
+}
+
+function writeDateField(container, date) {
+  if (!container) return;
+  const dayEl = container.querySelector('[data-date-part="day"]');
+  const monthEl = container.querySelector('[data-date-part="month"]');
+  const yearEl = container.querySelector('[data-date-part="year"]');
+  if (!date) {
+    dayEl.value = "";
+    monthEl.value = "";
+    yearEl.value = "";
+    return;
+  }
+  dayEl.value = String(date.getDate());
+  monthEl.value = String(date.getMonth() + 1);
+  yearEl.value = String(date.getFullYear());
+}
+
+function wireDateField(container, onChange) {
+  if (!container) return;
+  const dayEl = container.querySelector('[data-date-part="day"]');
+  const monthEl = container.querySelector('[data-date-part="month"]');
+  const yearEl = container.querySelector('[data-date-part="year"]');
+
+  const clean = (input) => {
+    input.value = input.value.replace(/\D/g, "").slice(0, 4);
+  };
+
+  // These are tiny numeric boxes: clearing on focus makes typing predictable
+  // (no half-replaced values like "0102") and keeps the year easy to retype.
+  [dayEl, monthEl, yearEl].forEach((input) => {
+    input.addEventListener("focus", () => {
+      input.value = "";
+    });
+    // Clicking a field that already has focus does not fire "focus", so clear on
+    // click too — otherwise typing appends to the old value.
+    input.addEventListener("click", () => {
+      input.value = "";
+    });
+    input.addEventListener("blur", () => {
+      if (input.value === "") return;
+      const part = input.dataset.datePart;
+      const value = Number(input.value);
+      const min = part === "year" ? 1900 : 1;
+      const max = part === "day" ? 31 : part === "month" ? 12 : 2100;
+      if (value < min || value > max) input.value = "";
+    });
+  });
+
+  dayEl.addEventListener("input", () => {
+    clean(dayEl);
+    if (dayEl.value.length === 2) monthEl.focus();
+    onChange();
+  });
+  monthEl.addEventListener("input", () => {
+    clean(monthEl);
+    if (monthEl.value.length === 2) yearEl.focus();
+    onChange();
+  });
+  yearEl.addEventListener("input", () => {
+    clean(yearEl);
+    onChange();
+  });
+}
+
 function renderDateCalculator() {
   const saved = readStored(UTIL_KEYS.dates, null) || {};
   const today = new Date();
-  const iso = (date) => date.toISOString().slice(0, 10);
+  const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const iso = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   const weekday = (date) => date.toLocaleDateString("en-IN", { weekday: "long" });
 
   utilityBody.innerHTML = `
@@ -3149,31 +3245,28 @@ function renderDateCalculator() {
       </select>
     </div>
     <div class="date-row">
-      <div class="util-field">
-        <label for="date-a" data-date-label>Birth date</label>
-        <input id="date-a" type="date" data-date-a />
-      </div>
-      <div class="util-field" data-date-b-wrap>
-        <label for="date-b" data-date-b-label>To date</label>
-        <input id="date-b" type="date" data-date-b value="${iso(today)}" />
-      </div>
+      <div data-date-a-wrap>${dateFieldHTML("a", "Birth date")}</div>
+      <div data-date-b-wrap>${dateFieldHTML("b", "To date")}</div>
     </div>
     <div class="util-field" data-date-offset-wrap hidden>
       <label for="date-offset">Days to add (use a negative number to subtract)</label>
       <input id="date-offset" type="number" step="1" value="90" data-date-offset />
+    </div>
+    <div class="util-actions">
+      <button class="util-btn" type="button" data-date-today>Set first date to today</button>
+      <button class="util-btn" type="button" data-date-clear>Clear</button>
     </div>
     <div class="stat-grid" data-date-stats></div>
     <p class="util-note" data-date-note></p>
   `;
 
   const modeEl = utilityBody.querySelector("[data-date-mode]");
-  const aEl = utilityBody.querySelector("[data-date-a]");
-  const bEl = utilityBody.querySelector("[data-date-b]");
+  const aField = utilityBody.querySelector('[data-date-field="a"]');
+  const bField = utilityBody.querySelector('[data-date-field="b"]');
   const bWrap = utilityBody.querySelector("[data-date-b-wrap]");
-  const bLabel = utilityBody.querySelector("[data-date-b-label]");
+  const aWrapLabel = utilityBody.querySelector("[data-date-a-wrap] label");
   const offsetWrap = utilityBody.querySelector("[data-date-offset-wrap]");
   const offsetEl = utilityBody.querySelector("[data-date-offset]");
-  const labelEl = utilityBody.querySelector("[data-date-label]");
   const statsEl = utilityBody.querySelector("[data-date-stats]");
   const noteEl = utilityBody.querySelector("[data-date-note]");
 
@@ -3196,17 +3289,16 @@ function renderDateCalculator() {
 
     bWrap.hidden = mode === "add";
     offsetWrap.hidden = mode !== "add";
-    labelEl.textContent = mode === "age" ? "Birth date" : mode === "add" ? "Start date" : "From date";
-    bLabel.textContent = "To date";
-    aEl.max = mode === "age" ? iso(today) : "";
+    aWrapLabel.textContent = mode === "age" ? "Birth date" : mode === "add" ? "Start date" : "From date";
+
+    const start = readDateField(aField);
 
     if (mode === "add") {
-      if (!aEl.value) {
-        statsEl.innerHTML = stat("—", "Pick a start date");
-        noteEl.textContent = "";
+      if (!start) {
+        statsEl.innerHTML = stat("—", "Enter a start date");
+        noteEl.textContent = "Type the day, month and year.";
         return;
       }
-      const start = new Date(`${aEl.value}T00:00:00`);
       const days = Math.trunc(Number(offsetEl.value) || 0);
       const result = new Date(start);
       result.setDate(result.getDate() + days);
@@ -3219,18 +3311,26 @@ function renderDateCalculator() {
       return;
     }
 
-    if (!aEl.value) {
-      statsEl.innerHTML = stat("—", mode === "age" ? "Pick a birth date" : "Pick two dates");
-      noteEl.textContent = "";
+    if (!start) {
+      statsEl.innerHTML = stat("—", mode === "age" ? "Enter a birth date" : "Enter both dates");
+      noteEl.textContent = dateFieldFilled(aField)
+        ? "That date doesn't exist — check the day and month."
+        : "Type the day, month and year in each box.";
       return;
     }
 
-    const start = new Date(`${aEl.value}T00:00:00`);
-    const end = mode === "age"
-      ? new Date(today.getFullYear(), today.getMonth(), today.getDate())
-      : new Date(`${bEl.value || iso(today)}T00:00:00`);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-      statsEl.innerHTML = stat("—", "Invalid date");
+    const end = mode === "age" ? todayDate : readDateField(bField);
+    if (!end) {
+      statsEl.innerHTML = stat("—", "Enter the second date");
+      noteEl.textContent = dateFieldFilled(bField)
+        ? "That date doesn't exist — check the day and month."
+        : "Fill in the second date.";
+      return;
+    }
+
+    if (mode === "age" && start > todayDate) {
+      statsEl.innerHTML = stat("—", "Birth date is in the future");
+      noteEl.textContent = "Check the year — it should be in the past.";
       return;
     }
 
@@ -3249,11 +3349,9 @@ function renderDateCalculator() {
     const totalDays = Math.round((to - from) / 86400000);
 
     if (mode === "age") {
-      const next = new Date(today.getFullYear(), start.getMonth(), start.getDate());
-      if (next < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
-        next.setFullYear(next.getFullYear() + 1);
-      }
-      const untilBirthday = Math.round((next - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000);
+      const next = new Date(todayDate.getFullYear(), start.getMonth(), start.getDate());
+      if (next < todayDate) next.setFullYear(next.getFullYear() + 1);
+      const untilBirthday = Math.round((next - todayDate) / 86400000);
       statsEl.innerHTML = [
         stat(`${years}y ${months}m ${days}d`, "Age"),
         stat(String(totalDays), "Days lived"),
@@ -3275,9 +3373,21 @@ function renderDateCalculator() {
 
   modeEl.value = saved.mode || "age";
   modeEl.addEventListener("change", update);
-  aEl.addEventListener("change", update);
-  bEl.addEventListener("change", update);
+  wireDateField(aField, update);
+  wireDateField(bField, update);
   offsetEl.addEventListener("input", update);
+
+  utilityBody.querySelector("[data-date-today]").addEventListener("click", () => {
+    writeDateField(aField, todayDate);
+    update();
+  });
+  utilityBody.querySelector("[data-date-clear]").addEventListener("click", () => {
+    writeDateField(aField, null);
+    writeDateField(bField, null);
+    update();
+  });
+
+  writeDateField(bField, todayDate);
   update();
 }
 

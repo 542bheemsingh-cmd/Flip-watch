@@ -4165,3 +4165,40 @@ html[data-theme] .app-dialog__actions { margin: 16px 0 0; display: flex; justify
   html[data-theme] .equation-panel,
   html[data-theme] .utility-panel { box-shadow: none !important; border: 1px solid #ccc !important; background: #fff !important; }
 }
+
+/* date fields: three explicit boxes so the year is always typeable */
+html[data-theme] .date-input { display: flex; align-items: center; gap: 6px; }
+
+html[data-theme] .date-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.98rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+html[data-theme] .date-input input::-webkit-outer-spin-button,
+html[data-theme] .date-input input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+html[data-theme] .date-input input[data-date-part="year"] { flex: 1.5; }
+
+html[data-theme] .date-input input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+html[data-theme] .date-sep { color: var(--muted); font-weight: 800; }
+
+@media (max-width: 560px) {
+  html[data-theme] .date-input { gap: 4px; }
+}
