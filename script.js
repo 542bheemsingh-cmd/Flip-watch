@@ -6151,6 +6151,19 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+/* copy the calculator result */
+const calculatorCopyButton = document.querySelector("[data-calc-copy]");
+if (calculatorCopyButton) {
+  calculatorCopyButton.addEventListener("click", () => {
+    const value = calculatorInput?.value?.trim();
+    if (!value || value === "0") {
+      showAppToast("Nothing to copy yet.");
+      return;
+    }
+    utilCopy(value, "Result copied.");
+  });
+}
+
 /* back to top for the long tool list */
 const toTopButton = document.querySelector("[data-to-top]");
 
