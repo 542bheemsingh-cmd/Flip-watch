@@ -3,7 +3,7 @@ import { clamp, fileToArrayBuffer, formatBytes } from "./utils.js";
 import { makeDocumentId, storage } from "./storage.js";
 import { BookFlip, BookPagePainter } from "./book-flip.js?v=render-13";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = "./vendor/pdf.worker.js";
+pdfjsLib.GlobalWorkerOptions.workerSrc = "./vendor/pdf.worker.js?v=2";
 
 export class PDFViewer {
   constructor(elements, settings) {

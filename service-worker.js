@@ -7,7 +7,7 @@
  *    refreshed in the background so updates still arrive.
  *  - Cross-origin requests (e.g. Unsplash) are left to the network.
  */
-const CACHE = "flip-watch-v3";
+const CACHE = "flip-watch-v4";
 
 const CORE = [
   "./",
