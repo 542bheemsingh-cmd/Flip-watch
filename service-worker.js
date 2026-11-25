@@ -7,7 +7,7 @@
  *    refreshed in the background so updates still arrive.
  *  - Cross-origin requests (e.g. Unsplash) are left to the network.
  */
-const CACHE = "flip-watch-v5";
+const CACHE = "flip-watch-v6";
 
 const CORE = [
   "./",
@@ -73,17 +73,29 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Static assets: serve from cache immediately, refresh in the background.
+  // Static assets: match the exact URL first, so a ?v= bump always wins. Only when
+  // the network is unavailable do we fall back to a looser (query-insensitive) hit,
+  // which is what makes the precached shell usable offline.
+  //
+  // Matching loosely *first* (the previous behaviour) meant a stale cached
+  // script.js could be served to freshly deployed HTML, mixing old JS with new
+  // markup and breaking the UI.
   event.respondWith(
-    caches.match(request, { ignoreSearch: true }).then((cached) => {
-      const network = fetch(request)
-        .then((response) => {
-          store(request, response.clone());
-          return response;
-        })
-        .catch(() => cached);
-      return cached || network;
-    })
+    (async () => {
+      const exact = await caches.match(request);
+      if (exact) return exact;
+      try {
+        const response = await fetch(request);
+        store(request, response.clone());
+        return response;
+      } catch (error) {
+        const loose = await caches.match(request, { ignoreSearch: true });
+        return (
+          loose ||
+          new Response("Offline", { status: 503, headers: { "Content-Type": "text/plain" } })
+        );
+      }
+    })()
   );
 });
 
