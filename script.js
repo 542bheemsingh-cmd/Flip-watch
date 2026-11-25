@@ -5962,6 +5962,8 @@ const TOOL_CATEGORIES = {
   todo: "Productivity",
   random: "Fun",
   pdf: "Files",
+  pdf2img: "Files",
+  img2pdf: "Files",
 };
 
 const CATEGORY_ORDER = ["All", "Time", "Dates", "Maths", "Money", "Text", "Images", "Developer", "Security", "Productivity", "Fun", "Files"];
@@ -6013,7 +6015,8 @@ if (toolSearchInput) {
       acc[card.dataset.category] = (acc[card.dataset.category] || 0) + 1;
       return acc;
     }, {});
-    toolFiltersEl.innerHTML = CATEGORY_ORDER
+    const order = counts.Other ? [...CATEGORY_ORDER, "Other"] : CATEGORY_ORDER;
+    toolFiltersEl.innerHTML = order
       .filter((name) => name === "All" || counts[name])
       .map((name) => {
         const total = name === "All" ? cards.length : counts[name];
