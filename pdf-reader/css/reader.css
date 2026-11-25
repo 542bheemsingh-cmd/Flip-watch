@@ -957,3 +957,14 @@ body.night-mode .thumb-item canvas {
     line-height: 1.25;
   }
 }
+
+/* the search box must not stretch to fill the whole panel */
+.search-input {
+  align-self: start;
+  flex: none;
+  height: 42px;
+  min-height: 42px;
+}
+
+/* floating page buttons must sit behind open panels */
+.fab-stack { z-index: 17; }
