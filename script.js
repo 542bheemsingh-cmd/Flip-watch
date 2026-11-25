@@ -4370,12 +4370,21 @@ function renderFindReplace() {
       <label><input type="checkbox" data-fr-regex /> Regular expression</label>
       <label><input type="checkbox" data-fr-case /> Match case</label>
     </div>
+    <div class="util-actions" data-fr-presets>
+      <button class="util-btn" data-fr-preset="email">Email</button>
+      <button class="util-btn" data-fr-preset="url">URL</button>
+      <button class="util-btn" data-fr-preset="phone">Phone</button>
+      <button class="util-btn" data-fr-preset="spaces">Extra spaces</button>
+      <button class="util-btn" data-fr-preset="blanklines">Blank lines</button>
+    </div>
     <div class="util-actions">
       <button class="control-button primary" type="button" data-fr-run>Replace all</button>
+      <button class="util-btn" type="button" data-fr-one>Replace one</button>
+      <button class="util-btn" type="button" data-fr-undo disabled>Undo</button>
       <button class="util-btn" type="button" data-fr-copy>Copy result</button>
       <button class="util-btn" type="button" data-fr-clear>Clear</button>
     </div>
-    <p class="util-note" data-fr-status></p>
+    <p class="util-note" data-fr-status>Type text and something to find.</p>
   `;
 
   const textEl = utilityBody.querySelector("[data-fr-text]");
@@ -4384,34 +4393,83 @@ function renderFindReplace() {
   const regexEl = utilityBody.querySelector("[data-fr-regex]");
   const caseEl = utilityBody.querySelector("[data-fr-case]");
   const statusEl = utilityBody.querySelector("[data-fr-status]");
+  const undoBtn = utilityBody.querySelector("[data-fr-undo]");
+  let previous = null;
 
-  const buildPattern = () => {
+  const PRESETS = {
+    email: { pattern: "[\\w.+-]+@[\\w-]+\\.[\\w.]+", flags: "g" },
+    url: { pattern: "https?://[^\\s]+", flags: "g" },
+    phone: { pattern: "\\+?\\d[\\d\\s-]{7,}\\d", flags: "g" },
+    spaces: { pattern: "[ \\t]{2,}", flags: "g" },
+    blanklines: { pattern: "\\n{2,}", flags: "g" },
+  };
+
+  const buildPattern = (global = true) => {
     const source = regexEl.checked ? findEl.value : findEl.value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     if (!source) return null;
-    return new RegExp(source, caseEl.checked ? "g" : "gi");
-  };
-
-  const run = () => {
-    const pattern = buildPattern();
-    if (!pattern) {
-      statusEl.textContent = "Type something to find first.";
-      return;
-    }
+    const flags = `${global ? "g" : ""}${caseEl.checked ? "" : "i"}`;
     try {
-      const before = textEl.value;
-      const matches = before.match(pattern)?.length || 0;
-      textEl.value = before.replace(pattern, replaceEl.value);
-      statusEl.textContent = matches ? `${matches} ${matches === 1 ? "match" : "matches"} replaced.` : "No matches found.";
+      return new RegExp(source, flags);
     } catch (error) {
       statusEl.textContent = `Invalid pattern — ${error.message}`;
+      return null;
     }
   };
 
-  utilityBody.querySelector("[data-fr-run]").addEventListener("click", run);
+  const countMatches = () => {
+    const pattern = buildPattern();
+    if (!pattern || !findEl.value) {
+      statusEl.textContent = "Type text and something to find.";
+      return 0;
+    }
+    const matches = textEl.value.match(pattern)?.length || 0;
+    statusEl.textContent = matches ? `${matches} ${matches === 1 ? "match" : "matches"} found.` : "No matches found.";
+    return matches;
+  };
+
+  const apply = (all) => {
+    const pattern = buildPattern(all);
+    if (!pattern) return;
+    const before = textEl.value;
+    const matches = before.match(pattern)?.length || 0;
+    if (!matches) {
+      statusEl.textContent = "No matches found.";
+      return;
+    }
+    previous = before;
+    undoBtn.disabled = false;
+    textEl.value = before.replace(pattern, replaceEl.value);
+    const replaced = all ? matches : 1;
+    statusEl.textContent = `${replaced} ${replaced === 1 ? "match" : "matches"} replaced.`;
+  };
+
+  [textEl, findEl, replaceEl].forEach((el) => el.addEventListener("input", countMatches));
+  [regexEl, caseEl].forEach((el) => el.addEventListener("change", countMatches));
+
+  utilityBody.querySelectorAll("[data-fr-preset]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const preset = PRESETS[button.dataset.frPreset];
+      regexEl.checked = true;
+      findEl.value = preset.pattern;
+      replaceEl.value = "";
+      countMatches();
+    });
+  });
+
+  utilityBody.querySelector("[data-fr-run]").addEventListener("click", () => apply(true));
+  utilityBody.querySelector("[data-fr-one]").addEventListener("click", () => apply(false));
+  undoBtn.addEventListener("click", () => {
+    if (previous === null) return;
+    textEl.value = previous;
+    previous = null;
+    undoBtn.disabled = true;
+    statusEl.textContent = "Reverted to the previous text.";
+  });
   utilityBody.querySelector("[data-fr-copy]").addEventListener("click", () => utilCopy(textEl.value, "Text copied."));
   utilityBody.querySelector("[data-fr-clear]").addEventListener("click", () => {
     textEl.value = "";
-    statusEl.textContent = "";
+    findEl.value = "";
+    statusEl.textContent = "Cleared.";
     textEl.focus();
   });
 }
@@ -4445,6 +4503,10 @@ function renderTextPad() {
         </select>
       </div>
     </div>
+    <div class="util-toggles" data-pad-repeat-options>
+      <label><input type="checkbox" data-pad-numbered /> Number each line</label>
+      <label><input type="checkbox" data-pad-trim /> Trim each copy</label>
+    </div>
     <div class="date-row" data-pad-pad-row hidden>
       <div class="util-field">
         <label for="pad-length">Target length</label>
@@ -4462,9 +4524,20 @@ function renderTextPad() {
         <option value="end">Right (end)</option>
       </select>
     </div>
+    <div class="util-field">
+      <label for="pad-wrap">Wrap each copy</label>
+      <select id="pad-wrap" data-pad-wrap>
+        <option value="none">Nothing</option>
+        <option value="quotes">"double quotes"</option>
+        <option value="single">'single quotes'</option>
+        <option value="brackets">[square brackets]</option>
+        <option value="braces">{curly braces}</option>
+      </select>
+    </div>
     <div class="util-actions">
       <button class="control-button primary" type="button" data-pad-run>Build text</button>
       <button class="util-btn" type="button" data-pad-copy>Copy result</button>
+      <button class="util-btn" type="button" data-pad-clear>Clear</button>
     </div>
     <p class="util-note" data-pad-status></p>
     <div class="util-field">
@@ -4477,48 +4550,69 @@ function renderTextPad() {
   const textEl = utilityBody.querySelector("[data-pad-text]");
   const countEl = utilityBody.querySelector("[data-pad-count]");
   const sepEl = utilityBody.querySelector("[data-pad-separator]");
+  const numberedEl = utilityBody.querySelector("[data-pad-numbered]");
+  const trimEl = utilityBody.querySelector("[data-pad-trim]");
   const lengthEl = utilityBody.querySelector("[data-pad-length]");
   const charEl = utilityBody.querySelector("[data-pad-char]");
   const sideEl = utilityBody.querySelector("[data-pad-side]");
+  const wrapEl = utilityBody.querySelector("[data-pad-wrap]");
   const output = utilityBody.querySelector("[data-pad-output]");
   const status = utilityBody.querySelector("[data-pad-status]");
+
+  const WRAPS = { none: ["", ""], quotes: ['"', '"'], single: ["'", "'"], brackets: ["[", "]"], braces: ["{", "}"] };
 
   const sync = () => {
     const pad = modeEl.value === "pad";
     utilityBody.querySelector("[data-pad-repeat-row]").hidden = pad;
+    utilityBody.querySelector("[data-pad-repeat-options]").hidden = pad;
     utilityBody.querySelector("[data-pad-pad-row]").hidden = !pad;
     utilityBody.querySelector("[data-pad-side-wrap]").hidden = !pad;
   };
 
   const run = () => {
-    const text = textEl.value;
-    if (!text) {
+    const raw = textEl.value;
+    if (!raw) {
       output.value = "";
       status.textContent = "Type some text first.";
       return;
     }
+    const [open, close] = WRAPS[wrapEl.value] || WRAPS.none;
+    const wrap = (value) => `${open}${value}${close}`;
+
     if (modeEl.value === "repeat") {
       const count = Math.max(1, Math.min(500, Math.round(Number(countEl.value) || 1)));
-      const separator = sepEl.value === "\\n" ? "\n" : sepEl.value;
-      output.value = Array.from({ length: count }, () => text).join(separator);
-      status.textContent = `Repeated ${count} times · ${output.value.length} characters`;
+      const separator = sepEl.value;
+      const copies = Array.from({ length: count }, (_, index) => {
+        const body = trimEl.checked ? raw.trim() : raw;
+        return wrap(numberedEl.checked ? `${index + 1}. ${body}` : body);
+      });
+      output.value = copies.join(separator);
+      status.textContent = `Repeated ${count} times · ${output.value.length} characters · ${output.value.split("\n").length} lines`;
       return;
     }
+
     const target = Math.max(1, Math.min(10000, Math.round(Number(lengthEl.value) || 1)));
     const padChar = (charEl.value || " ").slice(0, 1);
-    if (text.length >= target) {
-      output.value = text;
-      status.textContent = `Text is already ${text.length} characters — nothing to pad.`;
+    const body = wrap(raw);
+    if (body.length >= target) {
+      output.value = body;
+      status.textContent = `Text is already ${body.length} characters — nothing to pad.`;
       return;
     }
-    const fill = padChar.repeat(target - text.length);
-    output.value = sideEl.value === "start" ? fill + text : text + fill;
+    const fill = padChar.repeat(target - body.length);
+    output.value = sideEl.value === "start" ? fill + body : body + fill;
     status.textContent = `Padded to ${target} characters with "${padChar}".`;
   };
 
   modeEl.addEventListener("change", sync);
   utilityBody.querySelector("[data-pad-run]").addEventListener("click", run);
   utilityBody.querySelector("[data-pad-copy]").addEventListener("click", () => utilCopy(output.value, "Result copied."));
+  utilityBody.querySelector("[data-pad-clear]").addEventListener("click", () => {
+    textEl.value = "";
+    output.value = "";
+    status.textContent = "";
+    textEl.focus();
+  });
   sync();
 }
 
@@ -4527,32 +4621,43 @@ function renderPasswordStrength() {
   utilityBody.innerHTML = `
     <div class="util-field">
       <label for="pws-input">Password to check</label>
-      <input id="pws-input" type="text" data-pws-input autocomplete="off" spellcheck="false" placeholder="Type a password…" />
+      <div class="pw-output">
+        <input id="pws-input" type="password" data-pws-input autocomplete="off" spellcheck="false" placeholder="Type a password…" />
+        <button type="button" data-pws-reveal aria-pressed="false">Show</button>
+      </div>
+    </div>
+    <div class="util-actions">
+      <button class="util-btn" type="button" data-pws-generate>Suggest a strong one</button>
+      <button class="util-btn" type="button" data-pws-copy>Copy password</button>
     </div>
     <div class="meter" aria-hidden="true"><span data-pws-meter></span></div>
     <div class="stat-grid" data-pws-stats></div>
+    <div class="chip-row" data-pws-classes></div>
     <p class="util-note" data-pws-verdict></p>
     <p class="util-note" data-pws-tips></p>
   `;
 
   const input = utilityBody.querySelector("[data-pws-input]");
+  const revealBtn = utilityBody.querySelector("[data-pws-reveal]");
   const meter = utilityBody.querySelector("[data-pws-meter]");
   const statsEl = utilityBody.querySelector("[data-pws-stats]");
+  const classesEl = utilityBody.querySelector("[data-pws-classes]");
   const verdictEl = utilityBody.querySelector("[data-pws-verdict]");
   const tipsEl = utilityBody.querySelector("[data-pws-tips]");
 
-  const common = ["password", "123456", "qwerty", "admin", "letmein", "welcome", "iloveyou", "monkey", "dragon", "abc123", "111111", "12345678"];
+  const common = ["password", "123456", "qwerty", "admin", "letmein", "welcome", "iloveyou", "monkey", "dragon", "abc123", "111111", "12345678", "india123", "iloveu"];
 
   const humanTime = (seconds) => {
+    if (!Number.isFinite(seconds)) return "practically forever";
     if (seconds < 1) return "instantly";
-    if (seconds < 60) return `${Math.round(seconds)} seconds`;
-    if (seconds < 3600) return `${Math.round(seconds / 60)} minutes`;
+    if (seconds < 60) return `${Math.round(seconds)} sec`;
+    if (seconds < 3600) return `${Math.round(seconds / 60)} min`;
     if (seconds < 86400) return `${Math.round(seconds / 3600)} hours`;
     if (seconds < 31536000) return `${Math.round(seconds / 86400)} days`;
     const years = seconds / 31536000;
     if (years < 1000) return `${Math.round(years)} years`;
-    if (years < 1e6) return `${Math.round(years / 1000)} thousand years`;
-    if (years < 1e9) return `${Math.round(years / 1e6)} million years`;
+    if (years < 1e6) return `${Math.round(years / 1000)}k years`;
+    if (years < 1e9) return `${Math.round(years / 1e6)}M years`;
     return "practically forever";
   };
 
@@ -4562,57 +4667,84 @@ function renderPasswordStrength() {
 
     if (!password) {
       statsEl.innerHTML = "";
+      classesEl.innerHTML = "";
       meter.style.width = "0%";
       verdictEl.textContent = "";
       tipsEl.textContent = "";
       return;
     }
 
-    let pool = 0;
-    if (/[a-z]/.test(password)) pool += 26;
-    if (/[A-Z]/.test(password)) pool += 26;
-    if (/[0-9]/.test(password)) pool += 10;
-    if (/[^A-Za-z0-9]/.test(password)) pool += 33;
+    const has = {
+      lower: /[a-z]/.test(password),
+      upper: /[A-Z]/.test(password),
+      digit: /[0-9]/.test(password),
+      symbol: /[^A-Za-z0-9]/.test(password),
+    };
+    let pool = (has.lower ? 26 : 0) + (has.upper ? 26 : 0) + (has.digit ? 10 : 0) + (has.symbol ? 33 : 0);
     const bits = Math.round(password.length * Math.log2(Math.max(2, pool)));
     const guesses = Math.pow(2, bits);
-    const perSecond = 1e10; // offline attack against a fast hash
-    const seconds = guesses / perSecond;
 
     const lower = password.toLowerCase();
     const isCommon = common.some((word) => lower.includes(word));
     const repeated = /(.)\1{2,}/.test(password);
     const sequential = /(abc|bcd|cde|123|234|345|456|567|678|789|qwe|asd|zxc)/i.test(password);
+    const yearLike = /(19|20)\d{2}/.test(password);
 
     let penalty = 0;
     if (isCommon) penalty += 35;
     if (repeated) penalty += 10;
     if (sequential) penalty += 10;
+    if (yearLike) penalty += 5;
     if (password.length < 8) penalty += 20;
-    const score = Math.max(0, Math.min(100, Math.round((bits / 100) * 100) - penalty));
-
+    const score = Math.max(0, Math.min(100, bits - penalty));
     const label = score >= 85 ? "Excellent" : score >= 65 ? "Strong" : score >= 45 ? "Fair" : score >= 25 ? "Weak" : "Very weak";
 
     statsEl.innerHTML = [
       stat(String(password.length), "Characters"),
-      stat(`${bits}`, "Entropy bits"),
+      stat(String(bits), "Entropy bits"),
       stat(label, "Rating"),
-      stat(humanTime(seconds), "Offline crack time"),
+      stat(humanTime(guesses / 1e3), "Online attack"),
+      stat(humanTime(guesses / 1e10), "Offline attack"),
+      stat(humanTime(guesses / 1e13), "GPU farm"),
     ].join("");
     meter.style.width = `${score}%`;
 
-    const tips = [];
-    if (password.length < 12) tips.push("use at least 12 characters");
-    if (!/[A-Z]/.test(password)) tips.push("add an uppercase letter");
-    if (!/[0-9]/.test(password)) tips.push("add a number");
-    if (!/[^A-Za-z0-9]/.test(password)) tips.push("add a symbol");
-    if (isCommon) tips.push("avoid common words like “password”");
-    if (repeated) tips.push("avoid repeated characters like “aaa”");
-    if (sequential) tips.push("avoid sequences like “123” or “abc”");
+    const chip = (on, text) => `<span class="chip${on ? " is-on" : ""}">${text}</span>`;
+    classesEl.innerHTML = [
+      chip(has.lower, "a–z"),
+      chip(has.upper, "A–Z"),
+      chip(has.digit, "0–9"),
+      chip(has.symbol, "symbols"),
+      chip(password.length >= 12, "12+ chars"),
+    ].join("");
 
-    verdictEl.textContent = `Rating: ${label} (${score}/100). Estimated ${humanTime(seconds)} to crack offline at 10 billion guesses per second.`;
+    const tips = [];
+    if (password.length < 12) tips.push("use 12+ characters");
+    if (!has.upper) tips.push("add an uppercase letter");
+    if (!has.digit) tips.push("add a number");
+    if (!has.symbol) tips.push("add a symbol");
+    if (isCommon) tips.push("avoid common words");
+    if (repeated) tips.push("avoid repeats like “aaa”");
+    if (sequential) tips.push("avoid sequences like “123”");
+
+    verdictEl.textContent = `Rating: ${label} (${score}/100) — ${bits} bits of entropy.`;
     tipsEl.textContent = tips.length ? `To improve: ${tips.join(", ")}.` : "This password looks good — store it in a password manager.";
   };
 
+  revealBtn.addEventListener("click", () => {
+    const shown = input.type === "text";
+    input.type = shown ? "password" : "text";
+    revealBtn.textContent = shown ? "Show" : "Hide";
+    revealBtn.setAttribute("aria-pressed", String(!shown));
+  });
+  utilityBody.querySelector("[data-pws-generate]").addEventListener("click", () => {
+    input.value = generatePassword({ length: 20, upper: true, lower: true, digits: true, symbols: true, excludeAmbiguous: false, exclude: "" });
+    input.type = "text";
+    revealBtn.textContent = "Hide";
+    revealBtn.setAttribute("aria-pressed", "true");
+    update();
+  });
+  utilityBody.querySelector("[data-pws-copy]").addEventListener("click", () => utilCopy(input.value, "Password copied."));
   input.addEventListener("input", update);
   update();
 }
@@ -4782,6 +4914,12 @@ function renderImageResize() {
     <div class="util-toggles">
       <label><input type="checkbox" data-ir-lock checked /> Keep aspect ratio</label>
     </div>
+    <div class="util-actions" data-ir-presets>
+      <button class="util-btn" data-ir-preset="1080x1080">Instagram 1:1</button>
+      <button class="util-btn" data-ir-preset="1080x1920">Story 9:16</button>
+      <button class="util-btn" data-ir-preset="1200x675">Twitter 16:9</button>
+      <button class="util-btn" data-ir-preset="1920x1080">HD 16:9</button>
+    </div>
     <div class="util-actions">
       <button class="util-btn" data-ir-scale="50">50%</button>
       <button class="util-btn" data-ir-scale="75">75%</button>
@@ -4830,6 +4968,14 @@ function renderImageResize() {
   });
 
   widthEl.addEventListener("input", syncHeight);
+  utilityBody.querySelectorAll("[data-ir-preset]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const [width, height] = button.dataset.irPreset.split("x");
+      widthEl.value = width;
+      heightEl.value = height;
+      lockEl.checked = false;
+    });
+  });
   utilityBody.querySelectorAll("[data-ir-scale]").forEach((button) => {
     button.addEventListener("click", () => {
       if (!image) return;
@@ -4968,6 +5114,27 @@ function renderImageConvert() {
 function renderImageCrop() {
   utilityBody.innerHTML = imageStageHTML(`
     <p class="util-note">Drag on the image to select the area you want to keep.</p>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="crop-aspect">Aspect ratio</label>
+        <select id="crop-aspect" data-crop-aspect>
+          <option value="free" selected>Free</option>
+          <option value="1">Square 1:1</option>
+          <option value="1.7778">Wide 16:9</option>
+          <option value="1.3333">Classic 4:3</option>
+          <option value="0.5625">Story 9:16</option>
+        </select>
+      </div>
+      <div class="util-field">
+        <label>Selection (px)</label>
+        <div class="date-input">
+          <input type="number" inputmode="numeric" min="0" placeholder="x" data-crop-num="x" aria-label="Crop x" />
+          <input type="number" inputmode="numeric" min="0" placeholder="y" data-crop-num="y" aria-label="Crop y" />
+          <input type="number" inputmode="numeric" min="1" placeholder="w" data-crop-num="w" aria-label="Crop width" />
+          <input type="number" inputmode="numeric" min="1" placeholder="h" data-crop-num="h" aria-label="Crop height" />
+        </div>
+      </div>
+    </div>
     <div class="stat-grid" data-crop-stats></div>
     <div class="util-actions">
       <button class="control-button primary" type="button" data-crop-run disabled>Crop &amp; download</button>
@@ -5044,16 +5211,50 @@ function renderImageCrop() {
     crop = { x: dragStart.x, y: dragStart.y, w: 0, h: 0 };
   });
 
+  const aspectEl = utilityBody.querySelector("[data-crop-aspect]");
+  const numEls = utilityBody.querySelectorAll("[data-crop-num]");
+
+  const syncNumbers = () => {
+    numEls.forEach((input) => {
+      const key = input.dataset.cropNum;
+      input.value = crop ? String(Math.round(crop[key])) : "";
+    });
+  };
+
   canvas.addEventListener("pointermove", (event) => {
     if (!dragStart) return;
     const point = toNatural(event);
+    let w = Math.abs(point.x - dragStart.x);
+    let h = Math.abs(point.y - dragStart.y);
+    const ratio = Number(aspectEl.value);
+    if (Number.isFinite(ratio)) {
+      if (w / (h || 1) > ratio) w = h * ratio;
+      else h = w / ratio;
+    }
     crop = {
-      x: Math.min(dragStart.x, point.x),
-      y: Math.min(dragStart.y, point.y),
-      w: Math.abs(point.x - dragStart.x),
-      h: Math.abs(point.y - dragStart.y),
+      x: point.x < dragStart.x ? dragStart.x - w : dragStart.x,
+      y: point.y < dragStart.y ? dragStart.y - h : dragStart.y,
+      w,
+      h,
     };
+    crop.x = Math.max(0, Math.min(image.naturalWidth - w, crop.x));
+    crop.y = Math.max(0, Math.min(image.naturalHeight - h, crop.y));
+    syncNumbers();
     draw();
+  });
+
+  numEls.forEach((input) => {
+    input.addEventListener("input", () => {
+      if (!image) return;
+      const next = {
+        x: Number(utilityBody.querySelector('[data-crop-num="x"]').value) || 0,
+        y: Number(utilityBody.querySelector('[data-crop-num="y"]').value) || 0,
+        w: Number(utilityBody.querySelector('[data-crop-num="w"]').value) || 0,
+        h: Number(utilityBody.querySelector('[data-crop-num="h"]').value) || 0,
+      };
+      crop = next;
+      draw();
+    });
   });
 
   canvas.addEventListener("pointerup", () => {
@@ -5080,6 +5281,10 @@ function renderImageCrop() {
 function renderImageColour() {
   utilityBody.innerHTML = imageStageHTML(`
     <p class="util-note">Click anywhere on the image to read that pixel's colour.</p>
+    <div class="util-actions">
+      <button class="util-btn" type="button" data-pix-average>Average colour</button>
+      <button class="util-btn" type="button" data-pix-css>Copy as CSS</button>
+    </div>
     <div class="stat-grid" data-pix-stats></div>
     <div class="swatch-row" data-pix-history aria-label="Recent colours"></div>
   `);
@@ -5134,6 +5339,36 @@ function renderImageColour() {
       button.addEventListener("click", () => utilCopy(button.dataset.swatch, `${button.dataset.swatch} copied.`));
     });
     noteEl.textContent = `${hex.toUpperCase()} at ${x}, ${y}`;
+    lastHex = hex;
+  });
+
+  let lastHex = "";
+  utilityBody.querySelector("[data-pix-average]").addEventListener("click", () => {
+    if (!image) return;
+    const context = canvas.getContext("2d");
+    const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let r = 0, g = 0, b = 0, count = 0;
+    for (let i = 0; i < data.length; i += 40) {
+      r += data[i];
+      g += data[i + 1];
+      b += data[i + 2];
+      count += 1;
+    }
+    const hex = rgbToHex({ r: r / count, g: g / count, b: b / count });
+    lastHex = hex;
+    const stat = (value, label, copyValue) => `<button type="button" class="stat stat--copy" data-copy-value="${copyValue}" aria-label="Copy ${label}"><span>${value}</span><small>${label}</small></button>`;
+    statsEl.innerHTML = [stat(hex.toUpperCase(), "Average", hex)].join("");
+    statsEl.querySelectorAll("[data-copy-value]").forEach((button) => {
+      button.addEventListener("click", () => utilCopy(button.dataset.copyValue, "Copied."));
+    });
+    noteEl.textContent = `Average colour of the whole image: ${hex.toUpperCase()}`;
+  });
+  utilityBody.querySelector("[data-pix-css]").addEventListener("click", () => {
+    if (!lastHex) {
+      noteEl.textContent = "Click a pixel (or average) first.";
+      return;
+    }
+    utilCopy(`background-color: ${lastHex};`, "CSS copied.");
   });
 }
 
@@ -5143,6 +5378,13 @@ function renderQrCode() {
     <div class="util-field">
       <label for="qr-text">Text or link</label>
       <textarea id="qr-text" class="util-textarea" data-qr-text placeholder="https://example.com">https://542bheemsingh-cmd.github.io/Flip-watch/</textarea>
+    </div>
+    <div class="util-actions" data-qr-presets>
+      <button class="util-btn" data-qr-preset="url">Link</button>
+      <button class="util-btn" data-qr-preset="wifi">Wi-Fi</button>
+      <button class="util-btn" data-qr-preset="email">Email</button>
+      <button class="util-btn" data-qr-preset="phone">Phone</button>
+      <button class="util-btn" data-qr-preset="text">Plain text</button>
     </div>
     <div class="date-row">
       <div class="util-field">
@@ -5159,62 +5401,145 @@ function renderQrCode() {
         </select>
       </div>
     </div>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="qr-fg">Code colour</label>
+        <input id="qr-fg" type="color" value="#0a0b16" data-qr-fg />
+      </div>
+      <div class="util-field">
+        <label for="qr-bg">Background</label>
+        <input id="qr-bg" type="color" value="#ffffff" data-qr-bg />
+      </div>
+    </div>
     <div class="util-actions">
       <button class="control-button primary" type="button" data-qr-run>Generate</button>
       <button class="util-btn" type="button" data-qr-download disabled>Download PNG</button>
+      <button class="util-btn" type="button" data-qr-svg disabled>Download SVG</button>
     </div>
     <p class="util-note" data-qr-status></p>
     <div class="qr-stage"><canvas data-qr-canvas width="320" height="320"></canvas></div>
+    <div class="chip-row" data-qr-history></div>
   `;
 
   const textEl = utilityBody.querySelector("[data-qr-text]");
   const sizeEl = utilityBody.querySelector("[data-qr-size]");
   const ecEl = utilityBody.querySelector("[data-qr-ec]");
+  const fgEl = utilityBody.querySelector("[data-qr-fg]");
+  const bgEl = utilityBody.querySelector("[data-qr-bg]");
   const canvas = utilityBody.querySelector("[data-qr-canvas]");
   const statusEl = utilityBody.querySelector("[data-qr-status]");
   const downloadBtn = utilityBody.querySelector("[data-qr-download]");
+  const svgBtn = utilityBody.querySelector("[data-qr-svg]");
+  const historyEl = utilityBody.querySelector("[data-qr-history]");
+  const history = [];
+  let lastModules = null;
+  let lastCount = 0;
 
-  const generate = () => {
+  const PRESETS = {
+    url: "https://example.com",
+    wifi: "WIFI:T:WPA;S:MyNetwork;P:my-password;;",
+    email: "mailto:hello@example.com?subject=Hello",
+    phone: "tel:+911234567890",
+    text: "Hello from Flip Watch",
+  };
+
+  const build = () => {
     const text = textEl.value.trim();
     if (!text) {
       statusEl.textContent = "Type something to encode.";
-      return;
+      return false;
     }
     if (typeof qrcode !== "function") {
       statusEl.textContent = "QR engine is not loaded — reload the page.";
-      return;
+      return false;
     }
     try {
       const qr = qrcode(0, ecEl.value);
       qr.addData(text);
       qr.make();
-      const count = qr.getModuleCount();
-      const size = Math.max(128, Math.min(1024, Math.round(Number(sizeEl.value) || 320)));
-      const quiet = 4;
-      const cell = Math.floor(size / (count + quiet * 2));
-      const dimension = cell * (count + quiet * 2);
-      canvas.width = dimension;
-      canvas.height = dimension;
-      const context = canvas.getContext("2d");
-      context.fillStyle = "#ffffff";
-      context.fillRect(0, 0, dimension, dimension);
-      context.fillStyle = "#0a0b16";
-      for (let row = 0; row < count; row += 1) {
-        for (let column = 0; column < count; column += 1) {
-          if (qr.isDark(row, column)) {
-            context.fillRect((column + quiet) * cell, (row + quiet) * cell, cell, cell);
-          }
+      lastCount = qr.getModuleCount();
+      lastModules = [];
+      for (let row = 0; row < lastCount; row += 1) {
+        for (let column = 0; column < lastCount; column += 1) {
+          if (qr.isDark(row, column)) lastModules.push([row, column]);
         }
       }
-      statusEl.textContent = `${count} × ${count} modules · ${dimension}px · level ${ecEl.value}`;
-      downloadBtn.disabled = false;
+      return true;
     } catch (error) {
       statusEl.textContent = `Could not generate — ${error.message}`;
+      return false;
     }
   };
 
+  const paint = () => {
+    const size = Math.max(128, Math.min(1024, Math.round(Number(sizeEl.value) || 320)));
+    const quiet = 4;
+    const cell = Math.max(1, Math.floor(size / (lastCount + quiet * 2)));
+    const dimension = cell * (lastCount + quiet * 2);
+    canvas.width = dimension;
+    canvas.height = dimension;
+    const context = canvas.getContext("2d");
+    context.fillStyle = bgEl.value;
+    context.fillRect(0, 0, dimension, dimension);
+    context.fillStyle = fgEl.value;
+    lastModules.forEach(([row, column]) => {
+      context.fillRect((column + quiet) * cell, (row + quiet) * cell, cell, cell);
+    });
+    statusEl.textContent = `${lastCount} × ${lastCount} modules · ${dimension}px · level ${ecEl.value}`;
+    downloadBtn.disabled = false;
+    svgBtn.disabled = false;
+  };
+
+  const generate = () => {
+    if (!build()) return;
+    paint();
+    const text = textEl.value.trim();
+    history.unshift(text);
+    const unique = [...new Set(history)].slice(0, 5);
+    historyEl.innerHTML = unique
+      .map((item) => `<button type="button" class="chip chip--button" data-qr-recent="${encodeURIComponent(item)}">${item.length > 24 ? `${item.slice(0, 24)}…` : item}</button>`)
+      .join("");
+    historyEl.querySelectorAll("[data-qr-recent]").forEach((button) => {
+      button.addEventListener("click", () => {
+        textEl.value = decodeURIComponent(button.dataset.qrRecent);
+        generate();
+      });
+    });
+  };
+
+  utilityBody.querySelectorAll("[data-qr-preset]").forEach((button) => {
+    button.addEventListener("click", () => {
+      textEl.value = PRESETS[button.dataset.qrPreset];
+      generate();
+    });
+  });
+
   utilityBody.querySelector("[data-qr-run]").addEventListener("click", generate);
+  [sizeEl, fgEl, bgEl, ecEl].forEach((el) => {
+    el.addEventListener("input", () => {
+      if (!lastModules) return;
+      if (el === ecEl) generate();
+      else paint();
+    });
+  });
+
   downloadBtn.addEventListener("click", () => downloadCanvas(canvas, "qr-code.png"));
+  svgBtn.addEventListener("click", () => {
+    if (!lastModules) return;
+    const quiet = 4;
+    const size = lastCount + quiet * 2;
+    const rects = lastModules
+      .map(([row, column]) => `<rect x="${column + quiet}" y="${row + quiet}" width="1" height="1"/>`)
+      .join("");
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges"><rect width="${size}" height="${size}" fill="${bgEl.value}"/><g fill="${fgEl.value}">${rects}</g></svg>`;
+    const blob = new Blob([svg], { type: "image/svg+xml" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "qr-code.svg";
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+
   generate();
 }
 
@@ -5225,19 +5550,67 @@ function renderStatistics() {
       <label for="st-input">Numbers (separate with commas, spaces or new lines)</label>
       <textarea id="st-input" class="util-textarea util-textarea--code" data-st-input placeholder="12, 7, 3, 19, 7, 25"></textarea>
     </div>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="st-spread">Standard deviation</label>
+        <select id="st-spread" data-st-spread>
+          <option value="population" selected>Population (÷n)</option>
+          <option value="sample">Sample (÷n−1)</option>
+        </select>
+      </div>
+      <div class="util-field">
+        <label>Actions</label>
+        <div class="util-actions">
+          <button class="util-btn" type="button" data-st-copy>Copy</button>
+          <button class="util-btn" type="button" data-st-clear>Clear</button>
+        </div>
+      </div>
+    </div>
     <div class="stat-grid" data-st-stats></div>
+    <canvas class="histogram" data-st-histogram width="600" height="160" aria-label="Histogram of the values"></canvas>
     <p class="util-note" data-st-note></p>
   `;
 
   const input = utilityBody.querySelector("[data-st-input]");
+  const spreadEl = utilityBody.querySelector("[data-st-spread]");
   const statsEl = utilityBody.querySelector("[data-st-stats]");
   const noteEl = utilityBody.querySelector("[data-st-note]");
+  const canvas = utilityBody.querySelector("[data-st-histogram]");
+  let summary = "";
+
+  const drawHistogram = (numbers) => {
+    const context = canvas.getContext("2d");
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    if (!numbers.length) return;
+    const min = Math.min(...numbers);
+    const max = Math.max(...numbers);
+    const bins = Math.min(14, Math.max(3, Math.round(Math.sqrt(numbers.length))));
+    const width = (max - min) / bins || 1;
+    const counts = new Array(bins).fill(0);
+    numbers.forEach((value) => {
+      const index = Math.min(bins - 1, Math.floor((value - min) / width));
+      counts[index] += 1;
+    });
+    const peak = Math.max(...counts) || 1;
+    const barWidth = canvas.width / bins;
+    counts.forEach((count, index) => {
+      const height = Math.round((count / peak) * (canvas.height - 18));
+      context.fillStyle = "rgba(124, 92, 255, 0.85)";
+      context.fillRect(index * barWidth + 3, canvas.height - height - 14, barWidth - 6, height);
+      context.fillStyle = "rgba(255,255,255,0.55)";
+      context.font = "10px system-ui, sans-serif";
+      context.textAlign = "center";
+      context.fillText(String(count), index * barWidth + barWidth / 2, canvas.height - 3);
+    });
+  };
 
   const update = () => {
     const numbers = (input.value.match(/-?\d*\.?\d+(?:[eE][-+]?\d+)?/g) || []).map(Number).filter((n) => Number.isFinite(n));
     if (!numbers.length) {
       statsEl.innerHTML = "";
       noteEl.textContent = "Paste some numbers to see the statistics.";
+      summary = "";
+      drawHistogram([]);
       return;
     }
     const sorted = numbers.slice().sort((a, b) => a - b);
@@ -5249,7 +5622,8 @@ function renderStatistics() {
     numbers.forEach((n) => counts.set(n, (counts.get(n) || 0) + 1));
     const maxCount = Math.max(...counts.values());
     const modes = [...counts.entries()].filter(([, c]) => c === maxCount).map(([n]) => n);
-    const variance = numbers.reduce((acc, n) => acc + (n - mean) ** 2, 0) / count;
+    const divisor = spreadEl.value === "sample" && count > 1 ? count - 1 : count;
+    const variance = numbers.reduce((acc, n) => acc + (n - mean) ** 2, 0) / divisor;
     const stdev = Math.sqrt(variance);
     const percentile = (p) => {
       const index = (count - 1) * p;
@@ -5260,6 +5634,8 @@ function renderStatistics() {
     const round = (n) => (Math.round(n * 1000) / 1000).toString();
     const stat = (value, label) => `<div class="stat"><span>${value}</span><small>${label}</small></div>`;
 
+    const q1 = percentile(0.25);
+    const q3 = percentile(0.75);
     statsEl.innerHTML = [
       stat(String(count), "Count"),
       stat(round(sum), "Sum"),
@@ -5268,16 +5644,25 @@ function renderStatistics() {
       stat(maxCount > 1 ? modes.slice(0, 3).map(round).join(", ") : "none", "Mode"),
       stat(round(stdev), "Std deviation"),
       stat(round(variance), "Variance"),
+      stat(round(q1), "Q1"),
+      stat(round(q3), "Q3"),
+      stat(round(q3 - q1), "IQR"),
       stat(round(sorted[0]), "Min"),
       stat(round(sorted[count - 1]), "Max"),
-      stat(round(percentile(0.25)), "Q1"),
-      stat(round(percentile(0.75)), "Q3"),
-      stat(round(sorted[count - 1] - sorted[0]), "Range"),
     ].join("");
-    noteEl.textContent = `${count} values · standard deviation is the population figure (÷n).`;
+    noteEl.textContent = `${count} values · ${spreadEl.value === "sample" ? "sample" : "population"} standard deviation · range ${round(sorted[count - 1] - sorted[0])}`;
+    summary = `Count: ${count}\nSum: ${round(sum)}\nMean: ${round(mean)}\nMedian: ${round(median)}\nStd dev: ${round(stdev)}\nMin: ${round(sorted[0])}\nMax: ${round(sorted[count - 1])}`;
+    drawHistogram(numbers);
   };
 
   input.addEventListener("input", update);
+  spreadEl.addEventListener("change", update);
+  utilityBody.querySelector("[data-st-copy]").addEventListener("click", () => utilCopy(summary, "Statistics copied."));
+  utilityBody.querySelector("[data-st-clear]").addEventListener("click", () => {
+    input.value = "";
+    update();
+    input.focus();
+  });
   update();
 }
 
@@ -5288,10 +5673,24 @@ function renderPrime() {
       <label for="pr-input">Number</label>
       <input id="pr-input" type="number" inputmode="numeric" min="2" step="1" value="97" data-pr-input />
     </div>
-    <div class="stat-grid" data-pr-stats></div>
     <div class="util-actions">
-      <button class="util-btn" type="button" data-pr-nearest>Nearest primes</button>
-      <button class="util-btn" type="button" data-pr-list>Primes below it</button>
+      <button class="util-btn" type="button" data-pr-prev>Previous prime</button>
+      <button class="util-btn" type="button" data-pr-next>Next prime</button>
+      <button class="util-btn" type="button" data-pr-copy>Copy result</button>
+    </div>
+    <div class="stat-grid" data-pr-stats></div>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="pr-from">List primes from</label>
+        <input id="pr-from" type="number" inputmode="numeric" min="2" value="2" data-pr-from />
+      </div>
+      <div class="util-field">
+        <label for="pr-to">to</label>
+        <input id="pr-to" type="number" inputmode="numeric" min="2" value="100" data-pr-to />
+      </div>
+    </div>
+    <div class="util-actions">
+      <button class="util-btn" type="button" data-pr-range>List primes in range</button>
     </div>
     <p class="util-note" data-pr-note></p>
   `;
@@ -5299,7 +5698,10 @@ function renderPrime() {
   const input = utilityBody.querySelector("[data-pr-input]");
   const statsEl = utilityBody.querySelector("[data-pr-stats]");
   const noteEl = utilityBody.querySelector("[data-pr-note]");
+  const fromEl = utilityBody.querySelector("[data-pr-from]");
+  const toEl = utilityBody.querySelector("[data-pr-to]");
   const stat = (value, label) => `<div class="stat"><span>${value}</span><small>${label}</small></div>`;
+  let summary = "";
 
   const isPrime = (n) => {
     if (n < 2) return false;
@@ -5328,11 +5730,13 @@ function renderPrime() {
     if (!Number.isFinite(n) || n < 2) {
       statsEl.innerHTML = stat("—", "Enter a whole number of 2 or more");
       noteEl.textContent = "";
+      summary = "";
       return;
     }
     if (n > 1e12) {
       statsEl.innerHTML = stat("—", "Too large");
       noteEl.textContent = "Please use a number below 1,000,000,000,000.";
+      summary = "";
       return;
     }
     const prime = isPrime(n);
@@ -5351,25 +5755,36 @@ function renderPrime() {
       stat(expression || "—", "Factorisation"),
     ].join("");
     noteEl.textContent = prime ? `${n} has no divisors other than 1 and itself.` : `${n} = ${expression}`;
+    summary = `${n} is ${prime ? "prime" : `composite = ${expression}`}`;
   };
 
-  utilityBody.querySelector("[data-pr-nearest]").addEventListener("click", () => {
-    const n = Math.floor(Number(input.value)) || 2;
-    let below = n;
-    while (below > 1 && !isPrime(below)) below -= 1;
-    let above = n;
-    while (!isPrime(above)) above += 1;
-    noteEl.textContent = `Nearest primes: ${below} below, ${above} above.`;
+  utilityBody.querySelector("[data-pr-prev]").addEventListener("click", () => {
+    let n = Math.floor(Number(input.value)) - 1;
+    while (n > 1 && !isPrime(n)) n -= 1;
+    if (n > 1) {
+      input.value = String(n);
+      update();
+    }
   });
-
-  utilityBody.querySelector("[data-pr-list]").addEventListener("click", () => {
-    const n = Math.floor(Number(input.value)) || 10;
-    const limit = Math.min(n, 100000);
+  utilityBody.querySelector("[data-pr-next]").addEventListener("click", () => {
+    let n = Math.floor(Number(input.value)) + 1;
+    while (!isPrime(n)) n += 1;
+    input.value = String(n);
+    update();
+  });
+  utilityBody.querySelector("[data-pr-copy]").addEventListener("click", () => utilCopy(summary, "Result copied."));
+  utilityBody.querySelector("[data-pr-range]").addEventListener("click", () => {
+    const from = Math.max(2, Math.floor(Number(fromEl.value) || 2));
+    const to = Math.min(from + 200000, Math.floor(Number(toEl.value) || 100));
+    if (to < from) {
+      noteEl.textContent = "The end of the range must be larger than the start.";
+      return;
+    }
     const primes = [];
-    for (let i = 2; i <= limit; i += 1) {
+    for (let i = from; i <= to; i += 1) {
       if (isPrime(i)) primes.push(i);
     }
-    noteEl.textContent = `${primes.length} primes up to ${limit}: ${primes.slice(-12).join(", ")}${primes.length > 12 ? " …" : ""}`;
+    noteEl.textContent = `${primes.length} primes between ${from} and ${to}: ${primes.slice(0, 15).join(", ")}${primes.length > 15 ? " …" : ""}`;
   });
 
   input.addEventListener("input", update);
@@ -5392,8 +5807,14 @@ function renderCalendar() {
         <input id="cal-year" type="number" inputmode="numeric" min="1900" max="2100" value="${today.getFullYear()}" data-cal-year />
       </div>
     </div>
+    <div class="util-toggles">
+      <label><input type="checkbox" data-cal-monday /> Week starts on Monday</label>
+      <label><input type="checkbox" data-cal-yearview /> Show the whole year</label>
+    </div>
     <div class="util-actions">
+      <button class="util-btn" type="button" data-cal-prev>&larr; Previous</button>
       <button class="util-btn" type="button" data-cal-today>This month</button>
+      <button class="util-btn" type="button" data-cal-next>Next &rarr;</button>
       <button class="util-btn" type="button" data-cal-print>Print</button>
     </div>
     <div class="calendar-wrap" data-cal-grid></div>
@@ -5402,50 +5823,104 @@ function renderCalendar() {
 
   const monthEl = utilityBody.querySelector("[data-cal-month]");
   const yearEl = utilityBody.querySelector("[data-cal-year]");
+  const mondayEl = utilityBody.querySelector("[data-cal-monday]");
+  const yearViewEl = utilityBody.querySelector("[data-cal-yearview]");
   const gridEl = utilityBody.querySelector("[data-cal-grid]");
   const noteEl = utilityBody.querySelector("[data-cal-note]");
+
+  const monthTable = (month, year) => {
+    const first = new Date(year, month, 1);
+    const days = new Date(year, month + 1, 0).getDate();
+    const offset = mondayEl.checked ? (first.getDay() + 6) % 7 : first.getDay();
+    const labels = mondayEl.checked
+      ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+      : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const cells = [];
+    for (let i = 0; i < offset; i += 1) cells.push('<td class="is-empty"></td>');
+    for (let day = 1; day <= days; day += 1) {
+      const isToday = year === today.getFullYear() && month === today.getMonth() && day === today.getDate();
+      cells.push(`<td class="${isToday ? "is-today" : ""}">${day}</td>`);
+    }
+    while (cells.length % 7 !== 0) cells.push('<td class="is-empty"></td>');
+    const rows = [];
+    for (let i = 0; i < cells.length; i += 7) rows.push(`<tr>${cells.slice(i, i + 7).join("")}</tr>`);
+    return `
+      <h3 class="calendar-title">${first.toLocaleDateString("en-IN", { month: "long" })} ${year}</h3>
+      <table class="calendar-table">
+        <thead><tr>${labels.map((d) => `<th>${d}</th>`).join("")}</tr></thead>
+        <tbody>${rows.join("")}</tbody>
+      </table>`;
+  };
 
   const render = () => {
     const month = Number(monthEl.value);
     const year = Math.max(1900, Math.min(2100, Math.floor(Number(yearEl.value) || today.getFullYear())));
-    const first = new Date(year, month, 1);
+
+    if (yearViewEl.checked) {
+      gridEl.innerHTML = `<div class="calendar-year">${Array.from({ length: 12 }, (_, m) => `<div class="calendar-month">${monthTable(m, year)}</div>`).join("")}</div>`;
+      noteEl.textContent = `Full year ${year}`;
+      return;
+    }
+    gridEl.innerHTML = monthTable(month, year);
     const days = new Date(year, month + 1, 0).getDate();
-    const startDay = first.getDay();
-    const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
+    noteEl.textContent = `${days} days · starts on ${new Date(year, month, 1).toLocaleDateString("en-IN", { weekday: "long" })}`;
+  };
 
-    const cells = [];
-    for (let i = 0; i < startDay; i += 1) cells.push("<td class=\"is-empty\"></td>");
-    for (let day = 1; day <= days; day += 1) {
-      const isToday = isCurrentMonth && day === today.getDate();
-      cells.push(`<td class="${isToday ? "is-today" : ""}">${day}</td>`);
+  const step = (delta) => {
+    let month = Number(monthEl.value) + delta;
+    let year = Math.floor(Number(yearEl.value) || today.getFullYear());
+    if (month < 0) {
+      month = 11;
+      year -= 1;
     }
-    while (cells.length % 7 !== 0) cells.push("<td class=\"is-empty\"></td>");
-
-    const rows = [];
-    for (let i = 0; i < cells.length; i += 7) {
-      rows.push(`<tr>${cells.slice(i, i + 7).join("")}</tr>`);
+    if (month > 11) {
+      month = 0;
+      year += 1;
     }
-
-    gridEl.innerHTML = `
-      <h3 class="calendar-title">${first.toLocaleDateString("en-IN", { month: "long" })} ${year}</h3>
-      <table class="calendar-table">
-        <thead><tr>${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => `<th>${d}</th>`).join("")}</tr></thead>
-        <tbody>${rows.join("")}</tbody>
-      </table>
-    `;
-    noteEl.textContent = `${days} days · starts on ${first.toLocaleDateString("en-IN", { weekday: "long" })}`;
+    monthEl.value = String(month);
+    yearEl.value = String(Math.max(1900, Math.min(2100, year)));
+    render();
   };
 
   monthEl.value = String(today.getMonth());
   monthEl.addEventListener("change", render);
   yearEl.addEventListener("input", render);
+  mondayEl.addEventListener("change", render);
+  yearViewEl.addEventListener("change", render);
+  utilityBody.querySelector("[data-cal-prev]").addEventListener("click", () => step(-1));
+  utilityBody.querySelector("[data-cal-next]").addEventListener("click", () => step(1));
   utilityBody.querySelector("[data-cal-today]").addEventListener("click", () => {
     monthEl.value = String(today.getMonth());
     yearEl.value = String(today.getFullYear());
+    yearViewEl.checked = false;
     render();
   });
   utilityBody.querySelector("[data-cal-print]").addEventListener("click", () => window.print());
   render();
+}
+
+/* drag and drop for every image tool */
+if (utilityBody) {
+  const showDrop = () => utilityBody.classList.add("is-dragover");
+  const hideDrop = () => utilityBody.classList.remove("is-dragover");
+  ["dragenter", "dragover"].forEach((type) => utilityBody.addEventListener(type, (event) => {
+    if (!utilityBody.querySelector("[data-img-file]")) return;
+    event.preventDefault();
+    showDrop();
+  }));
+  ["dragleave", "drop"].forEach((type) => utilityBody.addEventListener(type, (event) => {
+    if (!utilityBody.querySelector("[data-img-file]")) return;
+    event.preventDefault();
+    hideDrop();
+    if (type !== "drop") return;
+    const fileEl = utilityBody.querySelector("[data-img-file]");
+    const file = event.dataTransfer?.files?.[0];
+    if (!fileEl || !file || !file.type.startsWith("image/")) return;
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    fileEl.files = transfer.files;
+    fileEl.dispatchEvent(new Event("change", { bubbles: true }));
+  }));
 }
 
 if (utilityPanel) {

@@ -4376,3 +4376,48 @@ html[data-theme] .calendar-table td.is-today {
   html[data-theme] .calendar-wrap { overflow: visible; }
   html[data-theme] .calendar-table td { border-color: #bbb; }
 }
+
+/* ---- chips, histogram, drag state, year calendar ---- */
+html[data-theme] .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+html[data-theme] .chip {
+  padding: 5px 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+html[data-theme] .chip.is-on {
+  border-color: var(--border-strong);
+  background: var(--surface-glass);
+  color: var(--text);
+}
+
+html[data-theme] .chip--button { cursor: pointer; }
+html[data-theme] .chip--button:hover { color: var(--text); border-color: var(--border-strong); }
+
+html[data-theme] .histogram {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+html[data-theme] .utility-body.is-dragover,
+html[data-theme] .utility-panel.is-dragover {
+  outline: 2px dashed var(--accent);
+  outline-offset: 6px;
+  border-radius: 18px;
+}
+
+html[data-theme] .calendar-year {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+html[data-theme] .calendar-month .calendar-title { font-size: 0.95rem; }
