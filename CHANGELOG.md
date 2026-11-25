@@ -5,6 +5,7 @@ All notable changes to Flip Watch are recorded here.
 ## [Unreleased]
 
 ### Added
+- **File tools extras**: an "All pages" shortcut and per-page progress in PDF to Images, plus a page-count and size estimate before creating a PDF from images.
 - **PDF to Images**: render any page range of a PDF to PNG or JPEG at 1×/2×/3×, with per-page download and a store-only ZIP of all pages.
 - **Images to PDF**: combine JPG/PNG/WebP files into a single PDF, reorder or remove them, and pick fit-to-image, A4 or Letter pages with an optional margin. The PDF is written in the browser with no library.
 - **Dashboard navigation**: tool search (`/`), category chips with counts, a recent-tools row, arrow-key movement between cards, a two-column phone grid and a back-to-top button.
@@ -29,6 +30,8 @@ All notable changes to Flip Watch are recorded here.
 - **Docs**: rewritten README with screenshots, CONTRIBUTING guide and this changelog.
 
 ### Fixed
+- **PDF to Images** failed offline because pdf.js and its worker were not precached; both are now in the service-worker cache (v7).
+- **File tools**: converting again leaked the previous page blobs, and the same image could not be added twice in a row.
 - **Calculator**: the phone keypad overflowed the screen, so `=` and `e` needed scrolling.
 - **Statistics**: the histogram showed as a large blank box before any numbers were entered.
 - **PDF reader**: blank pages on WebKit/Safari — pdf.js v6 uses newer JavaScript APIs (`Map.getOrInsertComputed`, `Promise.withResolvers`, `Set.prototype.intersection`); polyfills are now loaded on the page and embedded in the worker.
