@@ -5,6 +5,7 @@ All notable changes to Flip Watch are recorded here.
 ## [Unreleased]
 
 ### Added
+- **38 upgrades across the seven new tools**: GST presets/custom rates/copy, EMI presets, interest meter and yearly amortisation, fuel round-trip and L/100 km, JSON indent/sort/download/sample with size deltas, auto-converting Base64 with SHA-256/384/512, colour click-to-copy/random/complement/preview, and a random picker with unique counts, multi-dice, shuffle, no-repeat and history.
 - **Seven more tools**: GST Calculator, EMI Calculator, Fuel Cost, JSON Formatter, Base64/URL/Hash, Colour Toolkit and Random Picker (18 tools in total).
 - **Five more tools**: Unit Converter, Password Generator, Word Counter, To-Do List and Date Calculator — all offline, with 40 refinements across them (swap/copy, all-unit table, passphrases with a 1,745-word list, entropy meter, character targets, keywords, inline task editing, due dates, business days, and more).
 - **App polish**: skip link, offline banner, install-app button, About/shortcuts dialog (`?`), and a system-aware theme option.
