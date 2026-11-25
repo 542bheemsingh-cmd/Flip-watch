@@ -6126,6 +6126,17 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+/* scientific keypad toggle (phones only) */
+const scienceToggle = document.querySelector("[data-calc-science-toggle]");
+if (scienceToggle) {
+  const keypad = document.querySelector(".calculator-keypad");
+  scienceToggle.addEventListener("click", () => {
+    const open = keypad.classList.toggle("is-science-open");
+    scienceToggle.setAttribute("aria-expanded", String(open));
+    scienceToggle.setAttribute("aria-label", open ? "Hide scientific functions" : "Show scientific functions");
+  });
+}
+
 /* back to top for the long tool list */
 const toTopButton = document.querySelector("[data-to-top]");
 

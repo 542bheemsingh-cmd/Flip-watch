@@ -4566,3 +4566,31 @@ html[data-theme] .tool-recent__label {
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+
+/* ---- calculator: collapsible scientific keys on phones ---- */
+/* The science keys participate directly in the keypad grid. */
+html[data-theme] .calc-science { display: contents; }
+
+html[data-theme] .science-toggle {
+  display: none;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+html[data-theme] .science-toggle[aria-expanded="true"] {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--grad-a), var(--grad-c));
+  color: #fff;
+}
+
+@media (max-width: 520px) {
+  html[data-theme] .calculator-keypad button { min-height: 36px; font-size: 0.86rem; }
+  html[data-theme] .calculator-keypad { gap: 4px; }
+}
