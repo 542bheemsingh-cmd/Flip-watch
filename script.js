@@ -2416,10 +2416,18 @@ const utilityBody = document.querySelector("[data-utility-body]");
 
 const utilityMeta = {
   converter: { kicker: "Convert", title: "Unit Converter", sub: "Length, weight, temperature, area, volume, speed, time and data." },
-  password: { kicker: "Generate", title: "Password Generator", sub: "Strong random passwords, created on your device." },
-  wordcount: { kicker: "Count", title: "Word Counter", sub: "Words, characters, sentences and reading time as you type." },
+  password: { kicker: "Generate", title: "Password Generator", sub: "Strong random passwords and passphrases, created on your device." },
+  wordcount: { kicker: "Count", title: "Word Counter", sub: "Words, characters, reading time and case tools as you type." },
   todo: { kicker: "Organise", title: "To-Do List", sub: "Tasks are saved in this browser, so they survive a reload." },
-  dates: { kicker: "Calculate", title: "Date Calculator", sub: "Work out an age, or the gap between two dates." },
+  dates: { kicker: "Calculate", title: "Date Calculator", sub: "Age, the gap between dates, or adding days to a date." },
+};
+
+const UTIL_KEYS = {
+  converter: "flip-watch-converter",
+  password: "flip-watch-password",
+  wordcount: "flip-watch-wordcount",
+  dates: "flip-watch-dates",
+  todo: "flip-watch-todos",
 };
 
 function openUtility(kind) {
@@ -2448,32 +2456,75 @@ function renderUtility(kind) {
   else if (kind === "dates") renderDateCalculator();
 }
 
-function formatNumber(value) {
-  if (!Number.isFinite(value)) return "";
-  const abs = Math.abs(value);
-  if (abs !== 0 && (abs >= 1e9 || abs < 1e-6)) return value.toExponential(4);
-  return String(Math.round(value * 1e6) / 1e6);
+/* ------------------------------------------------------- shared helpers */
+function utilCopy(text, message) {
+  if (!text) return;
+  const done = () => showAppToast(message || "Copied.");
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => {
+      const area = document.createElement("textarea");
+      area.value = text;
+      document.body.append(area);
+      area.select();
+      try { document.execCommand("copy"); } catch (error) { /* ignore */ }
+      area.remove();
+      done();
+    });
+    return;
+  }
+  const area = document.createElement("textarea");
+  area.value = text;
+  document.body.append(area);
+  area.select();
+  try { document.execCommand("copy"); } catch (error) { /* ignore */ }
+  area.remove();
+  done();
 }
 
-/* ------------------------------------------------ unit converter */
+function utilFormat(value, decimals) {
+  if (!Number.isFinite(value)) return "—";
+  const abs = Math.abs(value);
+  if (abs !== 0 && (abs >= 1e12 || abs < 1e-6)) return value.toExponential(4);
+  const rounded = Number(value.toFixed(decimals ?? 6));
+  return rounded.toLocaleString("en-IN", { maximumFractionDigits: decimals ?? 6 });
+}
+
+/* ------------------------------------------------------- unit converter */
 const CONVERTER = {
-  Length: { units: { mm: 0.001, cm: 0.01, m: 1, km: 1000, in: 0.0254, ft: 0.3048, yd: 0.9144, mi: 1609.344 }, from: "m", to: "ft" },
-  Weight: { units: { mg: 1e-6, g: 0.001, kg: 1, t: 1000, oz: 0.028349523125, lb: 0.45359237 }, from: "kg", to: "lb" },
+  Length: {
+    units: {
+      mm: 0.001, cm: 0.01, m: 1, km: 1000, in: 0.0254, ft: 0.3048, yd: 0.9144,
+      mi: 1609.344, nmi: 1852, "µm": 1e-6,
+    },
+    from: "m", to: "ft",
+  },
+  Weight: {
+    units: { mg: 1e-6, g: 0.001, kg: 1, t: 1000, oz: 0.028349523125, lb: 0.45359237, st: 6.35029318, ct: 0.0002 },
+    from: "kg", to: "lb",
+  },
   Temperature: { special: true, units: { "°C": 1, "°F": 1, K: 1 }, from: "°C", to: "°F" },
-  Area: { units: { "cm²": 1e-4, "m²": 1, ha: 10000, "km²": 1e6, "ft²": 0.09290304, "yd²": 0.83612736, acre: 4046.8564224 }, from: "m²", to: "ft²" },
-  Volume: { units: { mL: 0.001, L: 1, "m³": 1000, "fl oz": 0.0295735295625, cup: 0.2365882365, pt: 0.473176473, qt: 0.946352946, gal: 3.785411784 }, from: "L", to: "gal" },
-  Speed: { units: { "m/s": 1, "km/h": 0.2777777778, mph: 0.44704, knot: 0.5144444444 }, from: "km/h", to: "mph" },
-  Time: { units: { ms: 0.001, s: 1, min: 60, h: 3600, day: 86400, week: 604800 }, from: "min", to: "h" },
-  Data: { units: { bit: 0.125, B: 1, KB: 1024, MB: 1048576, GB: 1073741824, TB: 1099511627776 }, from: "MB", to: "GB" },
+  Area: {
+    units: { "cm²": 1e-4, "m²": 1, ha: 10000, "km²": 1e6, "in²": 0.00064516, "ft²": 0.09290304, "yd²": 0.83612736, "mi²": 2589988.110336, acre: 4046.8564224 },
+    from: "m²", to: "ft²",
+  },
+  Volume: {
+    units: { mL: 0.001, L: 1, "m³": 1000, tsp: 0.00492892159375, tbsp: 0.01478676478125, "fl oz": 0.0295735295625, cup: 0.2365882365, pt: 0.473176473, qt: 0.946352946, gal: 3.785411784 },
+    from: "L", to: "gal",
+  },
+  Speed: { units: { "m/s": 1, "km/h": 0.2777777778, mph: 0.44704, knot: 0.5144444444, "ft/s": 0.3048 }, from: "km/h", to: "mph" },
+  Time: { units: { ms: 0.001, s: 1, min: 60, h: 3600, day: 86400, week: 604800, month: 2629800, year: 31557600 }, from: "min", to: "h" },
+  Data: { units: { bit: 0.125, B: 1, KB: 1024, MB: 1048576, GB: 1073741824, TB: 1099511627776, PB: 1125899906842624 }, from: "MB", to: "GB" },
 };
 
 function convertTemperature(value, from, to) {
-  const toC = from === "°C" ? value : from === "°F" ? ((value - 32) * 5) / 9 : value - 273.15;
-  return to === "°C" ? toC : to === "°F" ? (toC * 9) / 5 + 32 : toC + 273.15;
+  const celsius = from === "°C" ? value : from === "°F" ? ((value - 32) * 5) / 9 : value - 273.15;
+  return to === "°C" ? celsius : to === "°F" ? (celsius * 9) / 5 + 32 : celsius + 273.15;
 }
 
 function renderConverter() {
   const categories = Object.keys(CONVERTER);
+  const saved = readStored(UTIL_KEYS.converter, null) || {};
+
   utilityBody.innerHTML = `
     <div class="util-field">
       <label for="conv-cat">Category</label>
@@ -2494,7 +2545,17 @@ function renderConverter() {
         <select data-conv-to aria-label="Convert to unit"></select>
       </div>
     </div>
+    <div class="util-actions">
+      <button class="util-btn" type="button" data-conv-copy>Copy result</button>
+      <button class="util-btn" type="button" data-conv-reset>Reset</button>
+    </div>
     <p class="util-note" data-conv-note></p>
+    <div class="util-table-wrap">
+      <table class="util-table">
+        <caption>Same value in every unit</caption>
+        <tbody data-conv-table></tbody>
+      </table>
+    </div>
   `;
 
   const categoryEl = utilityBody.querySelector("[data-conv-category]");
@@ -2503,14 +2564,25 @@ function renderConverter() {
   const toEl = utilityBody.querySelector("[data-conv-to]");
   const resultEl = utilityBody.querySelector("[data-conv-result]");
   const noteEl = utilityBody.querySelector("[data-conv-note]");
+  const tableEl = utilityBody.querySelector("[data-conv-table]");
+
+  const persist = () => writeStored(UTIL_KEYS.converter, {
+    category: categoryEl.value, from: fromEl.value, to: toEl.value,
+  });
+
+  const compute = (value, from, to, cfg) => (cfg.special
+    ? convertTemperature(value, from, to)
+    : (value * cfg.units[from]) / cfg.units[to]);
 
   const fillUnits = () => {
     const cfg = CONVERTER[categoryEl.value];
     const names = Object.keys(cfg.units);
     fromEl.innerHTML = names.map((u) => `<option value="${u}">${u}</option>`).join("");
     toEl.innerHTML = names.map((u) => `<option value="${u}">${u}</option>`).join("");
-    fromEl.value = cfg.from;
-    toEl.value = cfg.to;
+    const wantFrom = saved.category === categoryEl.value && cfg.units[saved.from] ? saved.from : cfg.from;
+    const wantTo = saved.category === categoryEl.value && cfg.units[saved.to] ? saved.to : cfg.to;
+    fromEl.value = wantFrom;
+    toEl.value = wantTo;
     update();
   };
 
@@ -2520,163 +2592,352 @@ function renderConverter() {
     if (!Number.isFinite(raw)) {
       resultEl.value = "";
       noteEl.textContent = "Enter a number to convert.";
+      tableEl.innerHTML = "";
       return;
     }
     const from = fromEl.value;
     const to = toEl.value;
-    const out = cfg.special
-      ? convertTemperature(raw, from, to)
-      : (raw * cfg.units[from]) / cfg.units[to];
-    resultEl.value = formatNumber(out);
-    noteEl.textContent = `${formatNumber(raw)} ${from} = ${formatNumber(out)} ${to}`;
+    const out = compute(raw, from, to, cfg);
+    resultEl.value = utilFormat(out);
+    noteEl.textContent = `${utilFormat(raw)} ${from} = ${utilFormat(out)} ${to}   ·   ${utilFormat(compute(1, from, to, cfg))} ${to} per 1 ${from}`;
+
+    if (cfg.special) {
+      const celsius = from === "°C" ? raw : from === "°F" ? ((raw - 32) * 5) / 9 : raw - 273.15;
+      if (celsius < -273.15) noteEl.textContent += "   ·   Below absolute zero";
+    }
+
+    tableEl.innerHTML = Object.keys(cfg.units)
+      .map((unit) => `<tr><th scope="row">${unit}</th><td>${utilFormat(compute(raw, from, unit, cfg))}</td></tr>`)
+      .join("");
+    persist();
   };
 
-  categoryEl.addEventListener("change", fillUnits);
+  categoryEl.value = saved.category && CONVERTER[saved.category] ? saved.category : categories[0];
+  categoryEl.addEventListener("change", () => { saved.category = categoryEl.value; fillUnits(); });
   [valueEl, fromEl, toEl].forEach((el) => el.addEventListener("input", update));
+
   utilityBody.querySelector("[data-conv-swap]").addEventListener("click", () => {
     const from = fromEl.value;
     fromEl.value = toEl.value;
     toEl.value = from;
+    const converted = resultEl.value.replace(/,/g, "");
+    if (converted && Number.isFinite(Number(converted))) valueEl.value = converted;
     update();
+  });
+  utilityBody.querySelector("[data-conv-copy]").addEventListener("click", () => utilCopy(resultEl.value, "Result copied."));
+  utilityBody.querySelector("[data-conv-reset]").addEventListener("click", () => {
+    valueEl.value = "1";
+    fillUnits();
   });
 
   fillUnits();
 }
 
-/* ------------------------------------------------ password generator */
+/* --------------------------------------------------- password generator */
+const PASSPHRASE_WORDS = ("acorn admiral agate almond alpaca alder alley alloy almanac alpine altar amber anchor angle anvil apricot arbor arcade archer arctic arena argon armor aroma arrow aspen aspen astro atlas attic auburn aurora avocado axis azure badge bagel bakery balance baltic bamboo banner barley basil basin basket baton bayou beach beaker beetle bell belt bench bengal berry beryl bike birch biscuit bison blade blank blaze blend blimp blink bloom bluff board boat bobcat bolero bonus border boulder bouquet bow bowline bracket braid brass brawl bread breeze brick bridle brine brisk bronze brooch broom brush bubble bucket buffalo bulb bundle bunker buoy burrow bushel butane cabin cable cadet camel camera canal canary canoe canopy caper capsule caramel cardinal cargo carnival carrot cart carve cascade cashew castle catnip cavern caviar cedar cellar chalk chapel charm chart chime chisel chorus cider cinder cinnamon circle citrus civic clamp clarity clay cliff climate clinic cloak clock clove clover cluster coast cobra cocoa coconut coil comet compass cone copper coral cord cork corn cosmos cottage cougar council courier cove coyote crab cradle craft crane crater crayon creek crest cricket crimson crisp crocus crown cruise crumb crystal cube cumin curator curl current curve cushion cyclone cymbal dahlia dairy daisy dance dandelion dapper daring darter dawn deal decade decor deer delta denim depot derby desert detail dew diagonal dial diary diesel digit dill diner dinghy dinner disco dish dock doctor dodge dogwood dollar dolphin dome donkey donut doodle dory dove draft dragon drama drawer dream drift drill drizzle drone droplet drum dryad duchy dune dusk dust duty dwell dynamo eager eagle earl early earth easel east easy ebony echo eclipse eclair edge eddy editor effort egg eight elbow elder electric elegant element elephant elevn elixir elk elm ember emblem emerald emery empire engine english enigma envoy epic epoch equal equator era errand escape espresso essay estate etching ether ethics eucalyptus evening event everglade exact exit expert explorer extra fable fabric facade factor factory fahrenheit fair fairy falcon fall family famous fandom fantasy far farm fashion fathom feather fedora feline fellow fence fennel fern ferry festival fiber fiction fiddle field figure file filter final finch finder finger fir fire first fjord flag flair flannel flare flash flax fleet flicker flint float flock floor floral flour flow fluid flute foam fog foil fold foliage folk fond font food ford forest forge fork formal fortune forum fossil fountain foxglove frame free fresh friend fringe frock front frost fruit fudge fuel fudge galaxy gallery garden garlic garnet gate gather gauge gazebo gazelle gear gecko gem general gentle genuine geode geology gesture ghost giant gift ginger giraffe glacier glade gland glass glaze gleam glen glide glitter globe gloom glory glove glow glue gold gondola gong goose gorge gospel govern grace grade grain grand granite graph grasp grass gravel gravity gray grease green greet grid grill grin grip grove grow guard guest guide gulf gull gust habit hail hair hall halo hammer hamster harbor harmony harp harvest hatch haven hawk hay hazel head heart heath hedge helium helm herb herd heritage hero heron hickory hidden high hike hill hinge hint hippo hive hobby hockey hold hollow holly honey hood hoof horizon horn horse host hotel hound house hub huge human humble humid humor hunter hurdle hut hydro hymn ibex ice icon idea igloo image impact inch index indigo ink inlet inner input iris iron island ivory ivy jackal jacket jade jaguar jar jasmine jasper jaw jazz jelly jet jewel jigsaw job jog join joke journal journey joy judge juice jumbo jump junco jungle juniper jury justice kale kanga kayak keel keen kelp kernel kettle key keystone kid kiln kind king kiosk kite kitten kiwi knoll knot koala koi label labor ladder lagoon lake lamb lamp lance land lane lantern lap larch large larva laser lasso latch late lava lawn layer leaf league leather ledge leek legend legume lemon lentil leopard level lever liberty library lichen life lift light lilac lily lime limit linen link lion liquid list literal little live lizard llama load loaf lobby lobster local lock lodge loft logic log lotus loud lounge love loyal lucid lucky lumber lunar lunch lupine lyric macaw machine magma magnet maize major mango manor mantle maple marble march margin marina mark market marsh mask mason mast match matrix mauve meadow medal media medley meet melody melon member memory menthol menu mercury merge merit mesa mesh message metal meteor method metric midge midnight might mild mile milk mill miller mimic mind mine mint minute mirage mirror mist mitten mix moat mobile model modern modest module mohair moist molar moment monarch money monitor monkey monsoon month moon moose moped moral more morning mortar mosaic moss motel moth motion motor mound mount mouse mouth move movie mower mud muffin mug mulberry mule museum mushroom music mustang myrtle mystic nadir nail name napkin narrow native nature naval near neat nectar needle neighbor neon nephew nest net nettle network neutral new news next nice niche nickel niece night nimble nine noble nod noise nomad noon north nose note notice novel nudge number nurse nut oak oasis oat ocean ochre octave odd offer office often oil old olive omega onion online onset opal open opera orbit orchard orchid order organ orient origin osprey otter ounce outer outfit oval oven over owl own oxide oxygen oyster pace pack paddle page paint pair palace pale palm panda panel panic pantry papaya paper parade parcel parfait park parrot parsley part party pass pasta pastel patio patrol pattern pause pave peach peacock peak peanut pear pearl pebble pecan pedal peel pegasus pelican pen pencil penguin penny peony pepper perch perfect pet petal pewter phantom phase pheasant phone photo phrase piano picnic picture pie pier pigeon pike pilot pinch pine pink pint pioneer pipe piston pitch pivot pixel pizza place plain plane planet plank plant plaster plate play plaza pleasant pledge plenty plot plow plum plumber plunge plywood pocket poem poet point polar pole polish pollen pond pony poodle pool poppy porch portal porter pose posit postal pot potato pottery pouch pounce powder power prairie praise prawn precise prefix press pretty price pride prime prince print prism prize probe process produce profit prompt proof proper prose protect proud prove prune public pudding puddle puff pull pulley pulse puma pumpkin punch pupil puppy purple purse puzzle pyramid quail quaint quake quality quartz quay queen quest quick quiet quill quilt quince quiver quote rabbit raccoon race rack radar radio radish raft rail rain rainbow raise raisin rake rally ram ranch range rapid rare raven ray razor reach read ready realm reason rebel recall recipe record red reed reef refer reflect regal region relay release relic relief rely remain remedy remind remote render renew rent repair repeat report rescue reserve reset resin resolve resort rest result retina retreat return reveal review revive reward rhino rhubarb ribbon rice ridge rifle right rigid rim ring rinse ripe ripple rise risk ritual rival river road roast robin robot rock rocket rod rodeo roll roof rook room root rope rose rotate rough round route rover row royal rub ruby rudder rugby ruler rumble runner rural rush rust safe saffron sage sail saint salad salmon salon salt sample sand sandal sapphire sardine satin sauce sauna save saw say scale scan scarf scatter scene scent school science scissors scope score scout scrap screen script scroll sea seal search season seat second secret section seed seek seem select self sell send senior sense sequel serene series serve set settle seven shade shadow shaft shallow shape share shark sharp shave shed sheep sheet shelf shell shelter shield shift shine ship shirt shock shoe shop shore short shot shoulder shout show shower shrimp shrine shrub shuffle shy sibling side siege sight sign silk silly silver simple sing sink siren sister site six size skate sketch ski skill skin skirt sky slate sleep sleeve slice slide slim slope slot slow small smart smile smoke smooth snack snail snake snap sneak snow soap soccer social sock soda sofa soft soil solar sold solid solve song soon sort soul sound soup source south space spade spare spark speak spear special speed spell sphere spice spider spike spin spine spiral spirit split spoke sponge spoon sport spot spray spread spring spruce spur square squash squad squirrel stable stack stadium staff stage stair stake stamp stand star start state station stay steady steam steel steep stem step stereo stick still stitch stock stone stool stop store stork storm story stove strap straw stream street stretch strike string strong studio study stuff style sugar suit summer summit sun sundial sunny sunset super supply sure surf surge surprise survey swift swim swing switch sword symbol syrup system table tackle tactic tag tail tailor take tale talent talk tall tan tandem tank tape target task taste tavern tea teach team teal teapot tear tech tell temple ten tender tennis tent term terrain test text thank that thaw theater theme thick thin thing think third thorn thought thread three thrive throne throw thumb thunder ticket tide tidy tie tiger tight tile till tilt timber time tin tiny tip tire title toast today toe together token toll tomato tone tongue tool tooth top topic torch total touch tour tower town toy trace track trade trail train trait tram trap travel tray treasure treat tree trend trial tribe trick trigger trim trio trip trophy tropic trouble truck true trumpet trunk trust truth tube tulip tumble tuna tunnel turbo turn turtle tusk tutor twig twin twist two type ultra umber uncle under uniform union unique unit unity up upper urban usage use useful usual utter valley value valve van vanilla vapor vary vase vast vault vector veil velvet vendor venue verb verge verse very vessel vet via vibe vice video view vigor villa vine vinyl viola violet violin viper virtue visible vision visit visual vital vivid vocal voice void volcano volume vote voyage waffle wagon waist wait wake walk wall walnut walrus wand wander want war warm warn wash wasp waste watch water wave wax way weak wealth wear weather weave web wedge week weight welcome weld well west wet whale wheat wheel when where while whisker whisper white whole wide widget width wild will willow win wind window wine wing wink winner winter wire wisdom wise wish wit wolf woman wonder wood wool word work world worm worry worth wrap wrench wrist write yacht yak yard yarn year yeast yellow yes yield yoga yogurt young youth zebra zen zero zest zigzag zinc zip zone zoo zoom").split(" ");
+
+function utilRandomInt(max) {
+  const buffer = new Uint32Array(1);
+  crypto.getRandomValues(buffer);
+  return buffer[0] % max;
+}
+
 function generatePassword(options) {
   const sets = [];
-  if (options.upper) sets.push("ABCDEFGHJKLMNPQRSTUVWXYZ" + (options.excludeAmbiguous ? "" : "IO"));
-  if (options.lower) sets.push("abcdefghijkmnopqrstuvwxyz" + (options.excludeAmbiguous ? "" : "lo"));
+  if (options.upper) sets.push(options.excludeAmbiguous ? "ABCDEFGHJKLMNPQRSTUVWXYZ" : "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+  if (options.lower) sets.push(options.excludeAmbiguous ? "abcdefghijkmnopqrstuvwxyz" : "abcdefghijklmnopqrstuvwxyz");
   if (options.digits) sets.push(options.excludeAmbiguous ? "23456789" : "0123456789");
   if (options.symbols) sets.push("!@#$%^&*()-_=+[]{};:,.?/");
   if (!sets.length) return "";
 
-  const pool = sets.join("");
+  let pool = sets.join("");
+  if (options.exclude) pool = [...pool].filter((c) => !options.exclude.includes(c)).join("");
+  if (!pool) return "";
+
   const length = Math.max(sets.length, options.length);
-  const random = (max) => {
-    const buffer = new Uint32Array(1);
-    crypto.getRandomValues(buffer);
-    return buffer[0] % max;
-  };
-  const chars = [];
-  sets.forEach((set) => chars.push(set[random(set.length)]));
-  while (chars.length < length) chars.push(pool[random(pool.length)]);
+  const chars = sets
+    .map((set) => [...set].filter((c) => !options.exclude || !options.exclude.includes(c)))
+    .filter((set) => set.length)
+    .map((set) => set[utilRandomInt(set.length)]);
+  while (chars.length < length) chars.push(pool[utilRandomInt(pool.length)]);
   for (let i = chars.length - 1; i > 0; i -= 1) {
-    const j = random(i + 1);
+    const j = utilRandomInt(i + 1);
     [chars[i], chars[j]] = [chars[j], chars[i]];
   }
   return chars.join("");
 }
 
+function generatePassphrase(options) {
+  const words = [];
+  for (let i = 0; i < options.words; i += 1) {
+    let word = PASSPHRASE_WORDS[utilRandomInt(PASSPHRASE_WORDS.length)];
+    if (options.capitalize) word = word[0].toUpperCase() + word.slice(1);
+    words.push(word);
+  }
+  if (options.number) words.push(String(utilRandomInt(90) + 10));
+  return words.join(options.separator || "-");
+}
+
 function renderPassword() {
+  const saved = readStored(UTIL_KEYS.password, null) || {};
+  const state = {
+    mode: saved.mode === "passphrase" ? "passphrase" : "random",
+    length: saved.length || 16,
+    words: saved.words || 5,
+    separator: saved.separator || "-",
+    capitalize: saved.capitalize !== false,
+    number: saved.number !== false,
+    upper: saved.upper !== false,
+    lower: saved.lower !== false,
+    digits: saved.digits !== false,
+    symbols: saved.symbols !== false,
+    excludeAmbiguous: Boolean(saved.excludeAmbiguous),
+    exclude: saved.exclude || "",
+  };
+
   utilityBody.innerHTML = `
     <div class="util-field">
-      <label for="pw-length">Length: <output data-pw-len>16</output></label>
-      <input id="pw-length" type="range" min="8" max="64" value="16" data-pw-range />
+      <label for="pw-mode">Mode</label>
+      <select id="pw-mode" data-pw-mode>
+        <option value="random">Random characters</option>
+        <option value="passphrase">Memorable passphrase</option>
+      </select>
     </div>
-    <div class="util-toggles">
-      <label><input type="checkbox" data-pw="upper" checked /> A–Z</label>
-      <label><input type="checkbox" data-pw="lower" checked /> a–z</label>
-      <label><input type="checkbox" data-pw="digits" checked /> 0–9</label>
-      <label><input type="checkbox" data-pw="symbols" checked /> !@#$</label>
-      <label><input type="checkbox" data-pw="excludeAmbiguous" /> Exclude look-alikes</label>
+    <div data-pw-random>
+      <div class="util-field">
+        <label for="pw-length">Length: <output data-pw-len>16</output></label>
+        <input id="pw-length" type="range" min="8" max="64" value="16" data-pw-range />
+      </div>
+      <div class="util-toggles">
+        <label><input type="checkbox" data-pw="upper" checked /> A–Z</label>
+        <label><input type="checkbox" data-pw="lower" checked /> a–z</label>
+        <label><input type="checkbox" data-pw="digits" checked /> 0–9</label>
+        <label><input type="checkbox" data-pw="symbols" checked /> !@#$</label>
+        <label><input type="checkbox" data-pw="excludeAmbiguous" /> Exclude look-alikes</label>
+      </div>
+      <div class="util-field">
+        <label for="pw-exclude">Never include these characters</label>
+        <input id="pw-exclude" type="text" maxlength="30" placeholder="e.g. {}[]&lt;&gt;" data-pw-exclude />
+      </div>
+    </div>
+    <div data-pw-phrase hidden>
+      <div class="util-field">
+        <label for="pw-words">Words: <output data-pw-words>5</output></label>
+        <input id="pw-words" type="range" min="3" max="8" value="5" data-pw-words-range />
+      </div>
+      <div class="util-field">
+        <label for="pw-sep">Separator</label>
+        <select id="pw-sep" data-pw-separator>
+          <option value="-">- (dash)</option>
+          <option value=".">. (dot)</option>
+          <option value="_">_ (underscore)</option>
+          <option value=" ">space</option>
+        </select>
+      </div>
+      <div class="util-toggles">
+        <label><input type="checkbox" data-pw="capitalize" checked /> Capitalise</label>
+        <label><input type="checkbox" data-pw="number" checked /> Add a number</label>
+      </div>
     </div>
     <div class="pw-output">
       <input type="text" readonly data-pw-out aria-label="Generated password" />
       <button type="button" data-pw-copy>Copy</button>
     </div>
-    <button class="control-button primary" type="button" data-pw-generate>Generate new password</button>
+    <div class="meter" aria-hidden="true"><span data-pw-meter></span></div>
     <p class="util-note" data-pw-strength></p>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-pw-generate>Generate new</button>
+      <button class="util-btn" type="button" data-pw-batch>3 options</button>
+    </div>
   `;
 
+  const modeEl = utilityBody.querySelector("[data-pw-mode]");
+  const randomWrap = utilityBody.querySelector("[data-pw-random]");
+  const phraseWrap = utilityBody.querySelector("[data-pw-phrase]");
   const rangeEl = utilityBody.querySelector("[data-pw-range]");
   const lenEl = utilityBody.querySelector("[data-pw-len]");
+  const wordsRange = utilityBody.querySelector("[data-pw-words-range]");
+  const wordsOut = utilityBody.querySelector("[data-pw-words]");
+  const sepEl = utilityBody.querySelector("[data-pw-separator]");
+  const excludeEl = utilityBody.querySelector("[data-pw-exclude]");
   const outEl = utilityBody.querySelector("[data-pw-out]");
   const strengthEl = utilityBody.querySelector("[data-pw-strength]");
+  const meterEl = utilityBody.querySelector("[data-pw-meter]");
+  const generateBtn = utilityBody.querySelector("[data-pw-generate]");
 
-  const readOptions = () => {
-    const options = { length: Number(rangeEl.value) };
+  const sync = () => {
+    state.mode = modeEl.value;
+    state.length = Number(rangeEl.value);
+    state.words = Number(wordsRange.value);
+    state.separator = sepEl.value;
+    state.exclude = excludeEl.value;
     utilityBody.querySelectorAll("[data-pw]").forEach((input) => {
-      options[input.dataset.pw] = input.checked;
+      state[input.dataset.pw] = input.checked;
     });
-    return options;
+    lenEl.textContent = String(state.length);
+    wordsOut.textContent = String(state.words);
+    randomWrap.hidden = state.mode !== "random";
+    phraseWrap.hidden = state.mode !== "passphrase";
+    writeStored(UTIL_KEYS.password, state);
   };
 
   const refresh = () => {
-    const options = readOptions();
-    lenEl.textContent = String(options.length);
-    const password = generatePassword(options);
-    outEl.value = password || "Select at least one character set";
-    if (!password) {
+    sync();
+    const value = state.mode === "passphrase" ? generatePassphrase(state) : generatePassword(state);
+    outEl.value = value || "Select at least one character set";
+    generateBtn.disabled = !value;
+
+    if (!value) {
       strengthEl.textContent = "Pick at least one character set.";
+      meterEl.style.width = "0%";
       return;
     }
-    const poolSize =
-      (options.upper ? 24 : 0) + (options.lower ? 24 : 0) + (options.digits ? 10 : 0) + (options.symbols ? 24 : 0);
-    const bits = Math.round(options.length * Math.log2(Math.max(2, poolSize)));
+    const poolSize = state.mode === "passphrase"
+      ? PASSPHRASE_WORDS.length
+      : (state.upper ? 26 : 0) + (state.lower ? 26 : 0) + (state.digits ? 10 : 0) + (state.symbols ? 24 : 0);
+    const units = state.mode === "passphrase" ? state.words + (state.number ? 1 : 0) : state.length;
+    const bits = Math.round(units * Math.log2(Math.max(2, poolSize)));
     const label = bits >= 110 ? "Excellent" : bits >= 80 ? "Strong" : bits >= 60 ? "Good" : bits >= 40 ? "Fair" : "Weak";
     strengthEl.textContent = `${label} — about ${bits} bits of entropy`;
+    meterEl.style.width = `${Math.min(100, Math.round((bits / 128) * 100))}%`;
   };
 
-  rangeEl.addEventListener("input", refresh);
+  modeEl.value = state.mode;
+  rangeEl.value = String(state.length);
+  wordsRange.value = String(state.words);
+  sepEl.value = state.separator;
+  excludeEl.value = state.exclude;
+  utilityBody.querySelectorAll("[data-pw]").forEach((input) => {
+    input.checked = Boolean(state[input.dataset.pw]);
+  });
+
+  [modeEl, rangeEl, wordsRange, sepEl, excludeEl].forEach((el) => el.addEventListener("input", refresh));
   utilityBody.querySelectorAll("[data-pw]").forEach((input) => input.addEventListener("change", refresh));
-  utilityBody.querySelector("[data-pw-generate]").addEventListener("click", refresh);
-  utilityBody.querySelector("[data-pw-copy]").addEventListener("click", async () => {
-    if (!outEl.value) return;
-    try {
-      await navigator.clipboard.writeText(outEl.value);
-      showAppToast("Password copied.");
-    } catch (error) {
-      outEl.select();
-      document.execCommand?.("copy");
-      showAppToast("Password copied.");
+  generateBtn.addEventListener("click", refresh);
+  utilityBody.querySelector("[data-pw-copy]").addEventListener("click", () => utilCopy(outEl.value, "Password copied."));
+  utilityBody.querySelector("[data-pw-batch]").addEventListener("click", () => {
+    sync();
+    const options = [];
+    for (let i = 0; i < 3; i += 1) {
+      options.push(state.mode === "passphrase" ? generatePassphrase(state) : generatePassword(state));
     }
+    outEl.value = options.join("  ·  ");
+    strengthEl.textContent = "Three options — copy the one you like.";
+    meterEl.style.width = "60%";
   });
 
   refresh();
 }
 
-/* ------------------------------------------------ word counter */
+/* ------------------------------------------------------- word counter */
 function renderWordCounter() {
+  const saved = readStored(UTIL_KEYS.wordcount, null) || {};
   utilityBody.innerHTML = `
     <textarea class="util-textarea" data-wc-input placeholder="Start typing or paste your text…" aria-label="Text to count"></textarea>
+    <div class="util-field">
+      <label for="wc-limit">Character target: <output data-wc-limit-out>280</output></label>
+      <input id="wc-limit" type="range" min="50" max="3000" step="10" value="280" data-wc-limit />
+    </div>
+    <div class="meter" aria-hidden="true"><span data-wc-meter></span></div>
     <div class="stat-grid">
       <div class="stat"><span data-wc="words">0</span><small>Words</small></div>
       <div class="stat"><span data-wc="chars">0</span><small>Characters</small></div>
       <div class="stat"><span data-wc="charsNoSpace">0</span><small>No spaces</small></div>
       <div class="stat"><span data-wc="sentences">0</span><small>Sentences</small></div>
       <div class="stat"><span data-wc="paragraphs">0</span><small>Paragraphs</small></div>
-      <div class="stat"><span data-wc="reading">0 min</span><small>Reading time</small></div>
+      <div class="stat"><span data-wc="reading">0 min</span><small>Reading</small></div>
+      <div class="stat"><span data-wc="speaking">0 min</span><small>Speaking</small></div>
+      <div class="stat"><span data-wc="avg">0</span><small>Avg word</small></div>
+      <div class="stat"><span data-wc="longest">—</span><small>Longest word</small></div>
     </div>
+    <div class="util-actions">
+      <button class="util-btn" data-wc-case="upper">UPPER</button>
+      <button class="util-btn" data-wc-case="lower">lower</button>
+      <button class="util-btn" data-wc-case="title">Title Case</button>
+      <button class="util-btn" data-wc-case="sentence">Sentence case</button>
+      <button class="util-btn" data-wc-case="trim">Trim spaces</button>
+      <button class="util-btn" data-wc-copy>Copy text</button>
+      <button class="util-btn" data-wc-clear>Clear</button>
+    </div>
+    <p class="util-note" data-wc-keywords></p>
   `;
 
   const input = utilityBody.querySelector("[data-wc-input]");
+  const limitEl = utilityBody.querySelector("[data-wc-limit]");
+  const limitOut = utilityBody.querySelector("[data-wc-limit-out]");
+  const meter = utilityBody.querySelector("[data-wc-meter]");
+  const kwEl = utilityBody.querySelector("[data-wc-keywords]");
   const out = (key) => utilityBody.querySelector(`[data-wc="${key}"]`);
+
+  input.value = saved.text || "";
+  if (saved.limit) limitEl.value = String(saved.limit);
 
   const update = () => {
     const text = input.value;
     const trimmed = text.trim();
-    const words = trimmed ? trimmed.split(/\s+/).length : 0;
+    const words = trimmed ? trimmed.split(/\s+/).filter(Boolean) : [];
     const sentences = trimmed ? (trimmed.match(/[.!?]+(\s|$)/g) || []).length || 1 : 0;
     const paragraphs = trimmed ? trimmed.split(/\n\s*\n/).filter((p) => p.trim()).length : 0;
-    out("words").textContent = String(words);
+    const limit = Number(limitEl.value);
+    const longest = words.reduce((best, word) => (word.replace(/[^\p{L}\p{N}]/gu, "").length > best.length ? word : best), "");
+    const totalLetters = words.reduce((sum, word) => sum + word.replace(/[^\p{L}\p{N}]/gu, "").length, 0);
+
+    out("words").textContent = String(words.length);
     out("chars").textContent = String(text.length);
     out("charsNoSpace").textContent = String(text.replace(/\s/g, "").length);
     out("sentences").textContent = String(sentences);
     out("paragraphs").textContent = String(paragraphs);
-    out("reading").textContent = `${Math.max(words ? 1 : 0, Math.round(words / 200))} min`;
+    out("reading").textContent = `${Math.max(words.length ? 1 : 0, Math.round(words.length / 200))} min`;
+    out("speaking").textContent = `${Math.max(words.length ? 1 : 0, Math.round(words.length / 130))} min`;
+    out("avg").textContent = words.length ? (totalLetters / words.length).toFixed(1) : "0";
+    out("longest").textContent = longest || "—";
+
+    limitOut.textContent = String(limit);
+    const ratio = limit ? Math.min(1, text.length / limit) : 0;
+    meter.style.width = `${Math.round(ratio * 100)}%`;
+    meter.parentElement.classList.toggle("is-over", text.length > limit);
+
+    const counts = new Map();
+    words.forEach((word) => {
+      const key = word.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+      if (key.length < 3) return;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+    kwEl.textContent = top.length ? `Top words: ${top.map(([w, n]) => `${w} (${n})`).join(", ")}` : "";
+
+    writeStored(UTIL_KEYS.wordcount, { text, limit });
+  };
+
+  const applyCase = (kind) => {
+    let text = input.value;
+    if (kind === "upper") text = text.toUpperCase();
+    else if (kind === "lower") text = text.toLowerCase();
+    else if (kind === "title") text = text.replace(/\p{L}[\p{L}'’]*/gu, (w) => w[0].toUpperCase() + w.slice(1).toLowerCase());
+    else if (kind === "sentence") text = text.toLowerCase().replace(/(^\s*\p{L}|[.!?]\s+\p{L})/gu, (m) => m.toUpperCase());
+    else if (kind === "trim") text = text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+    input.value = text;
+    update();
   };
 
   input.addEventListener("input", update);
+  limitEl.addEventListener("input", update);
+  utilityBody.querySelectorAll("[data-wc-case]").forEach((button) => {
+    button.addEventListener("click", () => applyCase(button.dataset.wcCase));
+  });
+  utilityBody.querySelector("[data-wc-copy]").addEventListener("click", () => utilCopy(input.value, "Text copied."));
+  utilityBody.querySelector("[data-wc-clear]").addEventListener("click", () => {
+    input.value = "";
+    update();
+    input.focus();
+  });
+
   update();
 }
 
-/* ------------------------------------------------ to-do list */
-const TODO_KEY = "flip-watch-todos";
-
+/* ----------------------------------------------------------- to-do list */
 function readTodos() {
-  const stored = readStored(TODO_KEY, []);
+  const stored = readStored(UTIL_KEYS.todo, []);
   return Array.isArray(stored) ? stored.filter((item) => item && typeof item.text === "string") : [];
 }
 
@@ -2684,6 +2945,7 @@ function renderTodo() {
   utilityBody.innerHTML = `
     <form class="todo-add" data-todo-form>
       <input type="text" maxlength="140" placeholder="Add a task…" aria-label="New task" data-todo-input />
+      <input type="date" aria-label="Due date (optional)" data-todo-due />
       <button type="submit">Add</button>
     </form>
     <div class="todo-filters" role="group" aria-label="Filter tasks">
@@ -2691,7 +2953,9 @@ function renderTodo() {
       <button type="button" data-todo-filter="active">Active</button>
       <button type="button" data-todo-filter="done">Done</button>
       <button type="button" data-todo-filter="clear">Clear done</button>
+      <button type="button" data-todo-filter="clear-all">Clear all</button>
     </div>
+    <p class="util-note" data-todo-count></p>
     <ul class="todo-list" data-todo-list></ul>
     <p class="util-note" data-todo-empty>No tasks yet — add one above.</p>
   `;
@@ -2700,12 +2964,24 @@ function renderTodo() {
   let filter = "all";
   const listEl = utilityBody.querySelector("[data-todo-list]");
   const emptyEl = utilityBody.querySelector("[data-todo-empty]");
+  const countEl = utilityBody.querySelector("[data-todo-count]");
 
-  const save = () => writeStored(TODO_KEY, todos);
+  const save = () => writeStored(UTIL_KEYS.todo, todos);
+
+  const move = (id, delta) => {
+    const index = todos.findIndex((t) => t.id === id);
+    const target = index + delta;
+    if (index < 0 || target < 0 || target >= todos.length) return;
+    [todos[index], todos[target]] = [todos[target], todos[index]];
+    save();
+    paint();
+  };
 
   const paint = () => {
     listEl.replaceChildren();
     const visible = todos.filter((t) => (filter === "active" ? !t.done : filter === "done" ? t.done : true));
+    const today = new Date().toISOString().slice(0, 10);
+
     visible.forEach((todo) => {
       const item = document.createElement("li");
       item.className = `todo-item${todo.done ? " is-done" : ""}`;
@@ -2723,6 +2999,54 @@ function renderTodo() {
       const label = document.createElement("span");
       label.textContent = todo.text;
 
+      const meta = document.createElement("small");
+      meta.className = "todo-meta";
+      if (todo.due) {
+        meta.textContent = todo.due;
+        if (!todo.done && todo.due < today) meta.classList.add("is-overdue");
+      }
+
+      const actions = document.createElement("span");
+      actions.className = "todo-actions";
+
+      const up = document.createElement("button");
+      up.type = "button";
+      up.textContent = "↑";
+      up.setAttribute("aria-label", `Move "${todo.text}" up`);
+      up.addEventListener("click", () => move(todo.id, -1));
+
+      const down = document.createElement("button");
+      down.type = "button";
+      down.textContent = "↓";
+      down.setAttribute("aria-label", `Move "${todo.text}" down`);
+      down.addEventListener("click", () => move(todo.id, 1));
+
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.textContent = "✎";
+      edit.setAttribute("aria-label", `Edit "${todo.text}"`);
+      edit.addEventListener("click", () => {
+        const field = document.createElement("input");
+        field.type = "text";
+        field.value = todo.text;
+        field.maxLength = 140;
+        field.className = "todo-edit";
+        const commit = () => {
+          const value = field.value.trim();
+          if (value) todo.text = value;
+          save();
+          paint();
+        };
+        field.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") { event.preventDefault(); commit(); }
+          if (event.key === "Escape") paint();
+        });
+        field.addEventListener("blur", commit);
+        label.replaceWith(field);
+        field.focus();
+        field.select();
+      });
+
       const remove = document.createElement("button");
       remove.type = "button";
       remove.textContent = "×";
@@ -2733,22 +3057,34 @@ function renderTodo() {
         paint();
       });
 
-      item.append(checkbox, label, remove);
+      actions.append(up, down, edit, remove);
+      item.append(checkbox, label, meta, actions);
       listEl.append(item);
     });
+
+    const active = todos.filter((t) => !t.done).length;
+    countEl.textContent = todos.length ? `${active} active · ${todos.length - active} done` : "";
     emptyEl.textContent = visible.length ? "" : todos.length ? "Nothing in this filter." : "No tasks yet — add one above.";
   };
 
   utilityBody.querySelector("[data-todo-form]").addEventListener("submit", (event) => {
     event.preventDefault();
     const input = utilityBody.querySelector("[data-todo-input]");
+    const dueEl = utilityBody.querySelector("[data-todo-due]");
     const text = input.value.trim();
     if (!text) return;
-    todos.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text, done: false });
+    todos.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text, done: false, due: dueEl.value || "" });
     input.value = "";
+    dueEl.value = "";
     save();
     paint();
     input.focus();
+  });
+
+  utilityBody.querySelector("[data-todo-input]").addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.target.value = "";
+    }
   });
 
   utilityBody.querySelectorAll("[data-todo-filter]").forEach((button) => {
@@ -2760,9 +3096,17 @@ function renderTodo() {
         paint();
         return;
       }
+      if (value === "clear-all") {
+        if (todos.length && window.confirm("Delete all tasks?")) {
+          todos = [];
+          save();
+          paint();
+        }
+        return;
+      }
       filter = value;
       utilityBody.querySelectorAll("[data-todo-filter]").forEach((b) => {
-        b.classList.toggle("is-active", b === button && value !== "clear");
+        b.classList.toggle("is-active", b === button);
       });
       paint();
     });
@@ -2771,55 +3115,108 @@ function renderTodo() {
   paint();
 }
 
-/* ------------------------------------------------ date calculator */
+/* ------------------------------------------------------ date calculator */
 function renderDateCalculator() {
+  const saved = readStored(UTIL_KEYS.dates, null) || {};
   const today = new Date();
   const iso = (date) => date.toISOString().slice(0, 10);
+  const weekday = (date) => date.toLocaleDateString("en-IN", { weekday: "long" });
+
   utilityBody.innerHTML = `
     <div class="util-field">
       <label for="date-mode">Mode</label>
       <select id="date-mode" data-date-mode>
         <option value="age">Age from a birth date</option>
-        <option value="diff">Days between two dates</option>
+        <option value="diff">Between two dates</option>
+        <option value="add">Add or subtract days</option>
       </select>
     </div>
     <div class="date-row">
       <div class="util-field">
         <label for="date-a" data-date-label>Birth date</label>
-        <input id="date-a" type="date" data-date-a max="${iso(today)}" />
+        <input id="date-a" type="date" data-date-a />
       </div>
-      <div class="util-field" data-date-b-wrap hidden>
-        <label for="date-b">To date</label>
+      <div class="util-field" data-date-b-wrap>
+        <label for="date-b" data-date-b-label>To date</label>
         <input id="date-b" type="date" data-date-b value="${iso(today)}" />
       </div>
     </div>
+    <div class="util-field" data-date-offset-wrap hidden>
+      <label for="date-offset">Days to add (use a negative number to subtract)</label>
+      <input id="date-offset" type="number" step="1" value="90" data-date-offset />
+    </div>
     <div class="stat-grid" data-date-stats></div>
+    <p class="util-note" data-date-note></p>
   `;
 
   const modeEl = utilityBody.querySelector("[data-date-mode]");
   const aEl = utilityBody.querySelector("[data-date-a]");
   const bEl = utilityBody.querySelector("[data-date-b]");
   const bWrap = utilityBody.querySelector("[data-date-b-wrap]");
+  const bLabel = utilityBody.querySelector("[data-date-b-label]");
+  const offsetWrap = utilityBody.querySelector("[data-date-offset-wrap]");
+  const offsetEl = utilityBody.querySelector("[data-date-offset]");
   const labelEl = utilityBody.querySelector("[data-date-label]");
   const statsEl = utilityBody.querySelector("[data-date-stats]");
+  const noteEl = utilityBody.querySelector("[data-date-note]");
 
   const stat = (value, label) => `<div class="stat"><span>${value}</span><small>${label}</small></div>`;
 
+  const businessDays = (from, to) => {
+    let count = 0;
+    const cursor = new Date(from);
+    while (cursor < to) {
+      cursor.setDate(cursor.getDate() + 1);
+      const day = cursor.getDay();
+      if (day !== 0 && day !== 6) count += 1;
+    }
+    return count;
+  };
+
   const update = () => {
-    const isAge = modeEl.value === "age";
-    bWrap.hidden = isAge;
-    labelEl.textContent = isAge ? "Birth date" : "From date";
-    aEl.max = isAge ? iso(today) : "";
-    if (!aEl.value) {
-      statsEl.innerHTML = stat("—", isAge ? "Pick a birth date" : "Pick two dates");
+    const mode = modeEl.value;
+    writeStored(UTIL_KEYS.dates, { mode });
+
+    bWrap.hidden = mode === "add";
+    offsetWrap.hidden = mode !== "add";
+    labelEl.textContent = mode === "age" ? "Birth date" : mode === "add" ? "Start date" : "From date";
+    bLabel.textContent = "To date";
+    aEl.max = mode === "age" ? iso(today) : "";
+
+    if (mode === "add") {
+      if (!aEl.value) {
+        statsEl.innerHTML = stat("—", "Pick a start date");
+        noteEl.textContent = "";
+        return;
+      }
+      const start = new Date(`${aEl.value}T00:00:00`);
+      const days = Math.trunc(Number(offsetEl.value) || 0);
+      const result = new Date(start);
+      result.setDate(result.getDate() + days);
+      statsEl.innerHTML = [
+        stat(iso(result), "Resulting date"),
+        stat(weekday(result), "Weekday"),
+        stat(String(days), "Days shifted"),
+      ].join("");
+      noteEl.textContent = `${iso(start)} (${weekday(start)}) ${days >= 0 ? "+" : "−"} ${Math.abs(days)} days`;
       return;
     }
+
+    if (!aEl.value) {
+      statsEl.innerHTML = stat("—", mode === "age" ? "Pick a birth date" : "Pick two dates");
+      noteEl.textContent = "";
+      return;
+    }
+
     const start = new Date(`${aEl.value}T00:00:00`);
-    const end = isAge ? new Date(today.getFullYear(), today.getMonth(), today.getDate()) : new Date(`${bEl.value || iso(today)}T00:00:00`);
+    const end = mode === "age"
+      ? new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      : new Date(`${bEl.value || iso(today)}T00:00:00`);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       statsEl.innerHTML = stat("—", "Invalid date");
       return;
     }
+
     const [from, to] = start <= end ? [start, end] : [end, start];
     let years = to.getFullYear() - from.getFullYear();
     let months = to.getMonth() - from.getMonth();
@@ -2833,17 +3230,37 @@ function renderDateCalculator() {
       months += 12;
     }
     const totalDays = Math.round((to - from) / 86400000);
+
+    if (mode === "age") {
+      const next = new Date(today.getFullYear(), start.getMonth(), start.getDate());
+      if (next < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+        next.setFullYear(next.getFullYear() + 1);
+      }
+      const untilBirthday = Math.round((next - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000);
+      statsEl.innerHTML = [
+        stat(`${years}y ${months}m ${days}d`, "Age"),
+        stat(String(totalDays), "Days lived"),
+        stat(untilBirthday === 0 ? "Today!" : String(untilBirthday), "Days to birthday"),
+        stat(weekday(start), "Born on"),
+      ].join("");
+      noteEl.textContent = `Next birthday: ${iso(next)} (${weekday(next)})`;
+      return;
+    }
+
     statsEl.innerHTML = [
-      stat(`${years}y ${months}m ${days}d`, "Years / months / days"),
+      stat(`${years}y ${months}m ${days}d`, "Difference"),
       stat(String(totalDays), "Total days"),
       stat(String(Math.floor(totalDays / 7)), "Weeks"),
-      stat(String(Math.round(totalDays / 30.4375)), "Months"),
+      stat(String(businessDays(from, to)), "Business days"),
     ].join("");
+    noteEl.textContent = `${iso(from)} (${weekday(from)}) → ${iso(to)} (${weekday(to)})`;
   };
 
+  modeEl.value = saved.mode || "age";
   modeEl.addEventListener("change", update);
   aEl.addEventListener("change", update);
   bEl.addEventListener("change", update);
+  offsetEl.addEventListener("input", update);
   update();
 }
 

@@ -3952,3 +3952,105 @@ html[data-theme] .pw-output input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* ---- utility tool extras: actions, table, meters, todo meta ---- */
+html[data-theme] .util-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+html[data-theme] .util-btn {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-glass);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+html[data-theme] .util-btn:hover { color: var(--text); border-color: var(--border-strong); }
+html[data-theme] .util-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+html[data-theme] .util-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+html[data-theme] .util-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+
+html[data-theme] .util-table caption {
+  padding: 10px 12px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+html[data-theme] .util-table th,
+html[data-theme] .util-table td {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+}
+
+html[data-theme] .util-table th { color: var(--muted); font-weight: 700; }
+html[data-theme] .util-table td { font-variant-numeric: tabular-nums; }
+
+html[data-theme] .meter {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+html[data-theme] .meter span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--grad-a), var(--grad-c));
+  transition: width 0.2s ease;
+}
+
+html[data-theme] .meter.is-over span { background: linear-gradient(90deg, #f97316, #ef4444); }
+
+html[data-theme] .util-field input[type="range"] {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: var(--accent);
+}
+
+html[data-theme] .todo-item { flex-wrap: wrap; }
+html[data-theme] .todo-meta { color: var(--muted); font-size: 0.74rem; font-variant-numeric: tabular-nums; }
+html[data-theme] .todo-meta.is-overdue { color: #f87171; font-weight: 800; }
+html[data-theme] .todo-actions { display: flex; gap: 2px; }
+
+html[data-theme] .todo-actions button {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+html[data-theme] .todo-edit {
+  flex: 1;
+  min-width: 120px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+}
+
+html[data-theme] .todo-add input[type="date"] { max-width: 170px; }
+
+@media (max-width: 560px) {
+  html[data-theme] .todo-add { flex-wrap: wrap; }
+  html[data-theme] .todo-add input[type="date"] { max-width: none; }
+}
