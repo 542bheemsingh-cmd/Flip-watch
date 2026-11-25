@@ -7,7 +7,7 @@
  *    refreshed in the background so updates still arrive.
  *  - Cross-origin requests (e.g. Unsplash) are left to the network.
  */
-const CACHE = "flip-watch-v4";
+const CACHE = "flip-watch-v5";
 
 const CORE = [
   "./",
@@ -15,7 +15,6 @@ const CORE = [
   "./styles.css",
   "./script.js",
   "./manifest.json",
-  "./favicon-new.png",
   "./icon-192.png",
   "./icon-512.png",
   "./icon-maskable-512.png",
