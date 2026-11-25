@@ -16,7 +16,7 @@
 
 ## ✨ What's inside
 
-Flip Watch is a single-page web app that opens into a dashboard of eighteen tools. Every tool shares the same design system: an animated flip clock, light/dark themes, and a colour palette that slowly drifts through the spectrum.
+Flip Watch is a single-page web app that opens into a dashboard of thirty tools. Every tool shares the same design system: an animated flip clock, light/dark themes, and a colour palette that slowly drifts through the spectrum.
 
 | Tool | What it does |
 | --- | --- |
@@ -38,6 +38,18 @@ Flip Watch is a single-page web app that opens into a dashboard of eighteen tool
 | 🔐 **Base64, URL & Hash** | Encode/decode Base64 and URLs, and SHA-256 hash text offline |
 | 🎨 **Colour Toolkit** | HEX/RGB/HSL conversion, tints and shades, WCAG contrast check |
 | 🎲 **Random Picker** | Random number, dice, coin flip, or a name from a list |
+| 🔁 **Find & Replace Text** | Bulk replace, with regex and case options |
+| ✖ **Repeat & Pad Text** | Repeat text N times or pad it to a fixed width |
+| 🛡 **Password Strength Checker** | Entropy, rating and an offline crack-time estimate |
+| 🗜 **Compress Image** | Shrink a photo with a quality slider, before/after sizes |
+| 📐 **Resize Image** | Change pixel dimensions with the aspect ratio locked |
+| 🔄 **Convert Image Format** | Save a picture as PNG, JPEG or WebP |
+| ✂ **Crop Image** | Drag a box on the image and download just that part |
+| 💧 **Pick Colour from Image** | Click any pixel for its HEX, RGB and HSL |
+| 🔳 **Generate QR Code** | Turn a link or text into a downloadable QR image |
+| 📊 **Statistics Calculator** | Mean, median, mode, spread and quartiles |
+| 🔢 **Prime Checker & Factoriser** | Prime test and full prime factorisation |
+| 🗓 **Generate Calendar** | A printable month grid |
 
 <div align="center">
 <img src="assets/stopwatch-laps.png" alt="Stopwatch with laps" width="420">

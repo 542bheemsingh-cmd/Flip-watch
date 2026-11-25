@@ -83,7 +83,7 @@
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#0a0b16" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="styles.css?v=premium-16" />
+    <link rel="stylesheet" href="styles.css?v=premium-17" />
   </head>
   <body>
     <a class="skip-link" href="#dashboard">Skip to tools</a>
@@ -143,7 +143,7 @@
             <p class="dashboard-kicker">Flip Watch</p>
             <h1>Useful Tools</h1>
           </div>
-          <span class="dashboard-badge">18 Tools</span>
+          <span class="dashboard-badge">30 Tools</span>
         </div>
 
         <div class="tool-grid">
@@ -253,6 +253,78 @@
             <span class="tool-icon">?</span>
             <span class="tool-name">Random Picker</span>
             <span class="tool-meta">Numbers, dice, coin flip or a name</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="findreplace">
+            <span class="tool-icon">F&amp;R</span>
+            <span class="tool-name">Find &amp; Replace Text</span>
+            <span class="tool-meta">Swap words or regex patterns in bulk</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="textpad">
+            <span class="tool-icon">&times;N</span>
+            <span class="tool-name">Repeat &amp; Pad Text</span>
+            <span class="tool-meta">Repeat text N times or pad to a length</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="pwstrength">
+            <span class="tool-icon">STR</span>
+            <span class="tool-name">Password Strength Checker</span>
+            <span class="tool-meta">Entropy, rating and crack-time estimate</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="imgcompress">
+            <span class="tool-icon">IMG</span>
+            <span class="tool-name">Compress Image</span>
+            <span class="tool-meta">Shrink photo file size with a quality slider</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="imgresize">
+            <span class="tool-icon">PX</span>
+            <span class="tool-name">Resize Image</span>
+            <span class="tool-meta">Change pixel dimensions, ratio locked</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="imgconvert">
+            <span class="tool-icon">FMT</span>
+            <span class="tool-name">Convert Image Format</span>
+            <span class="tool-meta">Save a picture as PNG, JPEG or WebP</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="imgcrop">
+            <span class="tool-icon">CRP</span>
+            <span class="tool-name">Crop Image</span>
+            <span class="tool-meta">Drag a box and download just that part</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="imgcolour">
+            <span class="tool-icon">PIX</span>
+            <span class="tool-name">Pick Colour from Image</span>
+            <span class="tool-meta">Click a pixel to read HEX, RGB and HSL</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="qrcode">
+            <span class="tool-icon">QR</span>
+            <span class="tool-name">Generate QR Code</span>
+            <span class="tool-meta">Turn a link or text into a QR image</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="stats">
+            <span class="tool-icon">&sigma;</span>
+            <span class="tool-name">Statistics Calculator</span>
+            <span class="tool-meta">Mean, median, mode, spread and quartiles</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="prime">
+            <span class="tool-icon">P</span>
+            <span class="tool-name">Prime Checker &amp; Factoriser</span>
+            <span class="tool-meta">Is it prime? See its prime factors</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="calendar">
+            <span class="tool-icon">CAL</span>
+            <span class="tool-name">Generate Calendar</span>
+            <span class="tool-meta">A month grid you can read or print</span>
           </button>
         </div>
       </section>
@@ -754,6 +826,7 @@
       </dialog>
     </main>
 
-    <script src="script.js?v=premium-19"></script>
+    <script src="vendor/qrcode.js"></script>
+    <script src="script.js?v=premium-21"></script>
   </body>
 </html>

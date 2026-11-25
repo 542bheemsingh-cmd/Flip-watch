@@ -2424,7 +2424,7 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
    Extra utilities: unit converter, password generator, word counter,
    to-do list and date calculator.
    ===================================================================== */
-const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates", "gst", "emi", "fuel", "json", "base64", "color", "random"];
+const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates", "gst", "emi", "fuel", "json", "base64", "color", "random", "findreplace", "textpad", "pwstrength", "imgcompress", "imgresize", "imgconvert", "imgcrop", "imgcolour", "qrcode", "stats", "prime", "calendar"];
 const utilityPanel = document.querySelector("[data-utility-panel]");
 const utilityKicker = document.querySelector("[data-utility-kicker]");
 const utilityTitle = document.querySelector("[data-utility-title]");
@@ -2444,6 +2444,18 @@ const utilityMeta = {
   base64: { kicker: "Developer", title: "Base64, URL & Hash", sub: "Encode, decode and hash text offline." },
   color: { kicker: "Design", title: "Colour Toolkit", sub: "Convert colours, build tints and check contrast." },
   random: { kicker: "Decide", title: "Random Picker", sub: "Numbers, dice, a coin flip or a name from a list." },
+  findreplace: { kicker: "Text", title: "Find & Replace Text", sub: "Replace text or a pattern, with case and regex options." },
+  textpad: { kicker: "Text", title: "Repeat & Pad Text", sub: "Repeat text N times, or pad it to a fixed length." },
+  pwstrength: { kicker: "Security", title: "Password Strength Checker", sub: "Entropy, rating and an offline crack-time estimate." },
+  imgcompress: { kicker: "Images", title: "Compress Image", sub: "Shrink a photo's file size with a quality slider." },
+  imgresize: { kicker: "Images", title: "Resize Image", sub: "Change pixel dimensions, with aspect ratio locked." },
+  imgconvert: { kicker: "Images", title: "Convert Image Format", sub: "Save a picture as PNG, JPEG or WebP." },
+  imgcrop: { kicker: "Images", title: "Crop Image", sub: "Drag a box on the picture and download just that part." },
+  imgcolour: { kicker: "Images", title: "Pick Colour from Image", sub: "Click any pixel to read its HEX, RGB and HSL." },
+  qrcode: { kicker: "Share", title: "Generate QR Code", sub: "Turn a link or text into a downloadable QR image." },
+  stats: { kicker: "Numbers", title: "Statistics Calculator", sub: "Mean, median, mode, spread and quartiles." },
+  prime: { kicker: "Numbers", title: "Prime Checker & Factoriser", sub: "Is it prime? See its prime factorisation." },
+  calendar: { kicker: "Dates", title: "Generate Calendar", sub: "A month grid you can read or print." },
 };
 
 const UTIL_KEYS = {
@@ -2485,6 +2497,18 @@ function renderUtility(kind) {
   else if (kind === "base64") renderBase64();
   else if (kind === "color") renderColor();
   else if (kind === "random") renderRandom();
+  else if (kind === "findreplace") renderFindReplace();
+  else if (kind === "textpad") renderTextPad();
+  else if (kind === "pwstrength") renderPasswordStrength();
+  else if (kind === "imgcompress") renderImageCompress();
+  else if (kind === "imgresize") renderImageResize();
+  else if (kind === "imgconvert") renderImageConvert();
+  else if (kind === "imgcrop") renderImageCrop();
+  else if (kind === "imgcolour") renderImageColour();
+  else if (kind === "qrcode") renderQrCode();
+  else if (kind === "stats") renderStatistics();
+  else if (kind === "prime") renderPrime();
+  else if (kind === "calendar") renderCalendar();
 }
 
 /* ------------------------------------------------------- shared helpers */
@@ -4323,6 +4347,1105 @@ function renderRandom() {
   utilityBody.querySelector("[data-random-copy]").addEventListener("click", () => utilCopy(resultEl.textContent, "Result copied."));
   utilityBody.querySelector("[data-random-shuffle]").addEventListener("click", shuffle);
   sync();
+}
+
+/* --------------------------------------------------- find & replace text */
+function renderFindReplace() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="fr-text">Text</label>
+      <textarea id="fr-text" class="util-textarea" data-fr-text placeholder="Paste the text you want to edit…"></textarea>
+    </div>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="fr-find">Find</label>
+        <input id="fr-find" type="text" data-fr-find placeholder="text or pattern" />
+      </div>
+      <div class="util-field">
+        <label for="fr-replace">Replace with</label>
+        <input id="fr-replace" type="text" data-fr-replace placeholder="replacement" />
+      </div>
+    </div>
+    <div class="util-toggles">
+      <label><input type="checkbox" data-fr-regex /> Regular expression</label>
+      <label><input type="checkbox" data-fr-case /> Match case</label>
+    </div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-fr-run>Replace all</button>
+      <button class="util-btn" type="button" data-fr-copy>Copy result</button>
+      <button class="util-btn" type="button" data-fr-clear>Clear</button>
+    </div>
+    <p class="util-note" data-fr-status></p>
+  `;
+
+  const textEl = utilityBody.querySelector("[data-fr-text]");
+  const findEl = utilityBody.querySelector("[data-fr-find]");
+  const replaceEl = utilityBody.querySelector("[data-fr-replace]");
+  const regexEl = utilityBody.querySelector("[data-fr-regex]");
+  const caseEl = utilityBody.querySelector("[data-fr-case]");
+  const statusEl = utilityBody.querySelector("[data-fr-status]");
+
+  const buildPattern = () => {
+    const source = regexEl.checked ? findEl.value : findEl.value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (!source) return null;
+    return new RegExp(source, caseEl.checked ? "g" : "gi");
+  };
+
+  const run = () => {
+    const pattern = buildPattern();
+    if (!pattern) {
+      statusEl.textContent = "Type something to find first.";
+      return;
+    }
+    try {
+      const before = textEl.value;
+      const matches = before.match(pattern)?.length || 0;
+      textEl.value = before.replace(pattern, replaceEl.value);
+      statusEl.textContent = matches ? `${matches} ${matches === 1 ? "match" : "matches"} replaced.` : "No matches found.";
+    } catch (error) {
+      statusEl.textContent = `Invalid pattern — ${error.message}`;
+    }
+  };
+
+  utilityBody.querySelector("[data-fr-run]").addEventListener("click", run);
+  utilityBody.querySelector("[data-fr-copy]").addEventListener("click", () => utilCopy(textEl.value, "Text copied."));
+  utilityBody.querySelector("[data-fr-clear]").addEventListener("click", () => {
+    textEl.value = "";
+    statusEl.textContent = "";
+    textEl.focus();
+  });
+}
+
+/* ------------------------------------------------------- repeat & pad text */
+function renderTextPad() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="pad-mode">What should it do?</label>
+      <select id="pad-mode" data-pad-mode>
+        <option value="repeat">Repeat the text N times</option>
+        <option value="pad">Pad the text to a fixed length</option>
+      </select>
+    </div>
+    <div class="util-field">
+      <label for="pad-text">Text</label>
+      <textarea id="pad-text" class="util-textarea" data-pad-text placeholder="Type or paste text…"></textarea>
+    </div>
+    <div class="date-row" data-pad-repeat-row>
+      <div class="util-field">
+        <label for="pad-count">Times</label>
+        <input id="pad-count" type="number" inputmode="numeric" min="1" max="500" value="3" data-pad-count />
+      </div>
+      <div class="util-field">
+        <label for="pad-separator">Separator</label>
+        <select id="pad-separator" data-pad-separator>
+          <option value="\n" selected>New line</option>
+          <option value=", ">Comma + space</option>
+          <option value=" ">Space</option>
+          <option value="">Nothing</option>
+        </select>
+      </div>
+    </div>
+    <div class="date-row" data-pad-pad-row hidden>
+      <div class="util-field">
+        <label for="pad-length">Target length</label>
+        <input id="pad-length" type="number" inputmode="numeric" min="1" max="10000" value="20" data-pad-length />
+      </div>
+      <div class="util-field">
+        <label for="pad-char">Pad with</label>
+        <input id="pad-char" type="text" maxlength="1" value="0" data-pad-char />
+      </div>
+    </div>
+    <div class="util-field" data-pad-side-wrap hidden>
+      <label for="pad-side">Pad on</label>
+      <select id="pad-side" data-pad-side>
+        <option value="start">Left (start)</option>
+        <option value="end">Right (end)</option>
+      </select>
+    </div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-pad-run>Build text</button>
+      <button class="util-btn" type="button" data-pad-copy>Copy result</button>
+    </div>
+    <p class="util-note" data-pad-status></p>
+    <div class="util-field">
+      <label for="pad-output">Result</label>
+      <textarea id="pad-output" class="util-textarea util-textarea--code" data-pad-output readonly></textarea>
+    </div>
+  `;
+
+  const modeEl = utilityBody.querySelector("[data-pad-mode]");
+  const textEl = utilityBody.querySelector("[data-pad-text]");
+  const countEl = utilityBody.querySelector("[data-pad-count]");
+  const sepEl = utilityBody.querySelector("[data-pad-separator]");
+  const lengthEl = utilityBody.querySelector("[data-pad-length]");
+  const charEl = utilityBody.querySelector("[data-pad-char]");
+  const sideEl = utilityBody.querySelector("[data-pad-side]");
+  const output = utilityBody.querySelector("[data-pad-output]");
+  const status = utilityBody.querySelector("[data-pad-status]");
+
+  const sync = () => {
+    const pad = modeEl.value === "pad";
+    utilityBody.querySelector("[data-pad-repeat-row]").hidden = pad;
+    utilityBody.querySelector("[data-pad-pad-row]").hidden = !pad;
+    utilityBody.querySelector("[data-pad-side-wrap]").hidden = !pad;
+  };
+
+  const run = () => {
+    const text = textEl.value;
+    if (!text) {
+      output.value = "";
+      status.textContent = "Type some text first.";
+      return;
+    }
+    if (modeEl.value === "repeat") {
+      const count = Math.max(1, Math.min(500, Math.round(Number(countEl.value) || 1)));
+      const separator = sepEl.value === "\\n" ? "\n" : sepEl.value;
+      output.value = Array.from({ length: count }, () => text).join(separator);
+      status.textContent = `Repeated ${count} times · ${output.value.length} characters`;
+      return;
+    }
+    const target = Math.max(1, Math.min(10000, Math.round(Number(lengthEl.value) || 1)));
+    const padChar = (charEl.value || " ").slice(0, 1);
+    if (text.length >= target) {
+      output.value = text;
+      status.textContent = `Text is already ${text.length} characters — nothing to pad.`;
+      return;
+    }
+    const fill = padChar.repeat(target - text.length);
+    output.value = sideEl.value === "start" ? fill + text : text + fill;
+    status.textContent = `Padded to ${target} characters with "${padChar}".`;
+  };
+
+  modeEl.addEventListener("change", sync);
+  utilityBody.querySelector("[data-pad-run]").addEventListener("click", run);
+  utilityBody.querySelector("[data-pad-copy]").addEventListener("click", () => utilCopy(output.value, "Result copied."));
+  sync();
+}
+
+/* --------------------------------------------------- password strength */
+function renderPasswordStrength() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="pws-input">Password to check</label>
+      <input id="pws-input" type="text" data-pws-input autocomplete="off" spellcheck="false" placeholder="Type a password…" />
+    </div>
+    <div class="meter" aria-hidden="true"><span data-pws-meter></span></div>
+    <div class="stat-grid" data-pws-stats></div>
+    <p class="util-note" data-pws-verdict></p>
+    <p class="util-note" data-pws-tips></p>
+  `;
+
+  const input = utilityBody.querySelector("[data-pws-input]");
+  const meter = utilityBody.querySelector("[data-pws-meter]");
+  const statsEl = utilityBody.querySelector("[data-pws-stats]");
+  const verdictEl = utilityBody.querySelector("[data-pws-verdict]");
+  const tipsEl = utilityBody.querySelector("[data-pws-tips]");
+
+  const common = ["password", "123456", "qwerty", "admin", "letmein", "welcome", "iloveyou", "monkey", "dragon", "abc123", "111111", "12345678"];
+
+  const humanTime = (seconds) => {
+    if (seconds < 1) return "instantly";
+    if (seconds < 60) return `${Math.round(seconds)} seconds`;
+    if (seconds < 3600) return `${Math.round(seconds / 60)} minutes`;
+    if (seconds < 86400) return `${Math.round(seconds / 3600)} hours`;
+    if (seconds < 31536000) return `${Math.round(seconds / 86400)} days`;
+    const years = seconds / 31536000;
+    if (years < 1000) return `${Math.round(years)} years`;
+    if (years < 1e6) return `${Math.round(years / 1000)} thousand years`;
+    if (years < 1e9) return `${Math.round(years / 1e6)} million years`;
+    return "practically forever";
+  };
+
+  const update = () => {
+    const password = input.value;
+    const stat = (value, label) => `<div class="stat"><span>${value}</span><small>${label}</small></div>`;
+
+    if (!password) {
+      statsEl.innerHTML = "";
+      meter.style.width = "0%";
+      verdictEl.textContent = "";
+      tipsEl.textContent = "";
+      return;
+    }
+
+    let pool = 0;
+    if (/[a-z]/.test(password)) pool += 26;
+    if (/[A-Z]/.test(password)) pool += 26;
+    if (/[0-9]/.test(password)) pool += 10;
+    if (/[^A-Za-z0-9]/.test(password)) pool += 33;
+    const bits = Math.round(password.length * Math.log2(Math.max(2, pool)));
+    const guesses = Math.pow(2, bits);
+    const perSecond = 1e10; // offline attack against a fast hash
+    const seconds = guesses / perSecond;
+
+    const lower = password.toLowerCase();
+    const isCommon = common.some((word) => lower.includes(word));
+    const repeated = /(.)\1{2,}/.test(password);
+    const sequential = /(abc|bcd|cde|123|234|345|456|567|678|789|qwe|asd|zxc)/i.test(password);
+
+    let penalty = 0;
+    if (isCommon) penalty += 35;
+    if (repeated) penalty += 10;
+    if (sequential) penalty += 10;
+    if (password.length < 8) penalty += 20;
+    const score = Math.max(0, Math.min(100, Math.round((bits / 100) * 100) - penalty));
+
+    const label = score >= 85 ? "Excellent" : score >= 65 ? "Strong" : score >= 45 ? "Fair" : score >= 25 ? "Weak" : "Very weak";
+
+    statsEl.innerHTML = [
+      stat(String(password.length), "Characters"),
+      stat(`${bits}`, "Entropy bits"),
+      stat(label, "Rating"),
+      stat(humanTime(seconds), "Offline crack time"),
+    ].join("");
+    meter.style.width = `${score}%`;
+
+    const tips = [];
+    if (password.length < 12) tips.push("use at least 12 characters");
+    if (!/[A-Z]/.test(password)) tips.push("add an uppercase letter");
+    if (!/[0-9]/.test(password)) tips.push("add a number");
+    if (!/[^A-Za-z0-9]/.test(password)) tips.push("add a symbol");
+    if (isCommon) tips.push("avoid common words like “password”");
+    if (repeated) tips.push("avoid repeated characters like “aaa”");
+    if (sequential) tips.push("avoid sequences like “123” or “abc”");
+
+    verdictEl.textContent = `Rating: ${label} (${score}/100). Estimated ${humanTime(seconds)} to crack offline at 10 billion guesses per second.`;
+    tipsEl.textContent = tips.length ? `To improve: ${tips.join(", ")}.` : "This password looks good — store it in a password manager.";
+  };
+
+  input.addEventListener("input", update);
+  update();
+}
+
+/* ------------------------------------------------------- image helpers */
+function loadImageFile(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      reject(new Error("Choose an image first."));
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("That file could not be read as an image."));
+    };
+    image.src = url;
+  });
+}
+
+function downloadCanvas(canvas, filename) {
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }, "image/png");
+}
+
+function bytesLabel(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function imageStageHTML(extra = "") {
+  return `
+    <div class="util-field">
+      <label for="img-file">Image file</label>
+      <input id="img-file" class="util-file" type="file" accept="image/*" data-img-file />
+    </div>
+    <div class="img-stage" data-img-stage hidden>
+      <canvas class="img-canvas" data-img-canvas></canvas>
+    </div>
+    ${extra}
+    <p class="util-note" data-img-note></p>
+  `;
+}
+
+/* ------------------------------------------------------ compress image */
+function renderImageCompress() {
+  utilityBody.innerHTML = imageStageHTML(`
+    <div class="util-field">
+      <label for="ic-quality">Quality: <output data-ic-quality-out>70</output>%</label>
+      <input id="ic-quality" type="range" min="20" max="95" value="70" data-ic-quality />
+    </div>
+    <div class="util-field">
+      <label for="ic-format">Output format</label>
+      <select id="ic-format" data-ic-format>
+        <option value="image/webp" selected>WebP (usually smallest)</option>
+        <option value="image/jpeg">JPEG (widest support)</option>
+      </select>
+    </div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-ic-run>Compress</button>
+      <button class="util-btn" type="button" data-ic-download disabled>Download</button>
+    </div>
+    <div class="stat-grid" data-ic-stats></div>
+  `);
+
+  const fileEl = utilityBody.querySelector("[data-img-file]");
+  const stage = utilityBody.querySelector("[data-img-stage]");
+  const canvas = utilityBody.querySelector("[data-img-canvas]");
+  const qualityEl = utilityBody.querySelector("[data-ic-quality]");
+  const qualityOut = utilityBody.querySelector("[data-ic-quality-out]");
+  const formatEl = utilityBody.querySelector("[data-ic-format]");
+  const noteEl = utilityBody.querySelector("[data-img-note]");
+  const statsEl = utilityBody.querySelector("[data-ic-stats]");
+  const downloadBtn = utilityBody.querySelector("[data-ic-download]");
+  let image = null;
+  let originalSize = 0;
+  let resultBlob = null;
+
+  qualityEl.addEventListener("input", () => {
+    qualityOut.textContent = qualityEl.value;
+  });
+
+  fileEl.addEventListener("change", async () => {
+    try {
+      const file = fileEl.files[0];
+      image = await loadImageFile(file);
+      originalSize = file.size;
+      stage.hidden = false;
+      canvas.width = Math.min(image.naturalWidth, 900);
+      canvas.height = Math.round((canvas.width / image.naturalWidth) * image.naturalHeight);
+      canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+      noteEl.textContent = `${image.naturalWidth} × ${image.naturalHeight} · ${bytesLabel(originalSize)}`;
+      statsEl.innerHTML = "";
+      resultBlob = null;
+      downloadBtn.disabled = true;
+    } catch (error) {
+      noteEl.textContent = error.message;
+    }
+  });
+
+  const compress = () => {
+    if (!image) {
+      noteEl.textContent = "Choose an image first.";
+      return;
+    }
+    const out = document.createElement("canvas");
+    out.width = image.naturalWidth;
+    out.height = image.naturalHeight;
+    const context = out.getContext("2d");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, out.width, out.height);
+    context.drawImage(image, 0, 0);
+    out.toBlob((blob) => {
+      if (!blob) return;
+      resultBlob = blob;
+      const delta = Math.round((1 - blob.size / originalSize) * 100);
+      const stat = (value, label) => `<div class="stat"><span>${value}</span><small>${label}</small></div>`;
+      statsEl.innerHTML = [
+        stat(bytesLabel(originalSize), "Original"),
+        stat(bytesLabel(blob.size), "Compressed"),
+        stat(delta >= 0 ? `${delta}%` : `+${Math.abs(delta)}%`, delta >= 0 ? "Saved" : "Larger"),
+        stat(`${out.width}×${out.height}`, "Dimensions"),
+      ].join("");
+      noteEl.textContent = delta > 0
+        ? `Smaller by ${delta}%.`
+        : `This file is already optimised — ${Math.abs(delta)}% larger at this setting. Try a lower quality or JPEG.`;
+      downloadBtn.disabled = false;
+    }, formatEl.value, Number(qualityEl.value) / 100);
+  };
+
+  utilityBody.querySelector("[data-ic-run]").addEventListener("click", compress);
+  downloadBtn.addEventListener("click", () => {
+    if (!resultBlob) return;
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(resultBlob);
+    link.download = `compressed.${formatEl.value === "image/webp" ? "webp" : "jpg"}`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+}
+
+/* -------------------------------------------------------- resize image */
+function renderImageResize() {
+  utilityBody.innerHTML = imageStageHTML(`
+    <div class="date-row">
+      <div class="util-field">
+        <label for="ir-width">Width (px)</label>
+        <input id="ir-width" type="number" inputmode="numeric" min="1" data-ir-width />
+      </div>
+      <div class="util-field">
+        <label for="ir-height">Height (px)</label>
+        <input id="ir-height" type="number" inputmode="numeric" min="1" data-ir-height />
+      </div>
+    </div>
+    <div class="util-toggles">
+      <label><input type="checkbox" data-ir-lock checked /> Keep aspect ratio</label>
+    </div>
+    <div class="util-actions">
+      <button class="util-btn" data-ir-scale="50">50%</button>
+      <button class="util-btn" data-ir-scale="75">75%</button>
+      <button class="util-btn" data-ir-scale="100">Original</button>
+      <button class="util-btn" data-ir-scale="200">200%</button>
+    </div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-ir-run>Resize</button>
+      <button class="util-btn" type="button" data-ir-download disabled>Download</button>
+    </div>
+  `);
+
+  const fileEl = utilityBody.querySelector("[data-img-file]");
+  const stage = utilityBody.querySelector("[data-img-stage]");
+  const canvas = utilityBody.querySelector("[data-img-canvas]");
+  const widthEl = utilityBody.querySelector("[data-ir-width]");
+  const heightEl = utilityBody.querySelector("[data-ir-height]");
+  const lockEl = utilityBody.querySelector("[data-ir-lock]");
+  const noteEl = utilityBody.querySelector("[data-img-note]");
+  const downloadBtn = utilityBody.querySelector("[data-ir-download]");
+  let image = null;
+  let resized = null;
+  const ratio = () => (image ? image.naturalWidth / image.naturalHeight : 1);
+
+  const syncHeight = () => {
+    if (!image || !lockEl.checked) return;
+    const width = Number(widthEl.value) || image.naturalWidth;
+    heightEl.value = String(Math.max(1, Math.round(width / ratio())));
+  };
+
+  fileEl.addEventListener("change", async () => {
+    try {
+      image = await loadImageFile(fileEl.files[0]);
+      stage.hidden = false;
+      widthEl.value = String(image.naturalWidth);
+      heightEl.value = String(image.naturalHeight);
+      canvas.width = Math.min(image.naturalWidth, 900);
+      canvas.height = Math.round((canvas.width / image.naturalWidth) * image.naturalHeight);
+      canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+      noteEl.textContent = `${image.naturalWidth} × ${image.naturalHeight} pixels`;
+      resized = null;
+      downloadBtn.disabled = true;
+    } catch (error) {
+      noteEl.textContent = error.message;
+    }
+  });
+
+  widthEl.addEventListener("input", syncHeight);
+  utilityBody.querySelectorAll("[data-ir-scale]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!image) return;
+      const scale = Number(button.dataset.irScale) / 100;
+      widthEl.value = String(Math.max(1, Math.round(image.naturalWidth * scale)));
+      heightEl.value = String(Math.max(1, Math.round(image.naturalHeight * scale)));
+    });
+  });
+
+  utilityBody.querySelector("[data-ir-run]").addEventListener("click", () => {
+    if (!image) {
+      noteEl.textContent = "Choose an image first.";
+      return;
+    }
+    const width = Math.max(1, Math.round(Number(widthEl.value) || image.naturalWidth));
+    const height = Math.max(1, Math.round(Number(heightEl.value) || image.naturalHeight));
+    resized = document.createElement("canvas");
+    resized.width = width;
+    resized.height = height;
+    const context = resized.getContext("2d");
+    context.imageSmoothingQuality = "high";
+    context.drawImage(image, 0, 0, width, height);
+    canvas.width = Math.min(width, 900);
+    canvas.height = Math.round((canvas.width / width) * height);
+    canvas.getContext("2d").drawImage(resized, 0, 0, canvas.width, canvas.height);
+    noteEl.textContent = `Resized to ${width} × ${height} pixels.`;
+    downloadBtn.disabled = false;
+  });
+
+  downloadBtn.addEventListener("click", () => {
+    if (resized) downloadCanvas(resized, "resized.png");
+  });
+}
+
+/* -------------------------------------------------- convert image format */
+function renderImageConvert() {
+  utilityBody.innerHTML = imageStageHTML(`
+    <div class="date-row">
+      <div class="util-field">
+        <label for="if-format">Convert to</label>
+        <select id="if-format" data-if-format>
+          <option value="image/png">PNG</option>
+          <option value="image/jpeg">JPEG</option>
+          <option value="image/webp">WebP</option>
+        </select>
+      </div>
+      <div class="util-field">
+        <label for="if-quality">Quality: <output data-if-quality-out>85</output>%</label>
+        <input id="if-quality" type="range" min="40" max="100" value="85" data-if-quality />
+      </div>
+    </div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-if-run>Convert</button>
+      <button class="util-btn" type="button" data-if-download disabled>Download</button>
+    </div>
+    <div class="stat-grid" data-if-stats></div>
+  `);
+
+  const fileEl = utilityBody.querySelector("[data-img-file]");
+  const stage = utilityBody.querySelector("[data-img-stage]");
+  const canvas = utilityBody.querySelector("[data-img-canvas]");
+  const formatEl = utilityBody.querySelector("[data-if-format]");
+  const qualityEl = utilityBody.querySelector("[data-if-quality]");
+  const qualityOut = utilityBody.querySelector("[data-if-quality-out]");
+  const noteEl = utilityBody.querySelector("[data-img-note]");
+  const statsEl = utilityBody.querySelector("[data-if-stats]");
+  const downloadBtn = utilityBody.querySelector("[data-if-download]");
+  let image = null;
+  let resultBlob = null;
+
+  const ext = () => (formatEl.value === "image/png" ? "png" : formatEl.value === "image/webp" ? "webp" : "jpg");
+
+  qualityEl.addEventListener("input", () => {
+    qualityOut.textContent = qualityEl.value;
+  });
+  formatEl.addEventListener("change", () => {
+    qualityEl.disabled = formatEl.value === "image/png";
+  });
+
+  fileEl.addEventListener("change", async () => {
+    try {
+      image = await loadImageFile(fileEl.files[0]);
+      stage.hidden = false;
+      canvas.width = Math.min(image.naturalWidth, 900);
+      canvas.height = Math.round((canvas.width / image.naturalWidth) * image.naturalHeight);
+      canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+      noteEl.textContent = `Loaded ${image.naturalWidth} × ${image.naturalHeight}`;
+      statsEl.innerHTML = "";
+      resultBlob = null;
+      downloadBtn.disabled = true;
+    } catch (error) {
+      noteEl.textContent = error.message;
+    }
+  });
+
+  utilityBody.querySelector("[data-if-run]").addEventListener("click", () => {
+    if (!image) {
+      noteEl.textContent = "Choose an image first.";
+      return;
+    }
+    const out = document.createElement("canvas");
+    out.width = image.naturalWidth;
+    out.height = image.naturalHeight;
+    const context = out.getContext("2d");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, out.width, out.height);
+    context.drawImage(image, 0, 0);
+    out.toBlob((blob) => {
+      if (!blob) {
+        noteEl.textContent = "This browser could not convert to that format.";
+        return;
+      }
+      resultBlob = blob;
+      const stat = (value, label) => `<div class="stat"><span>${value}</span><small>${label}</small></div>`;
+      statsEl.innerHTML = [
+        stat(ext().toUpperCase(), "Format"),
+        stat(bytesLabel(blob.size), "Size"),
+        stat(`${out.width}×${out.height}`, "Dimensions"),
+      ].join("");
+      noteEl.textContent = "Ready to download.";
+      downloadBtn.disabled = false;
+    }, formatEl.value, Number(qualityEl.value) / 100);
+  });
+
+  downloadBtn.addEventListener("click", () => {
+    if (!resultBlob) return;
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(resultBlob);
+    link.download = `converted.${ext()}`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+}
+
+/* ---------------------------------------------------------- crop image */
+function renderImageCrop() {
+  utilityBody.innerHTML = imageStageHTML(`
+    <p class="util-note">Drag on the image to select the area you want to keep.</p>
+    <div class="stat-grid" data-crop-stats></div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-crop-run disabled>Crop &amp; download</button>
+      <button class="util-btn" type="button" data-crop-reset>Reset selection</button>
+    </div>
+  `);
+
+  const fileEl = utilityBody.querySelector("[data-img-file]");
+  const stage = utilityBody.querySelector("[data-img-stage]");
+  const canvas = utilityBody.querySelector("[data-img-canvas]");
+  const noteEl = utilityBody.querySelector("[data-img-note]");
+  const statsEl = utilityBody.querySelector("[data-crop-stats]");
+  const cropBtn = utilityBody.querySelector("[data-crop-run]");
+  let image = null;
+  let crop = null;
+  let dragStart = null;
+
+  const toNatural = (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = image.naturalWidth / rect.width;
+    const scaleY = image.naturalHeight / rect.height;
+    return {
+      x: Math.max(0, Math.min(image.naturalWidth, (event.clientX - rect.left) * scaleX)),
+      y: Math.max(0, Math.min(image.naturalHeight, (event.clientY - rect.top) * scaleY)),
+    };
+  };
+
+  const draw = () => {
+    if (!image) return;
+    const scale = Math.min(1, 900 / image.naturalWidth);
+    canvas.width = Math.round(image.naturalWidth * scale);
+    canvas.height = Math.round(image.naturalHeight * scale);
+    const context = canvas.getContext("2d");
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    if (crop && crop.w > 2 && crop.h > 2) {
+      const s = canvas.width / image.naturalWidth;
+      context.fillStyle = "rgba(6, 8, 20, 0.55)";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.clearRect(crop.x * s, crop.y * s, crop.w * s, crop.h * s);
+      context.drawImage(image, crop.x, crop.y, crop.w, crop.h, crop.x * s, crop.y * s, crop.w * s, crop.h * s);
+      context.strokeStyle = "#7c5cff";
+      context.lineWidth = 2;
+      context.strokeRect(crop.x * s, crop.y * s, crop.w * s, crop.h * s);
+      const stat = (value, label) => `<div class="stat"><span>${value}</span><small>${label}</small></div>`;
+      statsEl.innerHTML = [
+        stat(`${Math.round(crop.w)}×${Math.round(crop.h)}`, "Crop size"),
+        stat(`${Math.round(crop.x)}, ${Math.round(crop.y)}`, "Position"),
+      ].join("");
+      cropBtn.disabled = false;
+    } else {
+      statsEl.innerHTML = "";
+      cropBtn.disabled = true;
+    }
+  };
+
+  fileEl.addEventListener("change", async () => {
+    try {
+      image = await loadImageFile(fileEl.files[0]);
+      stage.hidden = false;
+      crop = null;
+      draw();
+      noteEl.textContent = `${image.naturalWidth} × ${image.naturalHeight} · drag to select`;
+    } catch (error) {
+      noteEl.textContent = error.message;
+    }
+  });
+
+  canvas.addEventListener("pointerdown", (event) => {
+    if (!image) return;
+    canvas.setPointerCapture(event.pointerId);
+    dragStart = toNatural(event);
+    crop = { x: dragStart.x, y: dragStart.y, w: 0, h: 0 };
+  });
+
+  canvas.addEventListener("pointermove", (event) => {
+    if (!dragStart) return;
+    const point = toNatural(event);
+    crop = {
+      x: Math.min(dragStart.x, point.x),
+      y: Math.min(dragStart.y, point.y),
+      w: Math.abs(point.x - dragStart.x),
+      h: Math.abs(point.y - dragStart.y),
+    };
+    draw();
+  });
+
+  canvas.addEventListener("pointerup", () => {
+    dragStart = null;
+  });
+
+  utilityBody.querySelector("[data-crop-reset]").addEventListener("click", () => {
+    crop = null;
+    draw();
+  });
+
+  cropBtn.addEventListener("click", () => {
+    if (!image || !crop) return;
+    const out = document.createElement("canvas");
+    out.width = Math.max(1, Math.round(crop.w));
+    out.height = Math.max(1, Math.round(crop.h));
+    out.getContext("2d").drawImage(image, crop.x, crop.y, crop.w, crop.h, 0, 0, out.width, out.height);
+    downloadCanvas(out, "cropped.png");
+    noteEl.textContent = `Cropped to ${out.width} × ${out.height} and downloaded.`;
+  });
+}
+
+/* --------------------------------------------------- colour from image */
+function renderImageColour() {
+  utilityBody.innerHTML = imageStageHTML(`
+    <p class="util-note">Click anywhere on the image to read that pixel's colour.</p>
+    <div class="stat-grid" data-pix-stats></div>
+    <div class="swatch-row" data-pix-history aria-label="Recent colours"></div>
+  `);
+
+  const fileEl = utilityBody.querySelector("[data-img-file]");
+  const stage = utilityBody.querySelector("[data-img-stage]");
+  const canvas = utilityBody.querySelector("[data-img-canvas]");
+  const noteEl = utilityBody.querySelector("[data-img-note]");
+  const statsEl = utilityBody.querySelector("[data-pix-stats]");
+  const historyEl = utilityBody.querySelector("[data-pix-history]");
+  let image = null;
+  const history = [];
+
+  fileEl.addEventListener("change", async () => {
+    try {
+      image = await loadImageFile(fileEl.files[0]);
+      stage.hidden = false;
+      canvas.width = Math.min(image.naturalWidth, 900);
+      canvas.height = Math.round((canvas.width / image.naturalWidth) * image.naturalHeight);
+      canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+      noteEl.textContent = `${image.naturalWidth} × ${image.naturalHeight} · click to sample`;
+    } catch (error) {
+      noteEl.textContent = error.message;
+    }
+  });
+
+  canvas.addEventListener("click", (event) => {
+    if (!image) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.round(((event.clientX - rect.left) / rect.width) * canvas.width);
+    const y = Math.round(((event.clientY - rect.top) / rect.height) * canvas.height);
+    const [r, g, b] = canvas.getContext("2d").getImageData(x, y, 1, 1).data;
+    const hex = rgbToHex({ r, g, b });
+    const hsl = rgbToHsl({ r, g, b });
+    const stat = (value, label, copyValue) => `<button type="button" class="stat stat--copy" data-copy-value="${copyValue}" aria-label="Copy ${label}"><span>${value}</span><small>${label}</small></button>`;
+    statsEl.innerHTML = [
+      stat(hex.toUpperCase(), "HEX", hex),
+      stat(`${r}, ${g}, ${b}`, "RGB", `rgb(${r}, ${g}, ${b})`),
+      stat(`${hsl.h}°, ${hsl.s}%, ${hsl.l}%`, "HSL", `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`),
+      stat(`${x}, ${y}`, "Pixel", `${x}, ${y}`),
+    ].join("");
+    statsEl.querySelectorAll("[data-copy-value]").forEach((button) => {
+      button.addEventListener("click", () => utilCopy(button.dataset.copyValue, "Copied."));
+    });
+
+    history.unshift(hex);
+    history.splice(8);
+    historyEl.innerHTML = history
+      .map((colour) => `<button type="button" class="swatch" style="background:${colour}" data-swatch="${colour}" aria-label="Copy ${colour}"></button>`)
+      .join("");
+    historyEl.querySelectorAll("[data-swatch]").forEach((button) => {
+      button.addEventListener("click", () => utilCopy(button.dataset.swatch, `${button.dataset.swatch} copied.`));
+    });
+    noteEl.textContent = `${hex.toUpperCase()} at ${x}, ${y}`;
+  });
+}
+
+/* -------------------------------------------------------- generate QR */
+function renderQrCode() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="qr-text">Text or link</label>
+      <textarea id="qr-text" class="util-textarea" data-qr-text placeholder="https://example.com">https://542bheemsingh-cmd.github.io/Flip-watch/</textarea>
+    </div>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="qr-size">Size (px)</label>
+        <input id="qr-size" type="number" inputmode="numeric" min="128" max="1024" step="32" value="320" data-qr-size />
+      </div>
+      <div class="util-field">
+        <label for="qr-ec">Error correction</label>
+        <select id="qr-ec" data-qr-ec>
+          <option value="L">L (7%)</option>
+          <option value="M" selected>M (15%)</option>
+          <option value="Q">Q (25%)</option>
+          <option value="H">H (30%)</option>
+        </select>
+      </div>
+    </div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-qr-run>Generate</button>
+      <button class="util-btn" type="button" data-qr-download disabled>Download PNG</button>
+    </div>
+    <p class="util-note" data-qr-status></p>
+    <div class="qr-stage"><canvas data-qr-canvas width="320" height="320"></canvas></div>
+  `;
+
+  const textEl = utilityBody.querySelector("[data-qr-text]");
+  const sizeEl = utilityBody.querySelector("[data-qr-size]");
+  const ecEl = utilityBody.querySelector("[data-qr-ec]");
+  const canvas = utilityBody.querySelector("[data-qr-canvas]");
+  const statusEl = utilityBody.querySelector("[data-qr-status]");
+  const downloadBtn = utilityBody.querySelector("[data-qr-download]");
+
+  const generate = () => {
+    const text = textEl.value.trim();
+    if (!text) {
+      statusEl.textContent = "Type something to encode.";
+      return;
+    }
+    if (typeof qrcode !== "function") {
+      statusEl.textContent = "QR engine is not loaded — reload the page.";
+      return;
+    }
+    try {
+      const qr = qrcode(0, ecEl.value);
+      qr.addData(text);
+      qr.make();
+      const count = qr.getModuleCount();
+      const size = Math.max(128, Math.min(1024, Math.round(Number(sizeEl.value) || 320)));
+      const quiet = 4;
+      const cell = Math.floor(size / (count + quiet * 2));
+      const dimension = cell * (count + quiet * 2);
+      canvas.width = dimension;
+      canvas.height = dimension;
+      const context = canvas.getContext("2d");
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, dimension, dimension);
+      context.fillStyle = "#0a0b16";
+      for (let row = 0; row < count; row += 1) {
+        for (let column = 0; column < count; column += 1) {
+          if (qr.isDark(row, column)) {
+            context.fillRect((column + quiet) * cell, (row + quiet) * cell, cell, cell);
+          }
+        }
+      }
+      statusEl.textContent = `${count} × ${count} modules · ${dimension}px · level ${ecEl.value}`;
+      downloadBtn.disabled = false;
+    } catch (error) {
+      statusEl.textContent = `Could not generate — ${error.message}`;
+    }
+  };
+
+  utilityBody.querySelector("[data-qr-run]").addEventListener("click", generate);
+  downloadBtn.addEventListener("click", () => downloadCanvas(canvas, "qr-code.png"));
+  generate();
+}
+
+/* -------------------------------------------------- statistics calculator */
+function renderStatistics() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="st-input">Numbers (separate with commas, spaces or new lines)</label>
+      <textarea id="st-input" class="util-textarea util-textarea--code" data-st-input placeholder="12, 7, 3, 19, 7, 25"></textarea>
+    </div>
+    <div class="stat-grid" data-st-stats></div>
+    <p class="util-note" data-st-note></p>
+  `;
+
+  const input = utilityBody.querySelector("[data-st-input]");
+  const statsEl = utilityBody.querySelector("[data-st-stats]");
+  const noteEl = utilityBody.querySelector("[data-st-note]");
+
+  const update = () => {
+    const numbers = (input.value.match(/-?\d*\.?\d+(?:[eE][-+]?\d+)?/g) || []).map(Number).filter((n) => Number.isFinite(n));
+    if (!numbers.length) {
+      statsEl.innerHTML = "";
+      noteEl.textContent = "Paste some numbers to see the statistics.";
+      return;
+    }
+    const sorted = numbers.slice().sort((a, b) => a - b);
+    const count = numbers.length;
+    const sum = numbers.reduce((a, b) => a + b, 0);
+    const mean = sum / count;
+    const median = count % 2 ? sorted[(count - 1) / 2] : (sorted[count / 2 - 1] + sorted[count / 2]) / 2;
+    const counts = new Map();
+    numbers.forEach((n) => counts.set(n, (counts.get(n) || 0) + 1));
+    const maxCount = Math.max(...counts.values());
+    const modes = [...counts.entries()].filter(([, c]) => c === maxCount).map(([n]) => n);
+    const variance = numbers.reduce((acc, n) => acc + (n - mean) ** 2, 0) / count;
+    const stdev = Math.sqrt(variance);
+    const percentile = (p) => {
+      const index = (count - 1) * p;
+      const lower = Math.floor(index);
+      const upper = Math.ceil(index);
+      return sorted[lower] + (sorted[upper] - sorted[lower]) * (index - lower);
+    };
+    const round = (n) => (Math.round(n * 1000) / 1000).toString();
+    const stat = (value, label) => `<div class="stat"><span>${value}</span><small>${label}</small></div>`;
+
+    statsEl.innerHTML = [
+      stat(String(count), "Count"),
+      stat(round(sum), "Sum"),
+      stat(round(mean), "Mean"),
+      stat(round(median), "Median"),
+      stat(maxCount > 1 ? modes.slice(0, 3).map(round).join(", ") : "none", "Mode"),
+      stat(round(stdev), "Std deviation"),
+      stat(round(variance), "Variance"),
+      stat(round(sorted[0]), "Min"),
+      stat(round(sorted[count - 1]), "Max"),
+      stat(round(percentile(0.25)), "Q1"),
+      stat(round(percentile(0.75)), "Q3"),
+      stat(round(sorted[count - 1] - sorted[0]), "Range"),
+    ].join("");
+    noteEl.textContent = `${count} values · standard deviation is the population figure (÷n).`;
+  };
+
+  input.addEventListener("input", update);
+  update();
+}
+
+/* -------------------------------------------------- prime checker */
+function renderPrime() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="pr-input">Number</label>
+      <input id="pr-input" type="number" inputmode="numeric" min="2" step="1" value="97" data-pr-input />
+    </div>
+    <div class="stat-grid" data-pr-stats></div>
+    <div class="util-actions">
+      <button class="util-btn" type="button" data-pr-nearest>Nearest primes</button>
+      <button class="util-btn" type="button" data-pr-list>Primes below it</button>
+    </div>
+    <p class="util-note" data-pr-note></p>
+  `;
+
+  const input = utilityBody.querySelector("[data-pr-input]");
+  const statsEl = utilityBody.querySelector("[data-pr-stats]");
+  const noteEl = utilityBody.querySelector("[data-pr-note]");
+  const stat = (value, label) => `<div class="stat"><span>${value}</span><small>${label}</small></div>`;
+
+  const isPrime = (n) => {
+    if (n < 2) return false;
+    if (n % 2 === 0) return n === 2;
+    for (let i = 3; i * i <= n; i += 2) {
+      if (n % i === 0) return false;
+    }
+    return true;
+  };
+
+  const factorise = (n) => {
+    const factors = [];
+    let value = n;
+    for (let i = 2; i * i <= value; i += 1) {
+      while (value % i === 0) {
+        factors.push(i);
+        value /= i;
+      }
+    }
+    if (value > 1) factors.push(value);
+    return factors;
+  };
+
+  const update = () => {
+    const n = Math.floor(Number(input.value));
+    if (!Number.isFinite(n) || n < 2) {
+      statsEl.innerHTML = stat("—", "Enter a whole number of 2 or more");
+      noteEl.textContent = "";
+      return;
+    }
+    if (n > 1e12) {
+      statsEl.innerHTML = stat("—", "Too large");
+      noteEl.textContent = "Please use a number below 1,000,000,000,000.";
+      return;
+    }
+    const prime = isPrime(n);
+    const factors = prime ? [n] : factorise(n);
+    const grouped = factors.reduce((acc, factor) => {
+      acc[factor] = (acc[factor] || 0) + 1;
+      return acc;
+    }, {});
+    const expression = Object.entries(grouped)
+      .map(([factor, power]) => (power > 1 ? `${factor}^${power}` : factor))
+      .join(" × ");
+
+    statsEl.innerHTML = [
+      stat(prime ? "Prime" : "Composite", "Type"),
+      stat(String(factors.length), "Prime factors"),
+      stat(expression || "—", "Factorisation"),
+    ].join("");
+    noteEl.textContent = prime ? `${n} has no divisors other than 1 and itself.` : `${n} = ${expression}`;
+  };
+
+  utilityBody.querySelector("[data-pr-nearest]").addEventListener("click", () => {
+    const n = Math.floor(Number(input.value)) || 2;
+    let below = n;
+    while (below > 1 && !isPrime(below)) below -= 1;
+    let above = n;
+    while (!isPrime(above)) above += 1;
+    noteEl.textContent = `Nearest primes: ${below} below, ${above} above.`;
+  });
+
+  utilityBody.querySelector("[data-pr-list]").addEventListener("click", () => {
+    const n = Math.floor(Number(input.value)) || 10;
+    const limit = Math.min(n, 100000);
+    const primes = [];
+    for (let i = 2; i <= limit; i += 1) {
+      if (isPrime(i)) primes.push(i);
+    }
+    noteEl.textContent = `${primes.length} primes up to ${limit}: ${primes.slice(-12).join(", ")}${primes.length > 12 ? " …" : ""}`;
+  });
+
+  input.addEventListener("input", update);
+  update();
+}
+
+/* ---------------------------------------------------- generate calendar */
+function renderCalendar() {
+  const today = new Date();
+  utilityBody.innerHTML = `
+    <div class="date-row">
+      <div class="util-field">
+        <label for="cal-month">Month</label>
+        <select id="cal-month" data-cal-month>
+          ${Array.from({ length: 12 }, (_, i) => `<option value="${i}">${new Date(2000, i, 1).toLocaleDateString("en-IN", { month: "long" })}</option>`).join("")}
+        </select>
+      </div>
+      <div class="util-field">
+        <label for="cal-year">Year</label>
+        <input id="cal-year" type="number" inputmode="numeric" min="1900" max="2100" value="${today.getFullYear()}" data-cal-year />
+      </div>
+    </div>
+    <div class="util-actions">
+      <button class="util-btn" type="button" data-cal-today>This month</button>
+      <button class="util-btn" type="button" data-cal-print>Print</button>
+    </div>
+    <div class="calendar-wrap" data-cal-grid></div>
+    <p class="util-note" data-cal-note></p>
+  `;
+
+  const monthEl = utilityBody.querySelector("[data-cal-month]");
+  const yearEl = utilityBody.querySelector("[data-cal-year]");
+  const gridEl = utilityBody.querySelector("[data-cal-grid]");
+  const noteEl = utilityBody.querySelector("[data-cal-note]");
+
+  const render = () => {
+    const month = Number(monthEl.value);
+    const year = Math.max(1900, Math.min(2100, Math.floor(Number(yearEl.value) || today.getFullYear())));
+    const first = new Date(year, month, 1);
+    const days = new Date(year, month + 1, 0).getDate();
+    const startDay = first.getDay();
+    const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
+
+    const cells = [];
+    for (let i = 0; i < startDay; i += 1) cells.push("<td class=\"is-empty\"></td>");
+    for (let day = 1; day <= days; day += 1) {
+      const isToday = isCurrentMonth && day === today.getDate();
+      cells.push(`<td class="${isToday ? "is-today" : ""}">${day}</td>`);
+    }
+    while (cells.length % 7 !== 0) cells.push("<td class=\"is-empty\"></td>");
+
+    const rows = [];
+    for (let i = 0; i < cells.length; i += 7) {
+      rows.push(`<tr>${cells.slice(i, i + 7).join("")}</tr>`);
+    }
+
+    gridEl.innerHTML = `
+      <h3 class="calendar-title">${first.toLocaleDateString("en-IN", { month: "long" })} ${year}</h3>
+      <table class="calendar-table">
+        <thead><tr>${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => `<th>${d}</th>`).join("")}</tr></thead>
+        <tbody>${rows.join("")}</tbody>
+      </table>
+    `;
+    noteEl.textContent = `${days} days · starts on ${first.toLocaleDateString("en-IN", { weekday: "long" })}`;
+  };
+
+  monthEl.value = String(today.getMonth());
+  monthEl.addEventListener("change", render);
+  yearEl.addEventListener("input", render);
+  utilityBody.querySelector("[data-cal-today]").addEventListener("click", () => {
+    monthEl.value = String(today.getMonth());
+    yearEl.value = String(today.getFullYear());
+    render();
+  });
+  utilityBody.querySelector("[data-cal-print]").addEventListener("click", () => window.print());
+  render();
 }
 
 if (utilityPanel) {

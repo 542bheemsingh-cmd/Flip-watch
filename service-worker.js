@@ -14,6 +14,7 @@ const CORE = [
   "./index.html",
   "./styles.css",
   "./script.js",
+  "./vendor/qrcode.js",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
