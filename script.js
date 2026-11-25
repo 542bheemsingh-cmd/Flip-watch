@@ -257,6 +257,9 @@ function applyTheme(theme, persist = true) {
   const nextTheme = theme === "light" ? "light" : "dark";
   document.documentElement.dataset.theme = nextTheme;
   updateThemeToggle(nextTheme);
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute("content", nextTheme === "light" ? "#f6f7ff" : "#0a0b16");
   if (persist) {
     try {
       localStorage.setItem(themeStorageKey, nextTheme);
@@ -2040,3 +2043,12 @@ try {
 setHourFormat(hourFormat, false);
 setWakeIndicator(wakeLockSupported ? "idle" : "warning", wakeLockSupported ? "Screen Awake: Off" : "Wake Lock Unsupported");
 setEquationDimension("2d");
+
+// Register the service worker so the app can be installed and works offline.
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("service-worker.js").catch((error) => {
+      console.warn("[PWA] Service worker registration failed.", error);
+    });
+  });
+}
