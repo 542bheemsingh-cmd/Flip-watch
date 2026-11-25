@@ -14,13 +14,15 @@ export class ToolbarController {
     });
 
     this.elements.pageInput.addEventListener("change", () => this.viewer.goToPage(this.elements.pageInput.value));
-    let sliderFrame = 0;
+    // Update the page number while dragging, but only jump once the user pauses:
+    // rendering on every input event made long documents crawl.
+    let sliderTimer = 0;
     this.elements.pageSlider.addEventListener("input", () => {
-      if (sliderFrame) return;
-      sliderFrame = window.requestAnimationFrame(() => {
-        sliderFrame = 0;
+      this.elements.pageInput.value = this.elements.pageSlider.value;
+      window.clearTimeout(sliderTimer);
+      sliderTimer = window.setTimeout(() => {
         void this.viewer.goToPage(this.elements.pageSlider.value, false);
-      });
+      }, 120);
     });
 
     Object.entries(actions).forEach(([name, handler]) => {

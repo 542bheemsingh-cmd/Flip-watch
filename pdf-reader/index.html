@@ -32,7 +32,7 @@
     <link rel="apple-touch-icon" href="../apple-touch-icon.png" />
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/theme.css" />
-    <link rel="stylesheet" href="css/reader.css?v=render-9" />
+    <link rel="stylesheet" href="css/reader.css?v=render-10" />
     <link rel="stylesheet" href="css/animations.css" />
   </head>
   <body data-theme="dark">
@@ -83,6 +83,11 @@
         <div class="progress-bar"><span data-load-progress></span></div>
         <div class="viewer-shell" data-viewer-shell hidden>
           <div class="page-track continuous" data-page-track aria-live="polite"></div>
+        </div>
+
+        <div class="reader-loading" data-reader-loading hidden>
+          <span class="reader-spinner" aria-hidden="true"></span>
+          <span>Opening PDF…</span>
         </div>
       </main>
 
@@ -173,7 +178,7 @@
     <script src="vendor/gsap.min.js"></script>
     <script src="vendor/hammer.min.js"></script>
     <script src="vendor/page-flip.browser.min.js"></script>
-    <script type="module" src="js/app.js?v=render-9"></script>
+    <script type="module" src="js/app.js?v=render-10"></script>
     <script>
       if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
         window.addEventListener("load", function () {

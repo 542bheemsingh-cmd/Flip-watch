@@ -1,10 +1,10 @@
-import { PDFViewer } from "./viewer.js?v=render-9";
+import { PDFViewer } from "./viewer.js?v=render-10";
 import { SettingsController } from "./settings.js?v=render-9";
 import { SearchController } from "./search.js";
 import { BookmarkController } from "./bookmarks.js";
 import { ThumbnailController } from "./thumbnails.js";
 import { TOCController } from "./toc.js";
-import { ToolbarController } from "./toolbar.js?v=render-9";
+import { ToolbarController } from "./toolbar.js?v=render-10";
 import { GestureController } from "./gestures.js";
 import { $, $$ } from "./utils.js";
 
@@ -173,6 +173,7 @@ async function openFile(file) {
     await viewer.loadFile(file);
   } catch (error) {
     console.error("[PDFReader] Could not open PDF", error);
+    viewer.setLoading(false);
     showToast(error.message || "Could not open PDF.");
   }
 }

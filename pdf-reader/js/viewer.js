@@ -89,13 +89,14 @@ export class PDFViewer {
     });
     this.dropZone.hidden = true;
     this.shell.hidden = false;
+    this.setLoading(true);
     this.setProgress(8);
     this.docTitle.textContent = file.name;
     this.status.textContent = `${formatBytes(file.size)} • Loading`;
 
     const loadingTask = pdfjsLib.getDocument({ data: this.fileBuffer.slice(0) });
     loadingTask.onProgress = (progress) => {
-      if (progress.total) this.setProgress(8 + (progress.loaded / progress.total) * 50);
+      if (progress.total) this.setProgress(8 + (progress.loaded / progress.total) * 84);
     };
 
     this.pdf = await loadingTask.promise;
@@ -119,6 +120,8 @@ export class PDFViewer {
     await this.saveRecent();
     this.setProgress(100);
     window.setTimeout(() => this.setProgress(0), 500);
+    this.setLoading(false);
+    this.prefetchNearby();
     this.dispatch("loaded");
   }
 
@@ -285,7 +288,7 @@ export class PDFViewer {
       maxHeight: limits.maxHeight,
       startPage: Math.max(0, this.currentPage - 1),
       drawShadow: true,
-      flippingTime: Math.round(760 / (this.settings.animationSpeed / 100)),
+      flippingTime: Math.round(520 / (this.settings.animationSpeed / 100)),
       usePortrait: true,
       autoSize: false,
       maxShadowOpacity: 0.55,
@@ -622,6 +625,25 @@ export class PDFViewer {
     ]);
   }
 
+  prefetchNearby() {
+    if (!this.pdf) return;
+    const book = this.settings.pageFlip === "realistic" && !this.usesSinglePageBookMode();
+    const pages = book
+      ? [this.currentPage + 2, this.currentPage + 3, this.currentPage - 2, this.currentPage - 1]
+      : [this.currentPage + 1, this.currentPage + 2, this.currentPage - 1];
+    const run = () => {
+      pages.forEach((page) => {
+        if (page >= 1 && page <= this.total) void this.renderPage(page);
+      });
+    };
+    window.requestIdleCallback?.(run) ?? window.setTimeout(run, 120);
+  }
+
+  setLoading(active) {
+    const element = document.querySelector("[data-reader-loading]");
+    if (element) element.hidden = !active;
+  }
+
   renderVisibleRange() {
     if (!this.pdf || this.settings.pageFlip === "realistic") return;
     const total = this.total;
@@ -642,11 +664,22 @@ export class PDFViewer {
   async goToPage(pageNumber, smooth = true) {
     if (!this.pdf) return;
     const requestedPage = clamp(Number(pageNumber) || 1, 1, this.total);
-    this.currentPage = this.settings.pageFlip === "realistic" && !this.usesSinglePageBookMode() ? this.getSpreadStart(requestedPage) : requestedPage;
+    const previousPage = this.currentPage;
+    this.currentPage = this.settings.pageFlip === "realistic" && !this.usesSinglePageBookMode()
+      ? this.getSpreadStart(requestedPage)
+      : requestedPage;
     this.pageInput.value = String(this.currentPage);
     this.pageSlider.value = String(this.currentPage);
     this.updateSpreadVisibility();
-    await this.renderNearby();
+
+    // Fast path: only wait for the pages that are about to be shown. The rest of the
+    // neighbourhood is filled in from idle time, so a jump never waits for 6+ pages.
+    if (this.settings.pageFlip === "realistic") {
+      await this.renderCurrentSpread();
+    } else {
+      await this.renderPage(this.currentPage);
+    }
+
     const target = this.track.querySelector(`[data-page="${this.currentPage}"]`);
     if (this.settings.pageFlip === "realistic") {
       await this.ensureStPageFlip();
@@ -659,11 +692,14 @@ export class PDFViewer {
         }
       }
     } else if (target) {
-      target.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "center", inline: "center" });
+      // A smooth scroll across many pages looks broken; jump straight there instead.
+      const farJump = Math.abs(this.currentPage - previousPage) > 2;
+      target.scrollIntoView({ behavior: smooth && !farJump ? "smooth" : "auto", block: "center", inline: "center" });
     }
     await this.saveProgress();
     this.status.textContent = `${this.pageStatus()} • ${this.readingTime()}`;
     this.dispatch("pagechange");
+    this.prefetchNearby();
   }
 
   async nextPage() {
@@ -684,10 +720,14 @@ export class PDFViewer {
     if (!this.pdf || targetPage === this.currentPage) return;
 
     if (this.settings.pageFlip === "realistic") {
-      await Promise.all([
-        this.renderPage(targetPage),
-        targetPage < this.total ? this.renderPage(targetPage + 1) : Promise.resolve(),
-      ]);
+      // Only render when the spread is not ready yet; prefetching usually makes this
+      // a no-op so the flip starts immediately instead of after a long pause.
+      if (!this.hasRenderedSpread(targetPage)) {
+        await Promise.all([
+          this.renderPage(targetPage),
+          targetPage < this.total ? this.renderPage(targetPage + 1) : Promise.resolve(),
+        ]);
+      }
       await this.ensureStPageFlip();
       if (this.stPageFlipReady && this.stPageFlip && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         this.animationActive = true;
@@ -960,7 +1000,12 @@ export class PDFViewer {
     this.deferredFlushScheduled = true;
     const run = () => {
       this.deferredFlushScheduled = false;
-      if (this.rendering.size >= 2 || !this.deferredRenderPages.size) return;
+      if (!this.deferredRenderPages.size) return;
+      if (this.rendering.size >= 2) {
+        // Busy right now: try again on the next idle slot instead of dropping the work.
+        this.scheduleDeferredFlush();
+        return;
+      }
       this.flushDeferredRenders();
     };
     window.requestIdleCallback?.(run) ?? window.setTimeout(run, 60);
