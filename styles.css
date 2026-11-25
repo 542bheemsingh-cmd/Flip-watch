@@ -4728,3 +4728,40 @@ html[data-theme] .preset-button.preset-add {
   border-style: dashed;
   font-weight: 800;
 }
+
+/* phones: keep the category chips on one swipeable row so tools are visible sooner */
+@media (max-width: 520px) {
+  html[data-theme] .tool-filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html[data-theme] .tool-filters::-webkit-scrollbar { display: none; }
+  html[data-theme] .filter-chip { flex: 0 0 auto; }
+  html[data-theme] .tool-search { margin-bottom: 12px; }
+}
+
+/* keep the floating top-right controls readable over the bright header gradient */
+html[data-theme="dark"] .screen-fit-button,
+html[data-theme="dark"] .sound-toggle,
+html[data-theme="dark"] .theme-toggle,
+html[data-theme="dark"] .install-button,
+html[data-theme="dark"] .about-button {
+  background: rgba(12, 14, 28, 0.62);
+  border-color: rgba(255, 255, 255, 0.26);
+  color: #f2f4ff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="light"] .screen-fit-button,
+html[data-theme="light"] .sound-toggle,
+html[data-theme="light"] .theme-toggle,
+html[data-theme="light"] .install-button,
+html[data-theme="light"] .about-button {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(20, 20, 40, 0.16);
+}
