@@ -16,7 +16,7 @@
 
 ## ✨ What's inside
 
-Flip Watch is a single-page web app that opens into a dashboard of six tools. Every tool shares the same design system: an animated flip clock, light/dark themes, and a colour palette that slowly drifts through the spectrum.
+Flip Watch is a single-page web app that opens into a dashboard of eleven tools. Every tool shares the same design system: an animated flip clock, light/dark themes, and a colour palette that slowly drifts through the spectrum.
 
 | Tool | What it does |
 | --- | --- |
@@ -26,6 +26,11 @@ Flip Watch is a single-page web app that opens into a dashboard of six tools. Ev
 | 📖 **PDF Reader** | Book-style reader with a realistic page turn, search, bookmarks, contents, night mode |
 | 🧮 **Calculator** | Scientific functions, memory, percentages, factorials and a persistent history |
 | 📐 **Equation Calculator** | 2D area / perimeter and 3D surface-area / volume formulas, plus function graphs |
+| 🔁 **Unit Converter** | Length, weight, temperature, area, volume, speed, time and data — plus a same-value-in-every-unit table |
+| 🔑 **Password Generator** | Random passwords or memorable passphrases, entropy meter, copy button |
+| 🔤 **Word Counter** | Words, characters, reading time, top keywords and case tools |
+| ✅ **To-Do List** | Tasks with due dates, filters and inline editing, saved in the browser |
+| 📅 **Date Calculator** | Age, days between two dates (with business days), or adding days to a date |
 
 <div align="center">
 <img src="assets/stopwatch-laps.png" alt="Stopwatch with laps" width="420">

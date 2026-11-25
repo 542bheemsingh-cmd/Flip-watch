@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://542bheemsingh-cmd.github.io/Flip-watch/sitemap.xml

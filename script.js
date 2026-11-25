@@ -265,25 +265,34 @@ function updateSoundToggle() {
 
 const themeStorageKey = "flip-watch-color-theme";
 
-function updateThemeToggle(theme) {
-  if (!themeToggle) return;
-  const isLight = theme === "light";
-  themeToggle.setAttribute("aria-pressed", String(isLight));
-  themeToggle.setAttribute("aria-label", isLight ? "Switch to dark theme" : "Switch to light theme");
-  themeToggle.title = isLight ? "Switch to dark theme" : "Switch to light theme";
-  themeToggle.querySelector("span").textContent = isLight ? "☀" : "☾";
+const themeSystemQuery = window.matchMedia("(prefers-color-scheme: light)");
+
+function resolveTheme(pref) {
+  if (pref === "system") return themeSystemQuery.matches ? "light" : "dark";
+  return pref === "light" ? "light" : "dark";
 }
 
-function applyTheme(theme, persist = true) {
-  const nextTheme = theme === "light" ? "light" : "dark";
-  document.documentElement.dataset.theme = nextTheme;
-  updateThemeToggle(nextTheme);
+function updateThemeToggle(pref, resolved) {
+  if (!themeToggle) return;
+  const label = pref === "system" ? `Theme: system (${resolved})` : `Theme: ${pref}`;
+  themeToggle.setAttribute("aria-pressed", String(resolved === "light"));
+  themeToggle.setAttribute("aria-label", `${label}. Click to change.`);
+  themeToggle.title = `${label} — click to change`;
+  themeToggle.querySelector("span").textContent = pref === "system" ? "◐" : resolved === "light" ? "☀" : "☾";
+}
+
+function applyTheme(pref = "system", persist = true) {
+  const nextPref = ["light", "dark", "system"].includes(pref) ? pref : "system";
+  const resolved = resolveTheme(nextPref);
+  document.documentElement.dataset.theme = resolved;
+  document.documentElement.dataset.themePref = nextPref;
+  updateThemeToggle(nextPref, resolved);
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute("content", nextTheme === "light" ? "#f6f7ff" : "#0a0b16");
+    ?.setAttribute("content", resolved === "light" ? "#f6f7ff" : "#0a0b16");
   if (persist) {
     try {
-      localStorage.setItem(themeStorageKey, nextTheme);
+      localStorage.setItem(themeStorageKey, nextPref);
     } catch (error) {
       // Storage can be unavailable in private browsing; the theme still applies.
     }
@@ -291,8 +300,16 @@ function applyTheme(theme, persist = true) {
 }
 
 function toggleTheme() {
-  applyTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
+  const current = document.documentElement.dataset.themePref || "system";
+  const order = ["dark", "light", "system"];
+  applyTheme(order[(order.indexOf(current) + 1) % order.length]);
 }
+
+themeSystemQuery.addEventListener("change", () => {
+  if ((document.documentElement.dataset.themePref || "system") === "system") {
+    applyTheme("system", false);
+  }
+});
 
 document.addEventListener("click", (event) => {
   const button = event.target.closest("button");
@@ -2355,7 +2372,7 @@ renderStopwatch(true);
 renderCalculatorHistory();
 updateCalculatorMemoryStatus();
 updateSoundToggle();
-applyTheme(document.documentElement.dataset.theme || "dark", false);
+applyTheme(document.documentElement.dataset.themePref || "system", false);
 try {
   const storedHourFormat = localStorage.getItem(hourFormatStorageKey);
   if (storedHourFormat === "12" || storedHourFormat === "24") hourFormat = storedHourFormat;
@@ -3268,3 +3285,82 @@ if (utilityPanel) {
   const backButton = utilityPanel.querySelector("[data-utility-back]");
   if (backButton) backButton.addEventListener("click", showDashboard);
 }
+
+/* =====================================================================
+   App-level polish: version, install prompt, offline state, about dialog.
+   ===================================================================== */
+const APP_VERSION = "2.0.0";
+
+document.querySelectorAll("[data-app-version]").forEach((element) => {
+  element.textContent = APP_VERSION;
+});
+
+window.addEventListener("error", (event) => {
+  console.error("[FlipWatch] Runtime error:", event.error || event.message);
+});
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("[FlipWatch] Unhandled rejection:", event.reason);
+});
+
+/* offline banner */
+const offlineBanner = document.querySelector("[data-offline-banner]");
+function updateOnlineState() {
+  if (offlineBanner) offlineBanner.hidden = navigator.onLine;
+}
+window.addEventListener("online", updateOnlineState);
+window.addEventListener("offline", updateOnlineState);
+updateOnlineState();
+
+/* install prompt */
+const installButton = document.querySelector("[data-install-app]");
+let deferredInstallPrompt = null;
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  if (installButton) installButton.hidden = false;
+});
+
+if (installButton) {
+  installButton.addEventListener("click", async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    try {
+      const choice = await deferredInstallPrompt.userChoice;
+      if (choice && choice.outcome === "accepted") installButton.hidden = true;
+    } catch (error) {
+      // The prompt can only be used once; ignore repeat attempts.
+    }
+    deferredInstallPrompt = null;
+  });
+}
+
+window.addEventListener("appinstalled", () => {
+  if (installButton) installButton.hidden = true;
+  showAppToast("Flip Watch installed.");
+});
+
+/* about + shortcuts dialog */
+const aboutDialog = document.querySelector("[data-about-dialog]");
+const aboutOpenButton = document.querySelector("[data-about-open]");
+
+function openAboutDialog() {
+  if (aboutDialog && !aboutDialog.open) aboutDialog.showModal();
+}
+
+if (aboutOpenButton) aboutOpenButton.addEventListener("click", openAboutDialog);
+
+if (aboutDialog) {
+  aboutDialog.addEventListener("click", (event) => {
+    if (event.target === aboutDialog) aboutDialog.close();
+  });
+}
+
+document.addEventListener("keydown", (event) => {
+  const target = event.target;
+  if (target && target.closest && target.closest("input, textarea, select, [contenteditable='true']")) return;
+  if (event.key === "?") {
+    event.preventDefault();
+    openAboutDialog();
+  }
+});

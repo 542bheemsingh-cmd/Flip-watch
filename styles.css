@@ -4054,3 +4054,114 @@ html[data-theme] .todo-add input[type="date"] { max-width: 170px; }
   html[data-theme] .todo-add { flex-wrap: wrap; }
   html[data-theme] .todo-add input[type="date"] { max-width: none; }
 }
+
+/* ---- app polish: skip link, offline banner, install/about, dialog ---- */
+html[data-theme] .skip-link {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  z-index: 200;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--panel-strong);
+  color: var(--text);
+  font-weight: 800;
+  text-decoration: none;
+  transform: translate(-50%, -160%);
+  transition: transform var(--motion-fast) var(--ease-standard);
+}
+
+html[data-theme] .skip-link:focus-visible {
+  transform: translate(-50%, 0);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+html[data-theme] .offline-banner {
+  position: fixed;
+  left: 50%;
+  top: 10px;
+  z-index: 90;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--panel-strong);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  box-shadow: var(--shadow-md);
+}
+
+html[data-theme] .install-button,
+html[data-theme] .about-button {
+  z-index: 60;
+  top: 18px;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  backdrop-filter: blur(14px);
+  transition: transform var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) ease;
+}
+
+html[data-theme] .install-button { position: fixed; right: 168px; }
+html[data-theme] .about-button { position: fixed; right: 218px; }
+html[data-theme] .install-button:hover,
+html[data-theme] .about-button:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+
+@media (max-width: 520px) {
+  html[data-theme] .install-button { right: 146px; top: 10px; width: 38px; height: 38px; }
+  html[data-theme] .about-button { right: 190px; top: 10px; width: 38px; height: 38px; }
+}
+
+html[data-theme] .app-dialog {
+  width: min(520px, calc(100vw - 32px));
+  padding: 26px;
+  border: 1px solid var(--border-strong);
+  border-radius: 22px;
+  background: var(--panel-strong);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+}
+
+html[data-theme] .app-dialog::backdrop { background: rgba(4, 6, 16, 0.62); backdrop-filter: blur(3px); }
+html[data-theme] .app-dialog h2 { margin: 0 0 8px; font-size: 1.5rem; }
+html[data-theme] .app-dialog h3 { margin: 18px 0 8px; font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+html[data-theme] .app-dialog__lede { margin: 0; color: var(--muted); line-height: 1.5; }
+
+html[data-theme] .app-dialog__keys { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+html[data-theme] .app-dialog__keys li { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--muted); }
+html[data-theme] .app-dialog__keys kbd {
+  min-width: 26px;
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 7px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+html[data-theme] .app-dialog__version { margin: 18px 0 0; color: var(--muted); font-size: 0.82rem; }
+html[data-theme] .app-dialog__version a { color: var(--accent); }
+html[data-theme] .app-dialog__actions { margin: 16px 0 0; display: flex; justify-content: flex-end; }
+
+@media print {
+  .screen-fit-button, .sound-toggle, .theme-toggle, .install-button, .about-button,
+  .skip-link, .offline-banner, .app-toast, .dashboard, .back-button, .controls,
+  .lap-panel, .status-row { display: none !important; }
+  html[data-theme] body { background: #fff !important; color: #000 !important; }
+  html[data-theme] .watch-panel,
+  html[data-theme] .calculator-panel,
+  html[data-theme] .equation-panel,
+  html[data-theme] .utility-panel { box-shadow: none !important; border: 1px solid #ccc !important; background: #fff !important; }
+}

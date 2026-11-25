@@ -66,11 +66,12 @@
     <script>
       (function () {
         try {
-          var stored = localStorage.getItem("flip-watch-color-theme");
-          var theme = stored === "light" || stored === "dark"
-            ? stored
-            : (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+          var stored = localStorage.getItem("flip-watch-color-theme") || "system";
+          var prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+          var theme = stored === "system" ? (prefersLight ? "light" : "dark") : stored;
+          if (theme !== "light" && theme !== "dark") theme = "dark";
           document.documentElement.dataset.theme = theme;
+          document.documentElement.dataset.themePref = stored;
         } catch (error) {
           document.documentElement.dataset.theme = "dark";
         }
@@ -82,10 +83,10 @@
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#0a0b16" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-    <link rel="preconnect" href="https://images.unsplash.com" />
-    <link rel="stylesheet" href="styles.css?v=premium-10" />
+    <link rel="stylesheet" href="styles.css?v=premium-12" />
   </head>
   <body>
+    <a class="skip-link" href="#dashboard">Skip to tools</a>
     <main class="app-shell" data-app-shell>
       <button
         class="screen-fit-button"
@@ -117,7 +118,26 @@
       >
         <span aria-hidden="true">&#x263E;</span>
       </button>
-      <section class="dashboard" data-dashboard aria-label="Tools dashboard">
+      <button
+        class="install-button"
+        type="button"
+        data-install-app
+        aria-label="Install Flip Watch"
+        title="Install Flip Watch"
+        hidden
+      >
+        <span aria-hidden="true">&#x2B07;</span>
+      </button>
+      <button
+        class="about-button"
+        type="button"
+        data-about-open
+        aria-label="About Flip Watch and keyboard shortcuts"
+        title="About &amp; shortcuts (?)"
+      >
+        <span aria-hidden="true">?</span>
+      </button>
+      <section class="dashboard" id="dashboard" data-dashboard aria-label="Tools dashboard">
         <div class="dashboard-header">
           <div>
             <p class="dashboard-kicker">Flip Watch</p>
@@ -665,8 +685,33 @@
 
         <div class="utility-body" data-utility-body></div>
       </section>
+
+      <div class="offline-banner" data-offline-banner role="status" aria-live="polite" hidden>
+        You are offline — Flip Watch keeps working.
+      </div>
+
+      <dialog class="app-dialog" data-about-dialog aria-labelledby="about-title">
+        <h2 id="about-title">About Flip Watch</h2>
+        <p class="app-dialog__lede">
+          A small, offline-ready set of everyday tools. Everything runs in your browser and nothing
+          you type or open leaves this device.
+        </p>
+        <h3>Keyboard shortcuts</h3>
+        <ul class="app-dialog__keys">
+          <li><kbd>Space</kbd><span>Start / pause the stopwatch or timer</span></li>
+          <li><kbd>R</kbd><span>Reset</span></li>
+          <li><kbd>L</kbd><span>Record a lap</span></li>
+          <li><kbd>&larr;</kbd><kbd>&rarr;</kbd><span>Move between buttons in a group</span></li>
+          <li><kbd>?</kbd><span>Open this dialog</span></li>
+          <li><kbd>Esc</kbd><span>Close a dialog</span></li>
+        </ul>
+        <p class="app-dialog__version">Version <span data-app-version>2.0.0</span> · <a href="https://github.com/542bheemsingh-cmd/Flip-watch" target="_blank" rel="noopener">Source on GitHub</a></p>
+        <form method="dialog" class="app-dialog__actions">
+          <button type="submit" class="control-button primary">Close</button>
+        </form>
+      </dialog>
     </main>
 
-    <script src="script.js?v=premium-12"></script>
+    <script src="script.js?v=premium-13"></script>
   </body>
 </html>

@@ -5,6 +5,10 @@ All notable changes to Flip Watch are recorded here.
 ## [Unreleased]
 
 ### Added
+- **Five more tools**: Unit Converter, Password Generator, Word Counter, To-Do List and Date Calculator — all offline, with 40 refinements across them (swap/copy, all-unit table, passphrases with a 1,745-word list, entropy meter, character targets, keywords, inline task editing, due dates, business days, and more).
+- **App polish**: skip link, offline banner, install-app button, About/shortcuts dialog (`?`), and a system-aware theme option.
+- `robots.txt` and `sitemap.xml`.
+- Print styles for the tool panels.
 - **PDF reader**: realistic book mode powered by a purpose-built CSS-3D flip engine (`book-flip.js`), with cached page canvases so no page is ever blank mid-turn.
 - **PDF reader**: night mode, single-page and horizontal layouts, rotation, and a loading overlay while a document opens.
 - **Stopwatch**: laps/splits with best and worst lap highlighting.
