@@ -4765,3 +4765,18 @@ html[data-theme="light"] .about-button {
   background: rgba(255, 255, 255, 0.82);
   border-color: rgba(20, 20, 40, 0.16);
 }
+
+/* "Copy link" in the tool heading */
+html[data-theme] .utility-heading { position: relative; }
+
+html[data-theme] .utility-link {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 0.74rem;
+  padding: 6px 12px;
+}
+
+@media (max-width: 520px) {
+  html[data-theme] .utility-link { position: static; margin-top: 10px; }
+}

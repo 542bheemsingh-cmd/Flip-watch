@@ -6290,6 +6290,14 @@ function openToolFromHash() {
 window.addEventListener("hashchange", openToolFromHash);
 openToolFromHash();
 
+/* copy a shareable link to the open tool */
+const utilityLinkButton = document.querySelector("[data-utility-link]");
+if (utilityLinkButton) {
+  utilityLinkButton.addEventListener("click", () => {
+    utilCopy(location.href, "Link copied.");
+  });
+}
+
 /* back to top for the long tool list */
 const toTopButton = document.querySelector("[data-to-top]");
 

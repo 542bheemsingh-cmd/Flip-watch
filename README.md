@@ -68,7 +68,8 @@ Flip Watch is a single-page web app that opens into a dashboard of thirty-two to
 - **Living colour** — accents drift slowly through different hues on every screen.
 - **Laps, not just a timer** — split and total times, with the best and worst lap highlighted.
 - **Everything is remembered** — calculator history, memory, timer presets and even a paused stopwatch survive a reload.
-- **Keyboard first** — `Space` start/pause, `R` reset, `L` lap, arrow keys inside every segmented control.
+- **Keyboard first** — `Space` start/pause, `R` reset, `L` lap, `/` to search, arrow keys to move between tool cards.
+- **Shareable tools** — every tool has its own link (`/#gst`, `/#qrcode`, …); open one and press *Copy link*.
 - **Accessible** — visible focus, correct ARIA state, and focus moves into a tool when you open it.
 - **Truly responsive** — designed for phones as much as desktops, including the PDF reader.
 
