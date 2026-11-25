@@ -2046,6 +2046,13 @@ function focusPanel(panel) {
 function openTool(mode) {
   window.clearTimeout(clockTimer);
   recordRecentTool(mode);
+  if (mode && mode !== "pdf") {
+    try {
+      history.replaceState(null, "", `#${mode}`);
+    } catch (error) {
+      // Deep links are a nicety; never block opening the tool.
+    }
+  }
   if (mode === "pdf") {
     window.location.href = "pdf-reader/index.html";
     return;
@@ -2101,6 +2108,11 @@ function showDashboard() {
   equationPanel.hidden = true;
   if (utilityPanel) utilityPanel.hidden = true;
   dashboard.hidden = false;
+  try {
+    if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+  } catch (error) {
+    // Ignore.
+  }
   animateDashboardIn();
   if (lastToolTrigger && document.contains(lastToolTrigger) && !lastToolTrigger.hidden) {
     lastToolTrigger.focus({ preventScroll: true });
@@ -6262,6 +6274,21 @@ document.querySelectorAll("[data-timer-add]").forEach((button) => {
     showAppToast(`Added ${delta} minute${delta === 1 ? "" : "s"}.`);
   });
 });
+
+/* deep links: /#gst opens the GST calculator */
+const deepLinkTools = new Set(
+  Array.from(document.querySelectorAll("[data-open-tool]")).map((card) => card.dataset.openTool)
+);
+
+function openToolFromHash() {
+  const kind = decodeURIComponent(location.hash.replace(/^#/, "")).trim();
+  if (!kind || !deepLinkTools.has(kind)) return;
+  if (kind === "pdf") return;
+  openTool(kind);
+}
+
+window.addEventListener("hashchange", openToolFromHash);
+openToolFromHash();
 
 /* back to top for the long tool list */
 const toTopButton = document.querySelector("[data-to-top]");
