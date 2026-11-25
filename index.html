@@ -83,7 +83,7 @@
     <meta name="theme-color" content="#0a0b16" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="preconnect" href="https://images.unsplash.com" />
-    <link rel="stylesheet" href="styles.css?v=premium-6" />
+    <link rel="stylesheet" href="styles.css?v=premium-8" />
   </head>
   <body>
     <main class="app-shell" data-app-shell>
@@ -123,7 +123,7 @@
             <p class="dashboard-kicker">Flip Watch</p>
             <h1>Useful Tools</h1>
           </div>
-          <span class="dashboard-badge">6 Tools</span>
+          <span class="dashboard-badge">11 Tools</span>
         </div>
 
         <div class="tool-grid">
@@ -161,6 +161,36 @@
             <span class="tool-icon equation-icon">A²</span>
             <span class="tool-name">Equation Calculator</span>
             <span class="tool-meta">2D area and 3D surface-area formulas</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="converter">
+            <span class="tool-icon">&#x21C4;</span>
+            <span class="tool-name">Unit Converter</span>
+            <span class="tool-meta">Length, weight, temperature, data and more</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="password">
+            <span class="tool-icon">PWD</span>
+            <span class="tool-name">Password Generator</span>
+            <span class="tool-meta">Strong random passwords, made offline</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="wordcount">
+            <span class="tool-icon">abc</span>
+            <span class="tool-name">Word Counter</span>
+            <span class="tool-meta">Words, characters and reading time</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="todo">
+            <span class="tool-icon">&#x2713;</span>
+            <span class="tool-name">To-Do List</span>
+            <span class="tool-meta">Tasks saved in this browser</span>
+          </button>
+
+          <button class="tool-card" type="button" data-open-tool="dates">
+            <span class="tool-icon">31</span>
+            <span class="tool-name">Date Calculator</span>
+            <span class="tool-meta">Age and days between two dates</span>
           </button>
         </div>
       </section>
@@ -623,8 +653,20 @@
           <div class="equation-shape-grid" data-equation-shape-grid></div>
         </section>
       </section>
+
+      <section class="utility-panel" data-utility-panel aria-label="Utility" tabindex="-1" hidden>
+        <button class="back-button" type="button" data-utility-back>Dashboard</button>
+
+        <div class="utility-heading">
+          <p class="utility-kicker" data-utility-kicker>Tool</p>
+          <h2 data-utility-title>Tool</h2>
+          <p class="utility-sub" data-utility-sub></p>
+        </div>
+
+        <div class="utility-body" data-utility-body></div>
+      </section>
     </main>
 
-    <script src="script.js?v=premium-8"></script>
+    <script src="script.js?v=premium-10"></script>
   </body>
 </html>

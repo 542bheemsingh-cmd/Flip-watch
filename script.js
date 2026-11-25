@@ -2057,6 +2057,11 @@ function openTool(mode) {
     return;
   }
 
+  if (UTILITY_TOOLS.includes(mode)) {
+    openUtility(mode);
+    return;
+  }
+
   dashboard.hidden = true;
   toolPanel.hidden = false;
   calculatorPanel.hidden = true;
@@ -2076,6 +2081,7 @@ function showDashboard() {
   toolPanel.hidden = true;
   calculatorPanel.hidden = true;
   equationPanel.hidden = true;
+  if (utilityPanel) utilityPanel.hidden = true;
   dashboard.hidden = false;
   animateDashboardIn();
   if (lastToolTrigger && document.contains(lastToolTrigger) && !lastToolTrigger.hidden) {
@@ -2382,9 +2388,12 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
           }
         });
       });
+      // Only reload when an *update* replaces an existing worker. On the very first
+      // visit the worker claims the page, and reloading there would be jarring.
+      const hadController = Boolean(navigator.serviceWorker.controller);
       let reloading = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
-        if (reloading) return;
+        if (!hadController || reloading) return;
         reloading = true;
         window.location.reload();
       });
@@ -2392,4 +2401,453 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
       console.warn("[PWA] Service worker registration failed.", error);
     }
   });
+}
+
+/* =====================================================================
+   Extra utilities: unit converter, password generator, word counter,
+   to-do list and date calculator.
+   ===================================================================== */
+const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates"];
+const utilityPanel = document.querySelector("[data-utility-panel]");
+const utilityKicker = document.querySelector("[data-utility-kicker]");
+const utilityTitle = document.querySelector("[data-utility-title]");
+const utilitySub = document.querySelector("[data-utility-sub]");
+const utilityBody = document.querySelector("[data-utility-body]");
+
+const utilityMeta = {
+  converter: { kicker: "Convert", title: "Unit Converter", sub: "Length, weight, temperature, area, volume, speed, time and data." },
+  password: { kicker: "Generate", title: "Password Generator", sub: "Strong random passwords, created on your device." },
+  wordcount: { kicker: "Count", title: "Word Counter", sub: "Words, characters, sentences and reading time as you type." },
+  todo: { kicker: "Organise", title: "To-Do List", sub: "Tasks are saved in this browser, so they survive a reload." },
+  dates: { kicker: "Calculate", title: "Date Calculator", sub: "Work out an age, or the gap between two dates." },
+};
+
+function openUtility(kind) {
+  if (!utilityPanel) return;
+  dashboard.hidden = true;
+  toolPanel.hidden = true;
+  calculatorPanel.hidden = true;
+  equationPanel.hidden = true;
+  utilityPanel.hidden = false;
+  const meta = utilityMeta[kind] || utilityMeta.converter;
+  utilityPanel.dataset.kind = kind;
+  utilityKicker.textContent = meta.kicker;
+  utilityTitle.textContent = meta.title;
+  utilitySub.textContent = meta.sub;
+  renderUtility(kind);
+  animatePanelIn(utilityPanel);
+  focusPanel(utilityPanel);
+}
+
+function renderUtility(kind) {
+  if (!utilityBody) return;
+  if (kind === "converter") renderConverter();
+  else if (kind === "password") renderPassword();
+  else if (kind === "wordcount") renderWordCounter();
+  else if (kind === "todo") renderTodo();
+  else if (kind === "dates") renderDateCalculator();
+}
+
+function formatNumber(value) {
+  if (!Number.isFinite(value)) return "";
+  const abs = Math.abs(value);
+  if (abs !== 0 && (abs >= 1e9 || abs < 1e-6)) return value.toExponential(4);
+  return String(Math.round(value * 1e6) / 1e6);
+}
+
+/* ------------------------------------------------ unit converter */
+const CONVERTER = {
+  Length: { units: { mm: 0.001, cm: 0.01, m: 1, km: 1000, in: 0.0254, ft: 0.3048, yd: 0.9144, mi: 1609.344 }, from: "m", to: "ft" },
+  Weight: { units: { mg: 1e-6, g: 0.001, kg: 1, t: 1000, oz: 0.028349523125, lb: 0.45359237 }, from: "kg", to: "lb" },
+  Temperature: { special: true, units: { "°C": 1, "°F": 1, K: 1 }, from: "°C", to: "°F" },
+  Area: { units: { "cm²": 1e-4, "m²": 1, ha: 10000, "km²": 1e6, "ft²": 0.09290304, "yd²": 0.83612736, acre: 4046.8564224 }, from: "m²", to: "ft²" },
+  Volume: { units: { mL: 0.001, L: 1, "m³": 1000, "fl oz": 0.0295735295625, cup: 0.2365882365, pt: 0.473176473, qt: 0.946352946, gal: 3.785411784 }, from: "L", to: "gal" },
+  Speed: { units: { "m/s": 1, "km/h": 0.2777777778, mph: 0.44704, knot: 0.5144444444 }, from: "km/h", to: "mph" },
+  Time: { units: { ms: 0.001, s: 1, min: 60, h: 3600, day: 86400, week: 604800 }, from: "min", to: "h" },
+  Data: { units: { bit: 0.125, B: 1, KB: 1024, MB: 1048576, GB: 1073741824, TB: 1099511627776 }, from: "MB", to: "GB" },
+};
+
+function convertTemperature(value, from, to) {
+  const toC = from === "°C" ? value : from === "°F" ? ((value - 32) * 5) / 9 : value - 273.15;
+  return to === "°C" ? toC : to === "°F" ? (toC * 9) / 5 + 32 : toC + 273.15;
+}
+
+function renderConverter() {
+  const categories = Object.keys(CONVERTER);
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="conv-cat">Category</label>
+      <select id="conv-cat" data-conv-category>
+        ${categories.map((c) => `<option value="${c}">${c}</option>`).join("")}
+      </select>
+    </div>
+    <div class="conv-row">
+      <div class="util-field">
+        <label for="conv-value">From</label>
+        <input id="conv-value" type="number" inputmode="decimal" step="any" value="1" data-conv-value />
+        <select data-conv-from aria-label="Convert from unit"></select>
+      </div>
+      <button class="util-swap" type="button" data-conv-swap title="Swap units" aria-label="Swap units">⇄</button>
+      <div class="util-field">
+        <label for="conv-result">To</label>
+        <input id="conv-result" type="text" readonly data-conv-result />
+        <select data-conv-to aria-label="Convert to unit"></select>
+      </div>
+    </div>
+    <p class="util-note" data-conv-note></p>
+  `;
+
+  const categoryEl = utilityBody.querySelector("[data-conv-category]");
+  const valueEl = utilityBody.querySelector("[data-conv-value]");
+  const fromEl = utilityBody.querySelector("[data-conv-from]");
+  const toEl = utilityBody.querySelector("[data-conv-to]");
+  const resultEl = utilityBody.querySelector("[data-conv-result]");
+  const noteEl = utilityBody.querySelector("[data-conv-note]");
+
+  const fillUnits = () => {
+    const cfg = CONVERTER[categoryEl.value];
+    const names = Object.keys(cfg.units);
+    fromEl.innerHTML = names.map((u) => `<option value="${u}">${u}</option>`).join("");
+    toEl.innerHTML = names.map((u) => `<option value="${u}">${u}</option>`).join("");
+    fromEl.value = cfg.from;
+    toEl.value = cfg.to;
+    update();
+  };
+
+  const update = () => {
+    const cfg = CONVERTER[categoryEl.value];
+    const raw = Number(valueEl.value);
+    if (!Number.isFinite(raw)) {
+      resultEl.value = "";
+      noteEl.textContent = "Enter a number to convert.";
+      return;
+    }
+    const from = fromEl.value;
+    const to = toEl.value;
+    const out = cfg.special
+      ? convertTemperature(raw, from, to)
+      : (raw * cfg.units[from]) / cfg.units[to];
+    resultEl.value = formatNumber(out);
+    noteEl.textContent = `${formatNumber(raw)} ${from} = ${formatNumber(out)} ${to}`;
+  };
+
+  categoryEl.addEventListener("change", fillUnits);
+  [valueEl, fromEl, toEl].forEach((el) => el.addEventListener("input", update));
+  utilityBody.querySelector("[data-conv-swap]").addEventListener("click", () => {
+    const from = fromEl.value;
+    fromEl.value = toEl.value;
+    toEl.value = from;
+    update();
+  });
+
+  fillUnits();
+}
+
+/* ------------------------------------------------ password generator */
+function generatePassword(options) {
+  const sets = [];
+  if (options.upper) sets.push("ABCDEFGHJKLMNPQRSTUVWXYZ" + (options.excludeAmbiguous ? "" : "IO"));
+  if (options.lower) sets.push("abcdefghijkmnopqrstuvwxyz" + (options.excludeAmbiguous ? "" : "lo"));
+  if (options.digits) sets.push(options.excludeAmbiguous ? "23456789" : "0123456789");
+  if (options.symbols) sets.push("!@#$%^&*()-_=+[]{};:,.?/");
+  if (!sets.length) return "";
+
+  const pool = sets.join("");
+  const length = Math.max(sets.length, options.length);
+  const random = (max) => {
+    const buffer = new Uint32Array(1);
+    crypto.getRandomValues(buffer);
+    return buffer[0] % max;
+  };
+  const chars = [];
+  sets.forEach((set) => chars.push(set[random(set.length)]));
+  while (chars.length < length) chars.push(pool[random(pool.length)]);
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = random(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join("");
+}
+
+function renderPassword() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="pw-length">Length: <output data-pw-len>16</output></label>
+      <input id="pw-length" type="range" min="8" max="64" value="16" data-pw-range />
+    </div>
+    <div class="util-toggles">
+      <label><input type="checkbox" data-pw="upper" checked /> A–Z</label>
+      <label><input type="checkbox" data-pw="lower" checked /> a–z</label>
+      <label><input type="checkbox" data-pw="digits" checked /> 0–9</label>
+      <label><input type="checkbox" data-pw="symbols" checked /> !@#$</label>
+      <label><input type="checkbox" data-pw="excludeAmbiguous" /> Exclude look-alikes</label>
+    </div>
+    <div class="pw-output">
+      <input type="text" readonly data-pw-out aria-label="Generated password" />
+      <button type="button" data-pw-copy>Copy</button>
+    </div>
+    <button class="control-button primary" type="button" data-pw-generate>Generate new password</button>
+    <p class="util-note" data-pw-strength></p>
+  `;
+
+  const rangeEl = utilityBody.querySelector("[data-pw-range]");
+  const lenEl = utilityBody.querySelector("[data-pw-len]");
+  const outEl = utilityBody.querySelector("[data-pw-out]");
+  const strengthEl = utilityBody.querySelector("[data-pw-strength]");
+
+  const readOptions = () => {
+    const options = { length: Number(rangeEl.value) };
+    utilityBody.querySelectorAll("[data-pw]").forEach((input) => {
+      options[input.dataset.pw] = input.checked;
+    });
+    return options;
+  };
+
+  const refresh = () => {
+    const options = readOptions();
+    lenEl.textContent = String(options.length);
+    const password = generatePassword(options);
+    outEl.value = password || "Select at least one character set";
+    if (!password) {
+      strengthEl.textContent = "Pick at least one character set.";
+      return;
+    }
+    const poolSize =
+      (options.upper ? 24 : 0) + (options.lower ? 24 : 0) + (options.digits ? 10 : 0) + (options.symbols ? 24 : 0);
+    const bits = Math.round(options.length * Math.log2(Math.max(2, poolSize)));
+    const label = bits >= 110 ? "Excellent" : bits >= 80 ? "Strong" : bits >= 60 ? "Good" : bits >= 40 ? "Fair" : "Weak";
+    strengthEl.textContent = `${label} — about ${bits} bits of entropy`;
+  };
+
+  rangeEl.addEventListener("input", refresh);
+  utilityBody.querySelectorAll("[data-pw]").forEach((input) => input.addEventListener("change", refresh));
+  utilityBody.querySelector("[data-pw-generate]").addEventListener("click", refresh);
+  utilityBody.querySelector("[data-pw-copy]").addEventListener("click", async () => {
+    if (!outEl.value) return;
+    try {
+      await navigator.clipboard.writeText(outEl.value);
+      showAppToast("Password copied.");
+    } catch (error) {
+      outEl.select();
+      document.execCommand?.("copy");
+      showAppToast("Password copied.");
+    }
+  });
+
+  refresh();
+}
+
+/* ------------------------------------------------ word counter */
+function renderWordCounter() {
+  utilityBody.innerHTML = `
+    <textarea class="util-textarea" data-wc-input placeholder="Start typing or paste your text…" aria-label="Text to count"></textarea>
+    <div class="stat-grid">
+      <div class="stat"><span data-wc="words">0</span><small>Words</small></div>
+      <div class="stat"><span data-wc="chars">0</span><small>Characters</small></div>
+      <div class="stat"><span data-wc="charsNoSpace">0</span><small>No spaces</small></div>
+      <div class="stat"><span data-wc="sentences">0</span><small>Sentences</small></div>
+      <div class="stat"><span data-wc="paragraphs">0</span><small>Paragraphs</small></div>
+      <div class="stat"><span data-wc="reading">0 min</span><small>Reading time</small></div>
+    </div>
+  `;
+
+  const input = utilityBody.querySelector("[data-wc-input]");
+  const out = (key) => utilityBody.querySelector(`[data-wc="${key}"]`);
+
+  const update = () => {
+    const text = input.value;
+    const trimmed = text.trim();
+    const words = trimmed ? trimmed.split(/\s+/).length : 0;
+    const sentences = trimmed ? (trimmed.match(/[.!?]+(\s|$)/g) || []).length || 1 : 0;
+    const paragraphs = trimmed ? trimmed.split(/\n\s*\n/).filter((p) => p.trim()).length : 0;
+    out("words").textContent = String(words);
+    out("chars").textContent = String(text.length);
+    out("charsNoSpace").textContent = String(text.replace(/\s/g, "").length);
+    out("sentences").textContent = String(sentences);
+    out("paragraphs").textContent = String(paragraphs);
+    out("reading").textContent = `${Math.max(words ? 1 : 0, Math.round(words / 200))} min`;
+  };
+
+  input.addEventListener("input", update);
+  update();
+}
+
+/* ------------------------------------------------ to-do list */
+const TODO_KEY = "flip-watch-todos";
+
+function readTodos() {
+  const stored = readStored(TODO_KEY, []);
+  return Array.isArray(stored) ? stored.filter((item) => item && typeof item.text === "string") : [];
+}
+
+function renderTodo() {
+  utilityBody.innerHTML = `
+    <form class="todo-add" data-todo-form>
+      <input type="text" maxlength="140" placeholder="Add a task…" aria-label="New task" data-todo-input />
+      <button type="submit">Add</button>
+    </form>
+    <div class="todo-filters" role="group" aria-label="Filter tasks">
+      <button type="button" class="is-active" data-todo-filter="all">All</button>
+      <button type="button" data-todo-filter="active">Active</button>
+      <button type="button" data-todo-filter="done">Done</button>
+      <button type="button" data-todo-filter="clear">Clear done</button>
+    </div>
+    <ul class="todo-list" data-todo-list></ul>
+    <p class="util-note" data-todo-empty>No tasks yet — add one above.</p>
+  `;
+
+  let todos = readTodos();
+  let filter = "all";
+  const listEl = utilityBody.querySelector("[data-todo-list]");
+  const emptyEl = utilityBody.querySelector("[data-todo-empty]");
+
+  const save = () => writeStored(TODO_KEY, todos);
+
+  const paint = () => {
+    listEl.replaceChildren();
+    const visible = todos.filter((t) => (filter === "active" ? !t.done : filter === "done" ? t.done : true));
+    visible.forEach((todo) => {
+      const item = document.createElement("li");
+      item.className = `todo-item${todo.done ? " is-done" : ""}`;
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = Boolean(todo.done);
+      checkbox.setAttribute("aria-label", `Mark "${todo.text}" as ${todo.done ? "not done" : "done"}`);
+      checkbox.addEventListener("change", () => {
+        todo.done = checkbox.checked;
+        save();
+        paint();
+      });
+
+      const label = document.createElement("span");
+      label.textContent = todo.text;
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "×";
+      remove.setAttribute("aria-label", `Delete "${todo.text}"`);
+      remove.addEventListener("click", () => {
+        todos = todos.filter((t) => t.id !== todo.id);
+        save();
+        paint();
+      });
+
+      item.append(checkbox, label, remove);
+      listEl.append(item);
+    });
+    emptyEl.textContent = visible.length ? "" : todos.length ? "Nothing in this filter." : "No tasks yet — add one above.";
+  };
+
+  utilityBody.querySelector("[data-todo-form]").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const input = utilityBody.querySelector("[data-todo-input]");
+    const text = input.value.trim();
+    if (!text) return;
+    todos.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text, done: false });
+    input.value = "";
+    save();
+    paint();
+    input.focus();
+  });
+
+  utilityBody.querySelectorAll("[data-todo-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const value = button.dataset.todoFilter;
+      if (value === "clear") {
+        todos = todos.filter((t) => !t.done);
+        save();
+        paint();
+        return;
+      }
+      filter = value;
+      utilityBody.querySelectorAll("[data-todo-filter]").forEach((b) => {
+        b.classList.toggle("is-active", b === button && value !== "clear");
+      });
+      paint();
+    });
+  });
+
+  paint();
+}
+
+/* ------------------------------------------------ date calculator */
+function renderDateCalculator() {
+  const today = new Date();
+  const iso = (date) => date.toISOString().slice(0, 10);
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="date-mode">Mode</label>
+      <select id="date-mode" data-date-mode>
+        <option value="age">Age from a birth date</option>
+        <option value="diff">Days between two dates</option>
+      </select>
+    </div>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="date-a" data-date-label>Birth date</label>
+        <input id="date-a" type="date" data-date-a max="${iso(today)}" />
+      </div>
+      <div class="util-field" data-date-b-wrap hidden>
+        <label for="date-b">To date</label>
+        <input id="date-b" type="date" data-date-b value="${iso(today)}" />
+      </div>
+    </div>
+    <div class="stat-grid" data-date-stats></div>
+  `;
+
+  const modeEl = utilityBody.querySelector("[data-date-mode]");
+  const aEl = utilityBody.querySelector("[data-date-a]");
+  const bEl = utilityBody.querySelector("[data-date-b]");
+  const bWrap = utilityBody.querySelector("[data-date-b-wrap]");
+  const labelEl = utilityBody.querySelector("[data-date-label]");
+  const statsEl = utilityBody.querySelector("[data-date-stats]");
+
+  const stat = (value, label) => `<div class="stat"><span>${value}</span><small>${label}</small></div>`;
+
+  const update = () => {
+    const isAge = modeEl.value === "age";
+    bWrap.hidden = isAge;
+    labelEl.textContent = isAge ? "Birth date" : "From date";
+    aEl.max = isAge ? iso(today) : "";
+    if (!aEl.value) {
+      statsEl.innerHTML = stat("—", isAge ? "Pick a birth date" : "Pick two dates");
+      return;
+    }
+    const start = new Date(`${aEl.value}T00:00:00`);
+    const end = isAge ? new Date(today.getFullYear(), today.getMonth(), today.getDate()) : new Date(`${bEl.value || iso(today)}T00:00:00`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      statsEl.innerHTML = stat("—", "Invalid date");
+      return;
+    }
+    const [from, to] = start <= end ? [start, end] : [end, start];
+    let years = to.getFullYear() - from.getFullYear();
+    let months = to.getMonth() - from.getMonth();
+    let days = to.getDate() - from.getDate();
+    if (days < 0) {
+      months -= 1;
+      days += new Date(to.getFullYear(), to.getMonth(), 0).getDate();
+    }
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+    const totalDays = Math.round((to - from) / 86400000);
+    statsEl.innerHTML = [
+      stat(`${years}y ${months}m ${days}d`, "Years / months / days"),
+      stat(String(totalDays), "Total days"),
+      stat(String(Math.floor(totalDays / 7)), "Weeks"),
+      stat(String(Math.round(totalDays / 30.4375)), "Months"),
+    ].join("");
+  };
+
+  modeEl.addEventListener("change", update);
+  aEl.addEventListener("change", update);
+  bEl.addEventListener("change", update);
+  update();
+}
+
+if (utilityPanel) {
+  const backButton = utilityPanel.querySelector("[data-utility-back]");
+  if (backButton) backButton.addEventListener("click", showDashboard);
 }

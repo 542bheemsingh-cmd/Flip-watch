@@ -3676,3 +3676,279 @@ html[data-theme].is-tab-hidden,
 html[data-theme].is-tab-hidden body::before {
   animation-play-state: paused;
 }
+
+/* =====================================================================
+   Utility tools (converter, password, word counter, to-do, dates)
+   ===================================================================== */
+html[data-theme] .utility-panel {
+  width: min(880px, 100%);
+  display: grid;
+  gap: clamp(16px, 2.6vw, 26px);
+  padding: clamp(18px, 4vw, 38px);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, var(--surface-glass), transparent 40%),
+    var(--surface);
+  box-shadow: var(--shadow-lg), inset 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(22px) saturate(1.2);
+}
+
+html[data-theme] .utility-heading { display: grid; gap: 6px; }
+
+html[data-theme] .utility-kicker {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+html[data-theme] .utility-heading h2 {
+  margin: 0;
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  line-height: 1.05;
+}
+
+html[data-theme] .utility-sub { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+html[data-theme] .utility-body { display: grid; gap: 16px; }
+
+html[data-theme] .util-field { display: grid; gap: 6px; }
+
+html[data-theme] .util-field label {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+html[data-theme] .util-field input,
+html[data-theme] .util-field select,
+html[data-theme] .util-textarea {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.98rem;
+}
+
+html[data-theme] .util-field input:focus-visible,
+html[data-theme] .util-field select:focus-visible,
+html[data-theme] .util-textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+html[data-theme] .util-textarea {
+  min-height: 180px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+html[data-theme] .conv-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: end;
+}
+
+html[data-theme] .util-swap {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 2px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-glass);
+  color: var(--text);
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+
+html[data-theme] .util-swap:hover { border-color: var(--border-strong); }
+
+html[data-theme] .util-note { margin: 0; color: var(--muted); font-size: 0.88rem; min-height: 1.2em; }
+
+html[data-theme] .util-toggles { display: flex; flex-wrap: wrap; gap: 10px 18px; }
+
+html[data-theme] .util-toggles label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+html[data-theme] .util-toggles input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+html[data-theme] .pw-output { display: flex; gap: 10px; }
+
+html[data-theme] .pw-output input {
+  flex: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+html[data-theme] .pw-output button {
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-glass);
+  color: var(--text);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+html[data-theme] .stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 10px;
+}
+
+html[data-theme] .stat {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card-bg);
+}
+
+html[data-theme] .stat span {
+  font-size: 1.45rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+html[data-theme] .stat small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+html[data-theme] .todo-add { display: flex; gap: 10px; }
+html[data-theme] .todo-add input { flex: 1; }
+
+html[data-theme] .todo-add button {
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--grad-a), var(--grad-c));
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+html[data-theme] .todo-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+
+html[data-theme] .todo-filters button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-glass);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+html[data-theme] .todo-filters button.is-active { color: var(--text); border-color: var(--border-strong); }
+
+html[data-theme] .todo-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+
+html[data-theme] .todo-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card-bg);
+}
+
+html[data-theme] .todo-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+html[data-theme] .todo-item span { flex: 1; word-break: break-word; }
+html[data-theme] .todo-item.is-done span { color: var(--muted); text-decoration: line-through; }
+
+html[data-theme] .todo-item button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+html[data-theme] .todo-item button:hover { color: var(--text); }
+
+html[data-theme] .date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* give the new tool cards their own hue in the colour cycle */
+html[data-theme] [data-open-tool="converter"] {
+  --tool-accent: hsl(calc(var(--hue-a, 265) + 25) 86% 60%);
+  --tool-accent-bright: hsl(calc(var(--hue-a, 265) + 25) 92% 78%);
+  --tool-soft: hsl(calc(var(--hue-a, 265) + 25) 86% 60% / 0.14);
+  --tool-line: hsl(calc(var(--hue-a, 265) + 25) 86% 60% / 0.36);
+}
+html[data-theme] [data-open-tool="password"] {
+  --tool-accent: hsl(calc(var(--hue-a, 265) + 70) 86% 60%);
+  --tool-accent-bright: hsl(calc(var(--hue-a, 265) + 70) 92% 78%);
+  --tool-soft: hsl(calc(var(--hue-a, 265) + 70) 86% 60% / 0.14);
+  --tool-line: hsl(calc(var(--hue-a, 265) + 70) 86% 60% / 0.36);
+}
+html[data-theme] [data-open-tool="wordcount"] {
+  --tool-accent: hsl(calc(var(--hue-a, 265) + 115) 86% 60%);
+  --tool-accent-bright: hsl(calc(var(--hue-a, 265) + 115) 92% 78%);
+  --tool-soft: hsl(calc(var(--hue-a, 265) + 115) 86% 60% / 0.14);
+  --tool-line: hsl(calc(var(--hue-a, 265) + 115) 86% 60% / 0.36);
+}
+html[data-theme] [data-open-tool="todo"] {
+  --tool-accent: hsl(calc(var(--hue-a, 265) + 170) 86% 60%);
+  --tool-accent-bright: hsl(calc(var(--hue-a, 265) + 170) 92% 78%);
+  --tool-soft: hsl(calc(var(--hue-a, 265) + 170) 86% 60% / 0.14);
+  --tool-line: hsl(calc(var(--hue-a, 265) + 170) 86% 60% / 0.36);
+}
+html[data-theme] [data-open-tool="dates"] {
+  --tool-accent: hsl(calc(var(--hue-a, 265) + 215) 86% 60%);
+  --tool-accent-bright: hsl(calc(var(--hue-a, 265) + 215) 92% 78%);
+  --tool-soft: hsl(calc(var(--hue-a, 265) + 215) 86% 60% / 0.14);
+  --tool-line: hsl(calc(var(--hue-a, 265) + 215) 86% 60% / 0.36);
+}
+
+@media (max-width: 560px) {
+  html[data-theme] .conv-row { grid-template-columns: 1fr; }
+  html[data-theme] .util-swap { width: 100%; height: 40px; }
+  html[data-theme] .date-row { grid-template-columns: 1fr; }
+}
+
+/* utility panel focus + shared input styling for the non-.util-field widgets */
+[data-utility-panel]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+html[data-theme] .todo-add input,
+html[data-theme] .pw-output input {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.98rem;
+}
+
+html[data-theme] .todo-add input:focus-visible,
+html[data-theme] .pw-output input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
