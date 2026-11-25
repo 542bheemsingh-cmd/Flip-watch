@@ -3,11 +3,11 @@
  * Strategy:
  *  - Precache the app shell so the first repeat visit works offline.
  *  - Navigations: network first, fall back to the cached page (or index.html).
- *  - Same-origin assets: cache first (ignoring the ?v= cache-busting query),
- *    refreshed in the background so updates still arrive.
+ *  - Same-origin assets: exact URL first (so a ?v= bump always wins), then the
+ *    network, falling back to a query-insensitive cache hit when offline.
  *  - Cross-origin requests (e.g. Unsplash) are left to the network.
  */
-const CACHE = "flip-watch-v6";
+const CACHE = "flip-watch-v7";
 
 const CORE = [
   "./",
@@ -15,6 +15,8 @@ const CORE = [
   "./styles.css",
   "./script.js",
   "./vendor/qrcode.js",
+  "./pdf-reader/vendor/pdf.js",
+  "./pdf-reader/vendor/pdf.worker.js",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
