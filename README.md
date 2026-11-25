@@ -16,7 +16,7 @@
 
 ## ✨ What's inside
 
-Flip Watch is a single-page web app that opens into a dashboard of eleven tools. Every tool shares the same design system: an animated flip clock, light/dark themes, and a colour palette that slowly drifts through the spectrum.
+Flip Watch is a single-page web app that opens into a dashboard of eighteen tools. Every tool shares the same design system: an animated flip clock, light/dark themes, and a colour palette that slowly drifts through the spectrum.
 
 | Tool | What it does |
 | --- | --- |
@@ -31,6 +31,13 @@ Flip Watch is a single-page web app that opens into a dashboard of eleven tools.
 | 🔤 **Word Counter** | Words, characters, reading time, top keywords and case tools |
 | ✅ **To-Do List** | Tasks with due dates, filters and inline editing, saved in the browser |
 | 📅 **Date Calculator** | Age, days between two dates (with business days), or adding days to a date |
+| 🧾 **GST Calculator** | Add or remove GST (0.25–28%) with the CGST/SGST split |
+| 🏦 **EMI Calculator** | Monthly EMI, total interest and total payment for a loan |
+| ⛽ **Fuel Cost** | Trip fuel needed and cost, split between people |
+| { } **JSON Formatter** | Format, minify and validate JSON, with the error line and column |
+| 🔐 **Base64, URL & Hash** | Encode/decode Base64 and URLs, and SHA-256 hash text offline |
+| 🎨 **Colour Toolkit** | HEX/RGB/HSL conversion, tints and shades, WCAG contrast check |
+| 🎲 **Random Picker** | Random number, dice, coin flip, or a name from a list |
 
 <div align="center">
 <img src="assets/stopwatch-laps.png" alt="Stopwatch with laps" width="420">

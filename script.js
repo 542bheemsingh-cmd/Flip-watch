@@ -2424,7 +2424,7 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
    Extra utilities: unit converter, password generator, word counter,
    to-do list and date calculator.
    ===================================================================== */
-const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates"];
+const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates", "gst", "emi", "fuel", "json", "base64", "color", "random"];
 const utilityPanel = document.querySelector("[data-utility-panel]");
 const utilityKicker = document.querySelector("[data-utility-kicker]");
 const utilityTitle = document.querySelector("[data-utility-title]");
@@ -2437,6 +2437,13 @@ const utilityMeta = {
   wordcount: { kicker: "Count", title: "Word Counter", sub: "Words, characters, reading time and case tools as you type." },
   todo: { kicker: "Organise", title: "To-Do List", sub: "Tasks are saved in this browser, so they survive a reload." },
   dates: { kicker: "Calculate", title: "Date Calculator", sub: "Age, the gap between dates, or adding days to a date." },
+  gst: { kicker: "Tax", title: "GST Calculator", sub: "Add or remove GST and split it into CGST and SGST." },
+  emi: { kicker: "Loans", title: "EMI Calculator", sub: "Monthly EMI, total interest and total payment." },
+  fuel: { kicker: "Travel", title: "Fuel Cost Calculator", sub: "Fuel needed and cost, split between people." },
+  json: { kicker: "Developer", title: "JSON Formatter", sub: "Format, minify and validate JSON in your browser." },
+  base64: { kicker: "Developer", title: "Base64, URL & Hash", sub: "Encode, decode and hash text offline." },
+  color: { kicker: "Design", title: "Colour Toolkit", sub: "Convert colours, build tints and check contrast." },
+  random: { kicker: "Decide", title: "Random Picker", sub: "Numbers, dice, a coin flip or a name from a list." },
 };
 
 const UTIL_KEYS = {
@@ -2471,6 +2478,13 @@ function renderUtility(kind) {
   else if (kind === "wordcount") renderWordCounter();
   else if (kind === "todo") renderTodo();
   else if (kind === "dates") renderDateCalculator();
+  else if (kind === "gst") renderGst();
+  else if (kind === "emi") renderEmi();
+  else if (kind === "fuel") renderFuel();
+  else if (kind === "json") renderJson();
+  else if (kind === "base64") renderBase64();
+  else if (kind === "color") renderColor();
+  else if (kind === "random") renderRandom();
 }
 
 /* ------------------------------------------------------- shared helpers */
@@ -3389,6 +3403,574 @@ function renderDateCalculator() {
 
   writeDateField(bField, todayDate);
   update();
+}
+
+/* ------------------------------------------------------- GST calculator */
+function renderGst() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="gst-amount">Amount (₹)</label>
+      <input id="gst-amount" type="number" inputmode="decimal" step="any" value="1000" data-gst-amount />
+    </div>
+    <div class="util-field">
+      <label for="gst-rate">GST rate</label>
+      <select id="gst-rate" data-gst-rate>
+        <option value="0.25">0.25%</option>
+        <option value="3">3%</option>
+        <option value="5">5%</option>
+        <option value="12">12%</option>
+        <option value="18" selected>18%</option>
+        <option value="28">28%</option>
+      </select>
+    </div>
+    <div class="util-toggles">
+      <label><input type="radio" name="gst-mode" value="exclusive" checked data-gst-mode /> Amount is before GST</label>
+      <label><input type="radio" name="gst-mode" value="inclusive" data-gst-mode /> Amount includes GST</label>
+    </div>
+    <div class="stat-grid" data-gst-stats></div>
+    <p class="util-note" data-gst-note></p>
+  `;
+
+  const amountEl = utilityBody.querySelector("[data-gst-amount]");
+  const rateEl = utilityBody.querySelector("[data-gst-rate]");
+  const statsEl = utilityBody.querySelector("[data-gst-stats]");
+  const noteEl = utilityBody.querySelector("[data-gst-note]");
+  const money = (value) => `₹${Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+  const stat = (value, label) => `<div class="stat"><span>${value}</span><small>${label}</small></div>`;
+
+  const update = () => {
+    const amount = Number(amountEl.value);
+    const rate = Number(rateEl.value) / 100;
+    const inclusive = utilityBody.querySelector("[data-gst-mode]:checked")?.value === "inclusive";
+    if (!Number.isFinite(amount) || amount < 0) {
+      statsEl.innerHTML = stat("—", "Enter an amount");
+      noteEl.textContent = "";
+      return;
+    }
+    const base = inclusive ? amount / (1 + rate) : amount;
+    const gst = inclusive ? amount - base : amount * rate;
+    const total = base + gst;
+    statsEl.innerHTML = [
+      stat(money(base), "Base amount"),
+      stat(money(gst), "GST"),
+      stat(money(gst / 2), "CGST"),
+      stat(money(gst / 2), "SGST"),
+      stat(money(total), "Total"),
+    ].join("");
+    noteEl.textContent = `${money(base)} + ${(rate * 100).toFixed(2).replace(/\.00$/, "")}% GST = ${money(total)}`;
+  };
+
+  [amountEl, rateEl].forEach((el) => el.addEventListener("input", update));
+  utilityBody.querySelectorAll("[data-gst-mode]").forEach((el) => el.addEventListener("change", update));
+  update();
+}
+
+/* ------------------------------------------------------- EMI calculator */
+function renderEmi() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="emi-amount">Loan amount (₹)</label>
+      <input id="emi-amount" type="number" inputmode="decimal" step="any" value="500000" data-emi-amount />
+    </div>
+    <div class="util-field">
+      <label for="emi-rate">Annual interest rate (%)</label>
+      <input id="emi-rate" type="number" inputmode="decimal" step="any" value="9.5" data-emi-rate />
+    </div>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="emi-tenure">Tenure</label>
+        <input id="emi-tenure" type="number" inputmode="numeric" step="1" value="5" data-emi-tenure />
+      </div>
+      <div class="util-field">
+        <label for="emi-unit">Unit</label>
+        <select id="emi-unit" data-emi-unit>
+          <option value="years" selected>Years</option>
+          <option value="months">Months</option>
+        </select>
+      </div>
+    </div>
+    <div class="stat-grid" data-emi-stats></div>
+    <p class="util-note" data-emi-note></p>
+  `;
+
+  const amountEl = utilityBody.querySelector("[data-emi-amount]");
+  const rateEl = utilityBody.querySelector("[data-emi-rate]");
+  const tenureEl = utilityBody.querySelector("[data-emi-tenure]");
+  const unitEl = utilityBody.querySelector("[data-emi-unit]");
+  const statsEl = utilityBody.querySelector("[data-emi-stats]");
+  const noteEl = utilityBody.querySelector("[data-emi-note]");
+  const money = (value) => `₹${Math.round(value).toLocaleString("en-IN")}`;
+  const stat = (value, label) => `<div class="stat"><span>${value}</span><small>${label}</small></div>`;
+
+  const update = () => {
+    const principal = Number(amountEl.value);
+    const annual = Number(rateEl.value);
+    const tenure = Number(tenureEl.value);
+    const months = unitEl.value === "years" ? Math.round(tenure * 12) : Math.round(tenure);
+
+    if (!(principal > 0) || !(months > 0) || annual < 0) {
+      statsEl.innerHTML = stat("—", "Enter loan details");
+      noteEl.textContent = "";
+      return;
+    }
+
+    const monthlyRate = annual / 12 / 100;
+    const emi = monthlyRate === 0
+      ? principal / months
+      : (principal * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
+    const total = emi * months;
+    const interest = total - principal;
+    const firstInterest = principal * monthlyRate;
+    const firstPrincipal = Math.max(0, emi - firstInterest);
+
+    statsEl.innerHTML = [
+      stat(money(emi), "Monthly EMI"),
+      stat(money(interest), "Total interest"),
+      stat(money(total), "Total payment"),
+      stat(`${Math.round((interest / total) * 100)}%`, "Interest share"),
+    ].join("");
+    noteEl.textContent = `First month: ${money(firstPrincipal)} principal + ${money(firstInterest)} interest · ${months} months`;
+  };
+
+  [amountEl, rateEl, tenureEl, unitEl].forEach((el) => el.addEventListener("input", update));
+  update();
+}
+
+/* ------------------------------------------------------ fuel calculator */
+function renderFuel() {
+  utilityBody.innerHTML = `
+    <div class="date-row">
+      <div class="util-field">
+        <label for="fuel-distance">Distance (km)</label>
+        <input id="fuel-distance" type="number" inputmode="decimal" step="any" value="300" data-fuel-distance />
+      </div>
+      <div class="util-field">
+        <label for="fuel-mileage">Mileage (km per litre)</label>
+        <input id="fuel-mileage" type="number" inputmode="decimal" step="any" value="18" data-fuel-mileage />
+      </div>
+    </div>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="fuel-price">Fuel price (₹ per litre)</label>
+        <input id="fuel-price" type="number" inputmode="decimal" step="any" value="105" data-fuel-price />
+      </div>
+      <div class="util-field">
+        <label for="fuel-people">Split between (people)</label>
+        <input id="fuel-people" type="number" inputmode="numeric" step="1" min="1" value="1" data-fuel-people />
+      </div>
+    </div>
+    <div class="stat-grid" data-fuel-stats></div>
+    <p class="util-note" data-fuel-note></p>
+  `;
+
+  const distanceEl = utilityBody.querySelector("[data-fuel-distance]");
+  const mileageEl = utilityBody.querySelector("[data-fuel-mileage]");
+  const priceEl = utilityBody.querySelector("[data-fuel-price]");
+  const peopleEl = utilityBody.querySelector("[data-fuel-people]");
+  const statsEl = utilityBody.querySelector("[data-fuel-stats]");
+  const noteEl = utilityBody.querySelector("[data-fuel-note]");
+  const money = (value) => `₹${Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+  const stat = (value, label) => `<div class="stat"><span>${value}</span><small>${label}</small></div>`;
+
+  const update = () => {
+    const distance = Number(distanceEl.value);
+    const mileage = Number(mileageEl.value);
+    const price = Number(priceEl.value);
+    const people = Math.max(1, Math.round(Number(peopleEl.value) || 1));
+
+    if (!(distance > 0) || !(mileage > 0) || !(price > 0)) {
+      statsEl.innerHTML = stat("—", "Enter distance, mileage and price");
+      noteEl.textContent = "";
+      return;
+    }
+
+    const litres = distance / mileage;
+    const total = litres * price;
+    statsEl.innerHTML = [
+      stat(`${litres.toFixed(2)} L`, "Fuel needed"),
+      stat(money(total), "Total cost"),
+      stat(money(total / people), "Per person"),
+      stat(money(total / distance), "Per km"),
+    ].join("");
+    noteEl.textContent = `${distance} km at ${mileage} km/l, split between ${people} ${people === 1 ? "person" : "people"}`;
+  };
+
+  [distanceEl, mileageEl, priceEl, peopleEl].forEach((el) => el.addEventListener("input", update));
+  update();
+}
+
+/* ------------------------------------------------------ JSON formatter */
+function renderJson() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="json-input">JSON</label>
+      <textarea id="json-input" class="util-textarea util-textarea--code" data-json-input spellcheck="false" placeholder='{"hello":"world"}'></textarea>
+    </div>
+    <div class="util-actions">
+      <button class="util-btn" data-json-action="format">Format</button>
+      <button class="util-btn" data-json-action="minify">Minify</button>
+      <button class="util-btn" data-json-action="validate">Validate</button>
+      <button class="util-btn" data-json-action="copy">Copy output</button>
+      <button class="util-btn" data-json-action="clear">Clear</button>
+    </div>
+    <p class="util-note" data-json-status></p>
+    <div class="util-field">
+      <label for="json-output">Output</label>
+      <textarea id="json-output" class="util-textarea util-textarea--code" data-json-output readonly spellcheck="false"></textarea>
+    </div>
+  `;
+
+  const input = utilityBody.querySelector("[data-json-input]");
+  const output = utilityBody.querySelector("[data-json-output]");
+  const status = utilityBody.querySelector("[data-json-status]");
+
+  const locate = (text, error) => {
+    const match = /position (\d+)/.exec(error.message);
+    if (!match) return "";
+    const position = Number(match[1]);
+    const before = text.slice(0, position);
+    const line = before.split("\n").length;
+    const column = position - before.lastIndexOf("\n");
+    return ` (line ${line}, column ${column})`;
+  };
+
+  const run = (kind) => {
+    const text = input.value.trim();
+    if (!text) {
+      output.value = "";
+      status.textContent = "Paste some JSON first.";
+      return;
+    }
+    try {
+      const parsed = JSON.parse(text);
+      if (kind === "minify") output.value = JSON.stringify(parsed);
+      else if (kind === "validate") output.value = "";
+      else output.value = JSON.stringify(parsed, null, 2);
+      const count = Array.isArray(parsed) ? parsed.length : Object.keys(parsed || {}).length;
+      status.textContent = kind === "validate"
+        ? `Valid JSON · ${Array.isArray(parsed) ? "array" : "object"} with ${count} ${Array.isArray(parsed) ? "items" : "keys"}`
+        : `Valid JSON · ${kind === "minify" ? "minified" : "formatted"}`;
+    } catch (error) {
+      output.value = "";
+      status.textContent = `Invalid JSON${locate(text, error)} — ${error.message}`;
+    }
+  };
+
+  utilityBody.querySelectorAll("[data-json-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const kind = button.dataset.jsonAction;
+      if (kind === "copy") utilCopy(output.value, "Output copied.");
+      else if (kind === "clear") {
+        input.value = "";
+        output.value = "";
+        status.textContent = "";
+        input.focus();
+      } else run(kind);
+    });
+  });
+}
+
+/* ------------------------------------------------- base64 / url / hash */
+function renderBase64() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="b64-mode">What do you want to do?</label>
+      <select id="b64-mode" data-b64-mode>
+        <option value="b64-encode">Base64 encode</option>
+        <option value="b64-decode">Base64 decode</option>
+        <option value="url-encode">URL encode</option>
+        <option value="url-decode">URL decode</option>
+        <option value="sha256">SHA-256 hash</option>
+      </select>
+    </div>
+    <div class="util-field">
+      <label for="b64-input">Input</label>
+      <textarea id="b64-input" class="util-textarea util-textarea--code" data-b64-input spellcheck="false" placeholder="Type or paste text…"></textarea>
+    </div>
+    <div class="util-actions">
+      <button class="util-btn" data-b64-run>Convert</button>
+      <button class="util-btn" data-b64-copy>Copy output</button>
+      <button class="util-btn" data-b64-swap>Use output as input</button>
+    </div>
+    <p class="util-note" data-b64-status></p>
+    <div class="util-field">
+      <label for="b64-output">Output</label>
+      <textarea id="b64-output" class="util-textarea util-textarea--code" data-b64-output readonly spellcheck="false"></textarea>
+    </div>
+  `;
+
+  const modeEl = utilityBody.querySelector("[data-b64-mode]");
+  const input = utilityBody.querySelector("[data-b64-input]");
+  const output = utilityBody.querySelector("[data-b64-output]");
+  const status = utilityBody.querySelector("[data-b64-status]");
+
+  const toBase64 = (text) => {
+    const bytes = new TextEncoder().encode(text);
+    let binary = "";
+    bytes.forEach((byte) => {
+      binary += String.fromCharCode(byte);
+    });
+    return btoa(binary);
+  };
+
+  const fromBase64 = (text) => {
+    const binary = atob(text.replace(/\s+/g, ""));
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  };
+
+  const run = async () => {
+    const text = input.value;
+    if (!text) {
+      output.value = "";
+      status.textContent = "Type something first.";
+      return;
+    }
+    try {
+      if (modeEl.value === "b64-encode") output.value = toBase64(text);
+      else if (modeEl.value === "b64-decode") output.value = fromBase64(text);
+      else if (modeEl.value === "url-encode") output.value = encodeURIComponent(text);
+      else if (modeEl.value === "url-decode") output.value = decodeURIComponent(text);
+      else {
+        const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+        output.value = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+      }
+      status.textContent = "Done.";
+    } catch (error) {
+      output.value = "";
+      status.textContent = `Could not convert — ${error.message}`;
+    }
+  };
+
+  utilityBody.querySelector("[data-b64-run]").addEventListener("click", run);
+  utilityBody.querySelector("[data-b64-copy]").addEventListener("click", () => utilCopy(output.value, "Output copied."));
+  utilityBody.querySelector("[data-b64-swap]").addEventListener("click", () => {
+    if (!output.value) return;
+    input.value = output.value;
+    output.value = "";
+    status.textContent = "Output moved to input.";
+  });
+}
+
+/* ------------------------------------------------------- colour toolkit */
+function hexToRgb(hex) {
+  const clean = hex.replace("#", "");
+  const full = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean;
+  const value = parseInt(full, 16);
+  return { r: (value >> 16) & 255, g: (value >> 8) & 255, b: value & 255 };
+}
+
+function rgbToHex({ r, g, b }) {
+  return `#${[r, g, b].map((c) => Math.round(Math.max(0, Math.min(255, c))).toString(16).padStart(2, "0")).join("")}`;
+}
+
+function rgbToHsl({ r, g, b }) {
+  const red = r / 255;
+  const green = g / 255;
+  const blue = b / 255;
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const lightness = (max + min) / 2;
+  let hue = 0;
+  let saturation = 0;
+  if (max !== min) {
+    const delta = max - min;
+    saturation = lightness > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+    if (max === red) hue = ((green - blue) / delta + (green < blue ? 6 : 0)) * 60;
+    else if (max === green) hue = ((blue - red) / delta + 2) * 60;
+    else hue = ((red - green) / delta + 4) * 60;
+  }
+  return { h: Math.round(hue), s: Math.round(saturation * 100), l: Math.round(lightness * 100) };
+}
+
+function relativeLuminance({ r, g, b }) {
+  const channels = [r, g, b].map((channel) => {
+    const value = channel / 255;
+    return value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+function contrastRatio(first, second) {
+  const a = relativeLuminance(first);
+  const b = relativeLuminance(second);
+  const light = Math.max(a, b);
+  const dark = Math.min(a, b);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+function mixColour(rgb, target, amount) {
+  return {
+    r: rgb.r + (target - rgb.r) * amount,
+    g: rgb.g + (target - rgb.g) * amount,
+    b: rgb.b + (target - rgb.b) * amount,
+  };
+}
+
+function renderColor() {
+  utilityBody.innerHTML = `
+    <div class="date-row">
+      <div class="util-field">
+        <label for="colour-picker">Pick a colour</label>
+        <input id="colour-picker" type="color" value="#6c5ce7" data-colour-picker />
+      </div>
+      <div class="util-field">
+        <label for="colour-hex">HEX</label>
+        <input id="colour-hex" type="text" maxlength="7" value="#6c5ce7" data-colour-hex spellcheck="false" />
+      </div>
+    </div>
+    <div class="swatch-row" data-colour-swatches aria-label="Tints and shades"></div>
+    <div class="stat-grid" data-colour-values></div>
+    <div class="util-field">
+      <label for="colour-text">Text colour for contrast check</label>
+      <select id="colour-text" data-colour-text>
+        <option value="#ffffff">White</option>
+        <option value="#000000">Black</option>
+      </select>
+    </div>
+    <p class="util-note" data-colour-contrast></p>
+  `;
+
+  const picker = utilityBody.querySelector("[data-colour-picker]");
+  const hexEl = utilityBody.querySelector("[data-colour-hex]");
+  const swatches = utilityBody.querySelector("[data-colour-swatches]");
+  const valuesEl = utilityBody.querySelector("[data-colour-values]");
+  const textEl = utilityBody.querySelector("[data-colour-text]");
+  const contrastEl = utilityBody.querySelector("[data-colour-contrast]");
+
+  const update = (hex) => {
+    let value = hex.trim();
+    if (!value.startsWith("#")) value = `#${value}`;
+    if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value)) {
+      contrastEl.textContent = "Enter a hex colour like #6c5ce7.";
+      return;
+    }
+    const rgb = hexToRgb(value);
+    const hsl = rgbToHsl(rgb);
+    const normalised = rgbToHex(rgb);
+
+    picker.value = normalised;
+    hexEl.value = normalised;
+
+    const steps = [0.8, 0.6, 0.4, 0.2];
+    swatches.innerHTML = [
+      ...steps.map((amount) => rgbToHex(mixColour(rgb, 0, amount))),
+      normalised,
+      ...steps.slice().reverse().map((amount) => rgbToHex(mixColour(rgb, 255, amount))),
+    ]
+      .map((swatch) => `<button type="button" class="swatch" style="background:${swatch}" data-swatch="${swatch}" aria-label="Use ${swatch}"></button>`)
+      .join("");
+
+    swatches.querySelectorAll("[data-swatch]").forEach((button) => {
+      button.addEventListener("click", () => update(button.dataset.swatch));
+    });
+
+    const stat = (value2, label) => `<div class="stat"><span>${value2}</span><small>${label}</small></div>`;
+    valuesEl.innerHTML = [
+      stat(normalised.toUpperCase(), "HEX"),
+      stat(`${rgb.r}, ${rgb.g}, ${rgb.b}`, "RGB"),
+      stat(`${hsl.h}°, ${hsl.s}%, ${hsl.l}%`, "HSL"),
+    ].join("");
+
+    const ratio = contrastRatio(rgb, hexToRgb(textEl.value));
+    const aa = ratio >= 4.5;
+    const aaa = ratio >= 7;
+    contrastEl.textContent = `Contrast with ${textEl.value === "#ffffff" ? "white" : "black"} text: ${ratio.toFixed(2)}:1 — ${aaa ? "AAA" : aa ? "AA" : "fails AA"}`;
+  };
+
+  picker.addEventListener("input", () => update(picker.value));
+  hexEl.addEventListener("input", () => update(hexEl.value));
+  textEl.addEventListener("change", () => update(hexEl.value));
+  update(hexEl.value);
+}
+
+/* ------------------------------------------------------- random picker */
+function renderRandom() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="random-mode">Pick a</label>
+      <select id="random-mode" data-random-mode>
+        <option value="number">Random number</option>
+        <option value="dice">Dice roll</option>
+        <option value="coin">Coin flip</option>
+        <option value="name">Name from a list</option>
+      </select>
+    </div>
+    <div class="date-row" data-random-range>
+      <div class="util-field">
+        <label for="random-min">Minimum</label>
+        <input id="random-min" type="number" inputmode="numeric" step="1" value="1" data-random-min />
+      </div>
+      <div class="util-field">
+        <label for="random-max">Maximum</label>
+        <input id="random-max" type="number" inputmode="numeric" step="1" value="100" data-random-max />
+      </div>
+    </div>
+    <div class="util-field" data-random-names hidden>
+      <label for="random-names">Names, one per line</label>
+      <textarea id="random-names" class="util-textarea" data-random-names-input placeholder="Asha&#10;Ravi&#10;Meera"></textarea>
+    </div>
+    <div class="random-result" data-random-result>—</div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-random-pick>Pick</button>
+      <button class="util-btn" type="button" data-random-copy>Copy result</button>
+    </div>
+    <p class="util-note" data-random-note></p>
+  `;
+
+  const modeEl = utilityBody.querySelector("[data-random-mode]");
+  const rangeWrap = utilityBody.querySelector("[data-random-range]");
+  const namesWrap = utilityBody.querySelector("[data-random-names]");
+  const minEl = utilityBody.querySelector("[data-random-min]");
+  const maxEl = utilityBody.querySelector("[data-random-max]");
+  const namesEl = utilityBody.querySelector("[data-random-names-input]");
+  const resultEl = utilityBody.querySelector("[data-random-result]");
+  const noteEl = utilityBody.querySelector("[data-random-note]");
+
+  const sync = () => {
+    const mode = modeEl.value;
+    rangeWrap.hidden = mode === "coin" || mode === "name";
+    namesWrap.hidden = mode !== "name";
+    resultEl.textContent = "—";
+    noteEl.textContent = "";
+  };
+
+  const pick = () => {
+    const mode = modeEl.value;
+    if (mode === "number") {
+      const min = Math.ceil(Number(minEl.value) || 0);
+      const max = Math.floor(Number(maxEl.value) || 0);
+      if (max < min) {
+        noteEl.textContent = "Maximum must be greater than minimum.";
+        return;
+      }
+      resultEl.textContent = String(min + utilRandomInt(max - min + 1));
+      noteEl.textContent = `Between ${min} and ${max}`;
+      return;
+    }
+    if (mode === "dice") {
+      resultEl.textContent = String(1 + utilRandomInt(6));
+      noteEl.textContent = "One six-sided die";
+      return;
+    }
+    if (mode === "coin") {
+      resultEl.textContent = utilRandomInt(2) === 0 ? "Heads" : "Tails";
+      noteEl.textContent = "Fair coin flip";
+      return;
+    }
+    const names = namesEl.value.split("\n").map((name) => name.trim()).filter(Boolean);
+    if (!names.length) {
+      noteEl.textContent = "Add at least one name.";
+      return;
+    }
+    resultEl.textContent = names[utilRandomInt(names.length)];
+    noteEl.textContent = `${names.length} names in the list`;
+  };
+
+  modeEl.addEventListener("change", sync);
+  utilityBody.querySelector("[data-random-pick]").addEventListener("click", pick);
+  utilityBody.querySelector("[data-random-copy]").addEventListener("click", () => utilCopy(resultEl.textContent, "Result copied."));
+  sync();
 }
 
 if (utilityPanel) {
