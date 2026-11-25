@@ -6344,6 +6344,16 @@ function renderPdfToImages() {
   const thumbsEl = utilityBody.querySelector("[data-p2i-thumbs]");
   const zipBtn = utilityBody.querySelector("[data-p2i-zip]");
   let pdfDoc = null;
+
+  const P2I_KEY = "flip-watch-pdf2img";
+  const savedP2I = readStored(P2I_KEY, null) || {};
+  if (savedP2I.format) formatEl.value = savedP2I.format;
+  if (savedP2I.scale) scaleEl.value = savedP2I.scale;
+  [formatEl, scaleEl].forEach((el) =>
+    el.addEventListener("change", () =>
+      writeStored(P2I_KEY, { format: formatEl.value, scale: scaleEl.value })
+    )
+  );
   let results = [];
 
   fileEl.addEventListener("change", async () => {
@@ -6642,6 +6652,16 @@ function renderImagesToPdf() {
   const statusEl = utilityBody.querySelector("[data-i2p-status]");
   const runBtn = utilityBody.querySelector("[data-i2p-run]");
   let items = [];
+
+  const I2P_KEY = "flip-watch-img2pdf";
+  const savedI2P = readStored(I2P_KEY, null) || {};
+  if (savedI2P.size) sizeEl.value = savedI2P.size;
+  if (savedI2P.margin !== undefined) marginEl.value = String(savedI2P.margin);
+  [sizeEl, marginEl].forEach((el) =>
+    el.addEventListener("input", () =>
+      writeStored(I2P_KEY, { size: sizeEl.value, margin: marginEl.value })
+    )
+  );
 
   const paint = () => {
     listEl.innerHTML = "";
