@@ -2045,6 +2045,7 @@ function focusPanel(panel) {
 
 function openTool(mode) {
   window.clearTimeout(clockTimer);
+  recordRecentTool(mode);
   if (mode === "pdf") {
     window.location.href = "pdf-reader/index.html";
     return;
@@ -6042,6 +6043,88 @@ if (toolSearchInput) {
 
   applyFilter();
 }
+
+/* ------------------------------------------------------ recent tools */
+const RECENT_TOOLS_KEY = "flip-watch-recent-tools";
+
+function recordRecentTool(kind) {
+  if (!kind) return;
+  try {
+    const stored = JSON.parse(localStorage.getItem(RECENT_TOOLS_KEY) || "[]");
+    const list = Array.isArray(stored) ? stored.filter((entry) => typeof entry === "string" && entry !== kind) : [];
+    list.unshift(kind);
+    localStorage.setItem(RECENT_TOOLS_KEY, JSON.stringify(list.slice(0, 4)));
+  } catch (error) {
+    // Storage can be unavailable; recents are a nicety, not a requirement.
+  }
+}
+
+function renderRecentTools() {
+  const container = document.querySelector("[data-tool-recent]");
+  if (!container) return;
+  let stored = [];
+  try {
+    stored = JSON.parse(localStorage.getItem(RECENT_TOOLS_KEY) || "[]");
+  } catch (error) {
+    stored = [];
+  }
+  const items = (Array.isArray(stored) ? stored : [])
+    .map((kind) => {
+      const card = document.querySelector(`[data-open-tool="${kind}"]`);
+      if (!card) return null;
+      return {
+        kind,
+        name: card.querySelector(".tool-name")?.textContent?.trim() || kind,
+        icon: card.querySelector(".tool-icon")?.textContent?.trim() || "",
+      };
+    })
+    .filter(Boolean);
+
+  if (!items.length) {
+    container.hidden = true;
+    container.innerHTML = "";
+    return;
+  }
+
+  container.hidden = false;
+  container.innerHTML = `<span class="tool-recent__label">Recent</span>${items
+    .map((item) => `<button type="button" class="chip chip--button" data-recent="${item.kind}">${item.icon} ${item.name}</button>`)
+    .join("")}`;
+  container.querySelectorAll("[data-recent]").forEach((button) => {
+    button.addEventListener("click", () => openTool(button.dataset.recent));
+  });
+}
+
+renderRecentTools();
+
+/* --------------------------------------------- keyboard grid navigation */
+document.addEventListener("keydown", (event) => {
+  const card = event.target.closest && event.target.closest("[data-open-tool]");
+  if (!card || dashboard.hidden) return;
+  if (!["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+
+  const visible = Array.from(document.querySelectorAll("[data-open-tool]")).filter(
+    (element) => !element.classList.contains("is-hidden")
+  );
+  const index = visible.indexOf(card);
+  if (index < 0) return;
+
+  const grid = document.querySelector(".tool-grid");
+  const columns = grid ? getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length : 3;
+  let next = null;
+
+  if (event.key === "ArrowRight") next = visible[index + 1];
+  else if (event.key === "ArrowLeft") next = visible[index - 1];
+  else if (event.key === "ArrowDown") next = visible[index + columns];
+  else if (event.key === "ArrowUp") next = visible[index - columns];
+  else if (event.key === "Home") next = visible[0];
+  else if (event.key === "End") next = visible[visible.length - 1];
+
+  if (next) {
+    event.preventDefault();
+    next.focus();
+  }
+});
 
 /* back to top for the long tool list */
 const toTopButton = document.querySelector("[data-to-top]");

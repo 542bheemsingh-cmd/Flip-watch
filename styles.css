@@ -4549,3 +4549,20 @@ html[data-theme] .filter-chip[aria-pressed="true"] {
 }
 
 html[data-theme] .filter-chip[aria-pressed="true"] span { background: rgba(255, 255, 255, 0.24); }
+
+/* ---- recent tools row ---- */
+html[data-theme] .tool-recent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+
+html[data-theme] .tool-recent__label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
