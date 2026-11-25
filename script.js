@@ -6226,6 +6226,40 @@ if (clearDataButton) {
   });
 }
 
+/* copy the equation calculator result */
+const equationCopyButton = document.querySelector("[data-equation-copy]");
+if (equationCopyButton) {
+  equationCopyButton.addEventListener("click", () => {
+    const value = document.querySelector("[data-equation-result-value]")?.textContent?.trim();
+    const label = document.querySelector("[data-equation-result-label]")?.textContent?.trim() || "Result";
+    if (!value) {
+      showAppToast("Nothing to copy yet.");
+      return;
+    }
+    utilCopy(`${label}: ${value}`, "Result copied.");
+  });
+}
+
+/* quick "+1 / +5 min" for the timer */
+document.querySelectorAll("[data-timer-add]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const delta = Math.max(1, Number(button.dataset.timerAdd) || 1);
+    const extra = delta * 60 * 1000;
+    if (isRunning) {
+      // Extend the countdown that is already in flight.
+      timerRemainingBeforeStart += extra;
+      selectedTimerDuration = Math.max(selectedTimerDuration, timerRemainingBeforeStart);
+    } else {
+      const currentMinutes = Math.max(1, Math.round(selectedTimerDuration / 60000));
+      setTimerDuration(currentMinutes + delta);
+      return;
+    }
+    lastRenderedCentiseconds = -1;
+    renderTimer(true);
+    showAppToast(`Added ${delta} minute${delta === 1 ? "" : "s"}.`);
+  });
+});
+
 /* back to top for the long tool list */
 const toTopButton = document.querySelector("[data-to-top]");
 

@@ -83,7 +83,7 @@
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#0a0b16" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="styles.css?v=premium-29" />
+    <link rel="stylesheet" href="styles.css?v=premium-31" />
   </head>
   <body>
     <a class="skip-link" href="#dashboard">Skip to tools</a>
@@ -388,6 +388,8 @@
             <button class="preset-button" type="button" data-minutes="10">10 min</button>
             <button class="preset-button" type="button" data-minutes="15">15 min</button>
             <button class="preset-button" type="button" data-minutes="20">20 min</button>
+            <button class="preset-button preset-add" type="button" data-timer-add="1" aria-label="Add one minute">+1 min</button>
+            <button class="preset-button preset-add" type="button" data-timer-add="5" aria-label="Add five minutes">+5 min</button>
           </div>
 
           <label class="custom-time">
@@ -796,6 +798,9 @@
               <span data-equation-result-label>Area</span>
               <strong data-equation-result-value>0 square units</strong>
             </div>
+            <div class="util-actions equation-actions">
+              <button class="util-btn" type="button" data-equation-copy>Copy result</button>
+            </div>
           </section>
 
           <section class="equation-visual-card" aria-label="Shape preview">
@@ -865,6 +870,6 @@
     </main>
 
     <script src="vendor/qrcode.js"></script>
-    <script src="script.js?v=premium-39"></script>
+    <script src="script.js?v=premium-41"></script>
   </body>
 </html>

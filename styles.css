@@ -4721,3 +4721,10 @@ html[data-theme] .image-row__actions button {
 }
 
 html[data-theme] .image-row__actions button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+html[data-theme] .equation-actions { margin-top: 12px; }
+
+html[data-theme] .preset-button.preset-add {
+  border-style: dashed;
+  font-weight: 800;
+}
