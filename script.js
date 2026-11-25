@@ -175,6 +175,8 @@ function applyRandomDashboardTheme() {
 
 toolCards.forEach((card, index) => {
   card.style.setProperty("--card-index", index);
+  // Golden-angle spread so neighbouring cards never share a hue.
+  card.style.setProperty("--tool-hue", String(Math.round((index * 137.508) % 360)));
 });
 
 function handleMotionPreferenceChange(event) {
