@@ -5,6 +5,7 @@ All notable changes to Flip Watch are recorded here.
 ## [Unreleased]
 
 ### Added
+- **Equation Calculator**: copy the current result. **Timer**: `+1 min` / `+5 min` shortcuts that extend the duration or the running countdown.
 - **File tools extras**: an "All pages" shortcut and per-page progress in PDF to Images, plus a page-count and size estimate before creating a PDF from images.
 - **PDF to Images**: render any page range of a PDF to PNG or JPEG at 1×/2×/3×, with per-page download and a store-only ZIP of all pages.
 - **Images to PDF**: combine JPG/PNG/WebP files into a single PDF, reorder or remove them, and pick fit-to-image, A4 or Letter pages with an optional margin. The PDF is written in the browser with no library.
@@ -30,6 +31,7 @@ All notable changes to Flip Watch are recorded here.
 - **Docs**: rewritten README with screenshots, CONTRIBUTING guide and this changelog.
 
 ### Fixed
+- **PDF reader**: the search box stretched to fill the whole panel, and the floating page buttons drew on top of the search and settings panels.
 - **PDF to Images** failed offline because pdf.js and its worker were not precached; both are now in the service-worker cache (v7).
 - **File tools**: converting again leaked the previous page blobs, and the same image could not be added twice in a row.
 - **Calculator**: the phone keypad overflowed the screen, so `=` and `e` needed scrolling.
