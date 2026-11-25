@@ -3433,3 +3433,125 @@ html[data-theme] .watch-panel {
   gap: clamp(18px, 3vw, 26px);
   padding: clamp(18px, 4vw, 38px);
 }
+
+/* =====================================================================
+   LIVING COLOUR CYCLE
+   Hues drift slowly so every accent gradually becomes a different colour.
+   Uses registered custom properties so the hues interpolate smoothly.
+   ===================================================================== */
+@property --hue-a { syntax: "<number>"; inherits: true; initial-value: 265; }
+@property --hue-b { syntax: "<number>"; inherits: true; initial-value: 320; }
+@property --hue-c { syntax: "<number>"; inherits: true; initial-value: 190; }
+
+html[data-theme] {
+  --grad-a: hsl(var(--hue-a, 265) 88% 62%);
+  --grad-b: hsl(var(--hue-b, 320) 88% 64%);
+  --grad-c: hsl(var(--hue-c, 190) 88% 58%);
+  animation: hue-cycle 70s linear infinite;
+}
+
+/* keep the primary accent readable per theme while it shifts hue */
+html[data-theme="dark"] { --accent: hsl(var(--hue-a, 265) 95% 68%); }
+html[data-theme="light"] { --accent: hsl(var(--hue-a, 265) 72% 38%); }
+
+@keyframes hue-cycle {
+  0%   { --hue-a: 265; --hue-b: 320; --hue-c: 190; }
+  20%  { --hue-a: 190; --hue-b: 265; --hue-c: 330; }
+  40%  { --hue-a: 330; --hue-b: 40;  --hue-c: 200; }
+  60%  { --hue-a: 40;  --hue-b: 200; --hue-c: 280; }
+  80%  { --hue-a: 200; --hue-b: 280; --hue-c: 40;  }
+  100% { --hue-a: 265; --hue-b: 320; --hue-c: 190; }
+}
+
+/* the random dashboard theme must not pin the palette */
+html[data-theme] .dashboard[data-dashboard-theme="studio"],
+html[data-theme] .dashboard[data-dashboard-theme="aurora"],
+html[data-theme] .dashboard[data-dashboard-theme="blueprint"],
+html[data-theme] .dashboard[data-dashboard-theme="ember"] {
+  --grad-a: hsl(var(--hue-a, 265) 88% 62%);
+  --grad-b: hsl(var(--hue-b, 320) 88% 64%);
+  --grad-c: hsl(var(--hue-c, 190) 88% 58%);
+}
+
+/* tool cards drift through the spectrum, each with its own offset */
+html[data-theme] .tool-card {
+  --tool-accent: hsl(var(--hue-a, 265) 86% 60%);
+  --tool-accent-bright: hsl(var(--hue-a, 265) 92% 78%);
+  --tool-soft: hsl(var(--hue-a, 265) 86% 60% / 0.14);
+  --tool-line: hsl(var(--hue-a, 265) 86% 60% / 0.36);
+}
+html[data-theme] [data-open-tool="timer"] {
+  --tool-accent: hsl(calc(var(--hue-a, 265) + 42) 86% 60%);
+  --tool-accent-bright: hsl(calc(var(--hue-a, 265) + 42) 92% 78%);
+  --tool-soft: hsl(calc(var(--hue-a, 265) + 42) 86% 60% / 0.14);
+  --tool-line: hsl(calc(var(--hue-a, 265) + 42) 86% 60% / 0.36);
+}
+html[data-theme] [data-open-tool="clock"] {
+  --tool-accent: hsl(calc(var(--hue-a, 265) + 90) 86% 60%);
+  --tool-accent-bright: hsl(calc(var(--hue-a, 265) + 90) 92% 78%);
+  --tool-soft: hsl(calc(var(--hue-a, 265) + 90) 86% 60% / 0.14);
+  --tool-line: hsl(calc(var(--hue-a, 265) + 90) 86% 60% / 0.36);
+}
+html[data-theme] [data-open-tool="pdf"] {
+  --tool-accent: hsl(calc(var(--hue-a, 265) + 145) 86% 62%);
+  --tool-accent-bright: hsl(calc(var(--hue-a, 265) + 145) 92% 78%);
+  --tool-soft: hsl(calc(var(--hue-a, 265) + 145) 86% 62% / 0.14);
+  --tool-line: hsl(calc(var(--hue-a, 265) + 145) 86% 62% / 0.36);
+}
+html[data-theme] [data-open-tool="calculator"] {
+  --tool-accent: hsl(calc(var(--hue-a, 265) + 195) 86% 60%);
+  --tool-accent-bright: hsl(calc(var(--hue-a, 265) + 195) 92% 78%);
+  --tool-soft: hsl(calc(var(--hue-a, 265) + 195) 86% 60% / 0.14);
+  --tool-line: hsl(calc(var(--hue-a, 265) + 195) 86% 60% / 0.36);
+}
+html[data-theme] [data-open-tool="equation"] {
+  --tool-accent: hsl(calc(var(--hue-a, 265) + 250) 86% 60%);
+  --tool-accent-bright: hsl(calc(var(--hue-a, 265) + 250) 92% 78%);
+  --tool-soft: hsl(calc(var(--hue-a, 265) + 250) 86% 60% / 0.14);
+  --tool-line: hsl(calc(var(--hue-a, 265) + 250) 86% 60% / 0.36);
+}
+
+/* time / calculator / equation panels share the drifting accent */
+html[data-theme] .watch-panel,
+html[data-theme] .watch-panel[data-active-mode="timer"],
+html[data-theme] .watch-panel[data-active-mode="clock"],
+html[data-theme] .calculator-panel,
+html[data-theme] .equation-panel {
+  --mode-accent: hsl(var(--hue-c, 190) 90% 62%);
+  --mode-bright: hsl(var(--hue-c, 190) 95% 80%);
+  --mode-glow: hsl(var(--hue-c, 190) 90% 60% / 0.32);
+}
+
+/* panel sheens follow the drifting hues */
+html[data-theme] .dashboard::after,
+html[data-theme] .dashboard[data-dashboard-theme]::after,
+html[data-theme] .watch-panel::after,
+html[data-theme] .calculator-panel::after,
+html[data-theme] .equation-panel::after {
+  background-image:
+    linear-gradient(135deg, hsl(var(--hue-a, 265) 88% 60% / 0.34), transparent 55%),
+    linear-gradient(315deg, hsl(var(--hue-c, 190) 88% 58% / 0.28), transparent 55%);
+}
+
+/* full-screen button accent + ambient orbs */
+html[data-theme] .screen-fit-button[aria-pressed="true"] {
+  background: linear-gradient(135deg, var(--grad-c), var(--grad-a));
+  border-color: transparent;
+  color: #10160a;
+}
+
+html[data-theme] body::before {
+  animation:
+    aurora-drift 26s var(--ease-standard) infinite alternate,
+    orb-hue 90s linear infinite;
+}
+
+@keyframes orb-hue {
+  0% { filter: blur(28px) hue-rotate(0deg); }
+  100% { filter: blur(28px) hue-rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme] { animation: none; }
+  html[data-theme] body::before { animation: none; }
+}

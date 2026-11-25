@@ -649,3 +649,36 @@
     right: 6px;
   }
 }
+
+/* ===== living colour cycle (reader) ===== */
+@property --hue-accent { syntax: "<number>"; inherits: true; initial-value: 75; }
+
+body {
+  animation: reader-hue 70s linear infinite;
+}
+
+@keyframes reader-hue {
+  0%   { --hue-accent: 75; }
+  20%  { --hue-accent: 165; }
+  40%  { --hue-accent: 265; }
+  60%  { --hue-accent: 330; }
+  80%  { --hue-accent: 40; }
+  100% { --hue-accent: 75; }
+}
+
+/* keep contrast per theme while the accent shifts hue */
+body[data-theme="dark"] { --accent: hsl(var(--hue-accent, 75) 92% 62%); }
+body[data-theme="light"] { --accent: hsl(var(--hue-accent, 75) 62% 38%); }
+body[data-theme="sepia"] { --accent: hsl(var(--hue-accent, 75) 88% 66%); }
+
+/* bright accent fills follow the hue instead of a fixed lime */
+.filled-button,
+.fab,
+.reader-ui-reveal,
+.empty-icon {
+  background: linear-gradient(180deg, hsl(var(--hue-accent, 75) 95% 82%), var(--accent));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body { animation: none; }
+}
