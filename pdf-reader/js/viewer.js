@@ -1,7 +1,7 @@
 import * as pdfjsLib from "../vendor/pdf.js";
 import { clamp, fileToArrayBuffer, formatBytes } from "./utils.js";
 import { makeDocumentId, storage } from "./storage.js";
-import { BookFlip, BookPagePainter } from "./book-flip.js?v=render-12";
+import { BookFlip, BookPagePainter } from "./book-flip.js?v=render-13";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "./vendor/pdf.worker.js";
 
@@ -280,10 +280,26 @@ export class PDFViewer {
     this.bookPageBox = box;
     this.applyBookPageBoxVars();
     const single = this.usesSinglePageBookMode();
+    const size = this.fitBookPageSize(box, single);
     this.bookEngine.setSinglePage(single);
-    this.bookEngine.setSize(box.width, box.height);
+    this.bookEngine.setSize(size.width, size.height);
     await this.bookEngine.renderSpread(this.getSpreadStart(this.currentPage));
     return this.bookEngine;
+  }
+
+  // Never let the spread overflow the viewer: scale the page down to whatever
+  // the shell can actually show (two pages side by side in landscape).
+  fitBookPageSize(box, single) {
+    const padding = 32;
+    const available = Math.max(220, this.shell.clientWidth - padding);
+    const maxWidth = single ? available : available / 2;
+    const ratio = box && box.width > 0 ? box.height / box.width : 1.4;
+    const width = Math.min(box ? box.width : maxWidth, maxWidth);
+    const height = Math.min(box ? box.height : width * ratio, width * ratio);
+    return {
+      width: Math.max(140, Math.floor(width)),
+      height: Math.max(180, Math.floor(height)),
+    };
   }
 
   destroyBookEngine() {
@@ -648,8 +664,9 @@ export class PDFViewer {
       this.applyBookPageBoxVars();
       if (this.bookEngine) {
         const single = this.usesSinglePageBookMode();
+        const size = this.fitBookPageSize(this.bookPageBox, single);
         this.bookEngine.setSinglePage(single);
-        this.bookEngine.setSize(this.bookPageBox.width, this.bookPageBox.height);
+        this.bookEngine.setSize(size.width, size.height);
         await this.bookEngine.renderSpread(this.currentPage);
       }
       return;

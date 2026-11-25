@@ -1,4 +1,4 @@
-import { PDFViewer } from "./viewer.js?v=render-12";
+import { PDFViewer } from "./viewer.js?v=render-13";
 import { SettingsController } from "./settings.js?v=render-9";
 import { SearchController } from "./search.js";
 import { BookmarkController } from "./bookmarks.js";

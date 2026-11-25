@@ -817,11 +817,15 @@ body.night-mode .thumb-item canvas {
    Custom realistic book flip engine (replaces StPageFlip in book mode)
    ===================================================================== */
 .page-track.book-engine-mode {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
-  height: 100%;
-  padding: 8px 0;
+  min-height: 100%;
+  height: auto;
+  padding: 8px;
   gap: 0;
+  overflow: hidden;
 }
 
 .page-track.book-engine-mode .page-card {
