@@ -83,10 +83,11 @@
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#0a0b16" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="styles.css?v=premium-18" />
+    <link rel="stylesheet" href="styles.css?v=premium-20" />
   </head>
   <body>
     <a class="skip-link" href="#dashboard">Skip to tools</a>
+    <button class="to-top" type="button" data-to-top aria-label="Back to top" title="Back to top" hidden>&uarr;</button>
     <main class="app-shell" data-app-shell>
       <button
         class="screen-fit-button"
@@ -145,6 +146,18 @@
           </div>
           <span class="dashboard-badge">30 Tools</span>
         </div>
+
+        <div class="tool-search">
+          <input
+            type="search"
+            class="tool-search__input"
+            placeholder="Search tools…  (press /)"
+            aria-label="Search tools"
+            data-tool-search
+          />
+          <span class="tool-search__count" data-tool-search-count>30 tools</span>
+        </div>
+        <p class="tool-search__empty" data-tool-search-empty hidden>No tool matches that search.</p>
 
         <div class="tool-grid">
           <button class="tool-card primary-tool" type="button" data-open-tool="stopwatch">
@@ -827,6 +840,6 @@
     </main>
 
     <script src="vendor/qrcode.js"></script>
-    <script src="script.js?v=premium-22"></script>
+    <script src="script.js?v=premium-25"></script>
   </body>
 </html>

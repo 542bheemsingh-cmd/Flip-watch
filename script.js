@@ -5923,6 +5923,88 @@ if (utilityBody) {
   }));
 }
 
+/* ---------------------------------------------------- tool search */
+const toolSearchInput = document.querySelector("[data-tool-search]");
+const toolSearchCount = document.querySelector("[data-tool-search-count]");
+const toolSearchEmpty = document.querySelector("[data-tool-search-empty]");
+
+if (toolSearchInput) {
+  const cards = Array.from(document.querySelectorAll("[data-open-tool]"));
+
+  const applyFilter = () => {
+    const query = toolSearchInput.value.trim().toLowerCase();
+    let shown = 0;
+    cards.forEach((card) => {
+      const haystack = `${card.textContent} ${card.dataset.openTool}`.toLowerCase();
+      const match = !query || haystack.includes(query);
+      card.classList.toggle("is-hidden", !match);
+      if (match) shown += 1;
+    });
+    if (toolSearchCount) {
+      toolSearchCount.textContent = query ? `${shown} of ${cards.length}` : `${cards.length} tools`;
+    }
+    if (toolSearchEmpty) toolSearchEmpty.hidden = shown > 0;
+  };
+
+  toolSearchInput.addEventListener("input", applyFilter);
+  toolSearchInput.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      toolSearchInput.value = "";
+      applyFilter();
+      toolSearchInput.blur();
+    }
+    if (event.key === "Enter") {
+      const first = cards.find((card) => !card.classList.contains("is-hidden"));
+      if (first) first.click();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    if (target && target.closest && target.closest("input, textarea, select, [contenteditable='true']")) return;
+    if (event.key === "/") {
+      event.preventDefault();
+      if (dashboard.hidden) return;
+      toolSearchInput.focus();
+      toolSearchInput.select();
+    }
+  });
+
+  applyFilter();
+}
+
+/* back to top for the long tool list */
+const toTopButton = document.querySelector("[data-to-top]");
+
+function scrollPageToTop() {
+  try {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } catch (error) {
+    window.scrollTo(0, 0);
+  }
+  // Some engines ignore the options object; make sure we still land at the top.
+  window.setTimeout(() => {
+    if (window.scrollY > 4) window.scrollTo(0, 0);
+  }, 600);
+}
+
+if (toTopButton) {
+  window.addEventListener(
+    "scroll",
+    () => {
+      toTopButton.hidden = window.scrollY < 600;
+    },
+    { passive: true }
+  );
+  toTopButton.hidden = window.scrollY < 600;
+}
+
+document.addEventListener("click", (event) => {
+  if (event.target.closest && event.target.closest("[data-to-top]")) {
+    scrollPageToTop();
+  }
+});
+
 if (utilityPanel) {
   const backButton = utilityPanel.querySelector("[data-utility-back]");
   if (backButton) backButton.addEventListener("click", showDashboard);
