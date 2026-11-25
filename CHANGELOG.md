@@ -31,6 +31,7 @@ All notable changes to Flip Watch are recorded here.
 - **Docs**: rewritten README with screenshots, CONTRIBUTING guide and this changelog.
 
 ### Fixed
+- **Dashboard colours**: only the first eleven cards had a hue offset, so the newer tools all shared one accent and changed colour together. Every card now gets its own golden-angle hue and drifts independently.
 - **Dashboard on phones**: the category chips wrapped to 197px and pushed the first tool to y=583; they now sit on one swipeable row, moving tools up by ~165px. The floating top-right controls also gained a solid background so they stay legible over the bright header.
 - **Categories**: PDF to Images and Images to PDF were missing from the category map, and an uncategorised tool can no longer disappear from the filters.
 - **PDF reader**: the search box stretched to fill the whole panel, and the floating page buttons drew on top of the search and settings panels.
