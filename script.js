@@ -5611,6 +5611,7 @@ function renderStatistics() {
       statsEl.innerHTML = "";
       noteEl.textContent = "Paste some numbers to see the statistics.";
       summary = "";
+      canvas.hidden = true;
       drawHistogram([]);
       return;
     }
@@ -5653,6 +5654,7 @@ function renderStatistics() {
     ].join("");
     noteEl.textContent = `${count} values · ${spreadEl.value === "sample" ? "sample" : "population"} standard deviation · range ${round(sorted[count - 1] - sorted[0])}`;
     summary = `Count: ${count}\nSum: ${round(sum)}\nMean: ${round(mean)}\nMedian: ${round(median)}\nStd dev: ${round(stdev)}\nMin: ${round(sorted[0])}\nMax: ${round(sorted[count - 1])}`;
+    canvas.hidden = false;
     drawHistogram(numbers);
   };
 
@@ -6136,6 +6138,18 @@ if (scienceToggle) {
     scienceToggle.setAttribute("aria-label", open ? "Hide scientific functions" : "Show scientific functions");
   });
 }
+
+/* Escape returns to the dashboard from any open tool */
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  if (document.querySelector("[data-about-dialog]")?.open) return;
+  if (event.target && event.target.closest && event.target.closest("input[type='search']")) return;
+  const panels = [toolPanel, calculatorPanel, equationPanel, utilityPanel].filter(Boolean);
+  if (panels.some((panel) => !panel.hidden)) {
+    event.preventDefault();
+    showDashboard();
+  }
+});
 
 /* back to top for the long tool list */
 const toTopButton = document.querySelector("[data-to-top]");
