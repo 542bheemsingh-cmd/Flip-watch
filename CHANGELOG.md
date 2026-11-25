@@ -5,6 +5,8 @@ All notable changes to Flip Watch are recorded here.
 ## [Unreleased]
 
 ### Added
+- **Dashboard navigation**: tool search (`/`), category chips with counts, a recent-tools row, arrow-key movement between cards, a two-column phone grid and a back-to-top button.
+- **Keyboard**: `Escape` returns to the dashboard from any tool.
 - **31 upgrades across the twelve technical tools**: live match counts, replace-one and undo for Find & Replace with regex presets; numbered/wrapped repeats; password reveal, three attack-speed estimates, character-class chips and a "suggest a strong one" button; drag & drop for every image tool; resize presets (Instagram, Story, Twitter, HD); crop aspect ratios with numeric selection boxes; average-colour and copy-as-CSS; QR colour pickers, Wi-Fi/email/phone presets, SVG export and recent history; sample vs population deviation with a histogram; previous/next prime and range listing; Monday week start, month navigation and a full year view for the calendar.
 - **Twelve technical tools** (30 in total): Find & Replace Text, Repeat & Pad Text, Password Strength Checker, Compress Image, Resize Image, Convert Image Format, Crop Image, Pick Colour from Image, Generate QR Code, Statistics Calculator, Prime Checker & Factoriser and Generate Calendar. Image tools use canvas only, so files never leave the device; QR codes use the vendored MIT-licensed `qrcode-generator`.
 - **38 upgrades across the seven new tools**: GST presets/custom rates/copy, EMI presets, interest meter and yearly amortisation, fuel round-trip and L/100 km, JSON indent/sort/download/sample with size deltas, auto-converting Base64 with SHA-256/384/512, colour click-to-copy/random/complement/preview, and a random picker with unique counts, multi-dice, shuffle, no-repeat and history.
@@ -25,6 +27,8 @@ All notable changes to Flip Watch are recorded here.
 - **Docs**: rewritten README with screenshots, CONTRIBUTING guide and this changelog.
 
 ### Fixed
+- **Calculator**: the phone keypad overflowed the screen, so `=` and `e` needed scrolling.
+- **Statistics**: the histogram showed as a large blank box before any numbers were entered.
 - **PDF reader**: blank pages on WebKit/Safari — pdf.js v6 uses newer JavaScript APIs (`Map.getOrInsertComputed`, `Promise.withResolvers`, `Set.prototype.intersection`); polyfills are now loaded on the page and embedded in the worker.
 - **PDF reader**: book mode overflowed the viewer after a resize or on narrow screens; the spread is now scaled to fit.
 - **PDF reader**: leaving book mode left pages stacked on top of each other; stale inline styles are cleared on teardown.
