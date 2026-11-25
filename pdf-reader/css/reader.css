@@ -755,3 +755,60 @@ body.night-mode .thumb-item canvas {
 @media (prefers-reduced-motion: reduce) {
   .reader-spinner { animation-duration: 2.4s; }
 }
+
+/* =====================================================================
+   Realistic book mode — library-first sizing.
+   StPageFlip derives its geometry from the book container's width
+   (pageWidth = blockWidth / 2 in landscape). Our container previously had no
+   width at all, so the flip math ran in the wrong coordinate space and the
+   animation was invisible. Give it an explicit size and stop fighting the
+   library's own layout.
+   ===================================================================== */
+.page-track.book-layout.st-pageflip-layout {
+  display: block;
+  position: relative;
+  height: 100%;
+  padding: 0;
+  gap: 0;
+}
+
+.page-track.book-layout.st-pageflip-layout .st-pageflip-book {
+  display: block !important;
+  position: relative;
+  width: calc(var(--book-page-width, 340px) * 2);
+  max-width: 100%;
+  height: var(--book-page-height, 480px);
+  margin: 0 auto;
+}
+
+.page-track.book-layout.st-pageflip-layout .stf__block,
+.page-track.book-layout.st-pageflip-layout .stf__wrapper {
+  width: 100%;
+  height: 100%;
+}
+
+/* let the library own page display/transform; keep only the canvas fill */
+.page-track.book-layout.st-pageflip-layout .page-card {
+  border-radius: 3px;
+  box-shadow: none;
+  overflow: hidden;
+  background: #fff;
+}
+
+.page-track.book-layout.st-pageflip-layout .page-card canvas {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+  background: #fff;
+  display: block;
+}
+
+/* our decorative overlays fight the library's own shadows */
+.page-track.book-layout.st-pageflip-layout .page-card::before,
+.page-track.book-layout.st-pageflip-layout .page-card::after {
+  content: none !important;
+}
+
+.page-track.book-layout.st-pageflip-layout .page-number-pill {
+  display: none;
+}

@@ -304,7 +304,14 @@ export class PDFViewer {
     this.stPageFlip.on("changeState", (event) => {
       const busy = event.data !== "read";
       this.animationActive = busy;
-      if (!busy) this.flushDeferredRenders();
+      if (!busy) {
+        // Only touch the DOM once the flip has settled, so a page is never
+        // repainted or re-laid out mid-animation (that caused the flicker).
+        this.updateSpreadVisibility();
+        this.flushDeferredRenders();
+        this.renderNearbyInBackground();
+        this.prefetchNearby();
+      }
     });
     this.stPageFlip.on("changeOrientation", () => {
       this.renderNearbyInBackground();
@@ -336,18 +343,14 @@ export class PDFViewer {
 
   syncCurrentPageFromStPageFlip(pageIndex) {
     if (this.isSyncingStPageFlip) return;
-    this.animationActive = false;
-    this.flushDeferredRenders();
     const rawPage = (Number(pageIndex) || 0) + 1;
     const nextPage = this.usesSinglePageBookMode() ? clamp(rawPage, 1, this.total) : this.getSpreadStart(rawPage);
     if (nextPage === this.currentPage) return;
     this.currentPage = nextPage;
     this.pageInput.value = String(this.currentPage);
     this.pageSlider.value = String(this.currentPage);
-    this.updateSpreadVisibility();
     this.status.textContent = `${this.pageStatus()} • ${this.readingTime()}`;
     this.dispatch("pagechange");
-    this.renderNearbyInBackground();
     void this.saveProgress();
   }
 
@@ -591,6 +594,22 @@ export class PDFViewer {
 
   async refreshLayout() {
     if (!this.pdf) return;
+    // The book geometry depends on the shell size, so rebuild the flip book when
+    // the viewport changes instead of leaving the library with stale dimensions.
+    // Destroying the flip book detaches its pages, so the placeholders are rebuilt
+    // from scratch here.
+    if (this.settings.pageFlip === "realistic") {
+      this.bookPageBox = null;
+      this.bookPageBoxKey = "";
+      this.bookPageBox = this.computeBookPageBoxFromShell();
+      this.bookPageBoxKey = this.getBookPageBoxKey();
+      this.applyBookPageBoxVars();
+      this.rendered.clear();
+      this.rendering.clear();
+      this.deferredRenderPages.clear();
+      this.buildPlaceholders();
+      this.applyMode();
+    }
     await this.rerenderVisible();
     await this.goToPage(this.currentPage, false);
   }
