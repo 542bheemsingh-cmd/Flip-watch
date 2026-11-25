@@ -83,7 +83,7 @@
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#0a0b16" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="styles.css?v=premium-35" />
+    <link rel="stylesheet" href="styles.css?v=premium-36" />
   </head>
   <body>
     <a class="skip-link" href="#dashboard">Skip to tools</a>
@@ -158,7 +158,10 @@
           />
           <span class="tool-search__count" data-tool-search-count>30 tools</span>
         </div>
-        <p class="tool-search__empty" data-tool-search-empty hidden>No tool matches that search.</p>
+        <p class="tool-search__empty" data-tool-search-empty hidden>
+          No tool matches that search.
+          <button class="util-btn tool-search__reset" type="button" data-tool-reset>Show all tools</button>
+        </p>
         <div class="tool-filters" data-tool-filters role="group" aria-label="Filter tools by category"></div>
         <p class="tool-search__hint">Press <kbd>/</kbd> to search &middot; <kbd>?</kbd> for shortcuts &middot; arrow keys to move between cards</p>
         <div class="tool-recent" data-tool-recent hidden></div>
@@ -871,6 +874,6 @@
     </main>
 
     <script src="vendor/qrcode.js"></script>
-    <script src="script.js?v=premium-47"></script>
+    <script src="script.js?v=premium-48"></script>
   </body>
 </html>

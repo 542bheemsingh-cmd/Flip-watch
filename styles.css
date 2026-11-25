@@ -4722,3 +4722,9 @@ html[data-theme] .utility-link {
 @media (max-width: 520px) {
   html[data-theme] .utility-link { position: static; margin-top: 10px; }
 }
+
+html[data-theme] .tool-search__reset {
+  margin-left: 10px;
+  padding: 5px 12px;
+  font-size: 0.76rem;
+}

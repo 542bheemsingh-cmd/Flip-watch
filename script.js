@@ -6051,6 +6051,21 @@ if (toolSearchInput) {
     });
   }
 
+  const resetFilters = document.querySelector("[data-tool-reset]");
+  if (resetFilters) {
+    resetFilters.addEventListener("click", () => {
+      toolSearchInput.value = "";
+      activeCategory = "All";
+      try {
+        localStorage.setItem(CATEGORY_KEY, "All");
+      } catch (error) {
+        // Ignore.
+      }
+      applyFilter();
+      toolSearchInput.focus();
+    });
+  }
+
   toolSearchInput.addEventListener("input", applyFilter);
   toolSearchInput.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
