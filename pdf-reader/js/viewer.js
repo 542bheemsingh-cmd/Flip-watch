@@ -1,6 +1,7 @@
 import * as pdfjsLib from "../vendor/pdf.js";
 import { clamp, fileToArrayBuffer, formatBytes } from "./utils.js";
 import { makeDocumentId, storage } from "./storage.js";
+import { BookFlip, BookPagePainter } from "./book-flip.js?v=render-12";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "./vendor/pdf.worker.js";
 
@@ -35,6 +36,8 @@ export class PDFViewer {
     this.stPageFlip = null;
     this.stPageFlipReady = false;
     this.bookRoot = null;
+    this.bookEngine = null;
+    this.bookPainter = new BookPagePainter(() => this.pdf, () => this.rotation);
     this.isSyncingStPageFlip = false;
     this.animationActive = false;
     this.deferredRenderPages = new Set();
@@ -111,6 +114,7 @@ export class PDFViewer {
     this.rendered.clear();
     this.rendering.clear();
     this.textCache.clear();
+    this.bookPainter.clear();
     this.pageInput.max = String(this.total);
     this.pageSlider.max = String(this.total);
     this.totalPages.textContent = `/ ${this.total}`;
@@ -250,16 +254,52 @@ export class PDFViewer {
   applyMode() {
     const bookMode = this.settings.pageFlip === "realistic";
     const layoutMode = bookMode ? "horizontal" : this.settings.scrollMode;
-    this.track.className = `page-track ${layoutMode}${bookMode ? " book-layout st-pageflip-layout" : ""}`;
+    this.track.className = `page-track ${layoutMode}${bookMode ? " book-layout book-engine-mode" : ""}`;
     this.shell.classList.toggle("book-reader", bookMode);
     this.shell.style.direction = this.settings.direction === "rtl" ? "rtl" : "ltr";
     this.zoomLabel.textContent = `${Math.round(this.scale * 100)}%`;
-    this.syncAllSpreadVisibility();
     if (bookMode) {
-      void this.ensureStPageFlip();
+      void this.ensureBookEngine();
     } else {
-      this.destroyStPageFlip();
+      this.destroyBookEngine();
+      this.syncAllSpreadVisibility();
     }
+  }
+
+  async ensureBookEngine() {
+    if (!this.pdf) return null;
+    if (!this.bookEngine) {
+      this.bookEngine = new BookFlip(this.track, {
+        getPageCanvas: (pageNumber, width, height) => this.bookPainter.get(pageNumber, width, height),
+        getTotal: () => this.total,
+        getFlipMs: () => Math.max(180, Math.round(520 / ((this.settings.animationSpeed || 100) / 100))),
+        onSpreadChange: (start) => this.onBookSpreadChange(start),
+      });
+    }
+    const box = this.bookPageBox || this.computeBookPageBoxFromShell();
+    this.bookPageBox = box;
+    this.applyBookPageBoxVars();
+    const single = this.usesSinglePageBookMode();
+    this.bookEngine.setSinglePage(single);
+    this.bookEngine.setSize(box.width, box.height);
+    await this.bookEngine.renderSpread(this.getSpreadStart(this.currentPage));
+    return this.bookEngine;
+  }
+
+  destroyBookEngine() {
+    if (this.bookEngine) {
+      this.bookEngine.destroy();
+      this.bookEngine = null;
+    }
+  }
+
+  onBookSpreadChange(start) {
+    this.currentPage = start;
+    this.pageInput.value = String(start);
+    this.pageSlider.value = String(start);
+    this.status.textContent = `${this.pageStatus()} • ${this.readingTime()}`;
+    this.dispatch("pagechange");
+    void this.saveProgress();
   }
 
   async ensureStPageFlip() {
@@ -373,6 +413,8 @@ export class PDFViewer {
   }
 
   async renderPage(pageNumber) {
+    // In realistic mode the book engine paints its own page canvases.
+    if (this.settings.pageFlip === "realistic") return;
     if (!this.pdf || this.rendered.has(pageNumber) || this.rendering.has(pageNumber)) return;
     if (this.animationActive && this.settings.pageFlip === "realistic") {
       this.deferredRenderPages.add(pageNumber);
@@ -604,11 +646,13 @@ export class PDFViewer {
       this.bookPageBox = this.computeBookPageBoxFromShell();
       this.bookPageBoxKey = this.getBookPageBoxKey();
       this.applyBookPageBoxVars();
-      this.rendered.clear();
-      this.rendering.clear();
-      this.deferredRenderPages.clear();
-      this.buildPlaceholders();
-      this.applyMode();
+      if (this.bookEngine) {
+        const single = this.usesSinglePageBookMode();
+        this.bookEngine.setSinglePage(single);
+        this.bookEngine.setSize(this.bookPageBox.width, this.bookPageBox.height);
+        await this.bookEngine.renderSpread(this.currentPage);
+      }
+      return;
     }
     await this.rerenderVisible();
     await this.goToPage(this.currentPage, false);
@@ -691,29 +735,18 @@ export class PDFViewer {
     this.pageSlider.value = String(this.currentPage);
     this.updateSpreadVisibility();
 
-    // Fast path: only wait for the pages that are about to be shown. The rest of the
-    // neighbourhood is filled in from idle time, so a jump never waits for 6+ pages.
     if (this.settings.pageFlip === "realistic") {
-      await this.renderCurrentSpread();
+      const engine = await this.ensureBookEngine();
+      if (engine) await engine.renderSpread(this.currentPage);
     } else {
+      this.updateSpreadVisibility();
       await this.renderPage(this.currentPage);
-    }
-
-    const target = this.track.querySelector(`[data-page="${this.currentPage}"]`);
-    if (this.settings.pageFlip === "realistic") {
-      await this.ensureStPageFlip();
-      if (this.stPageFlipReady && this.stPageFlip) {
-        this.isSyncingStPageFlip = true;
-        try {
-          this.stPageFlip.turnToPage(this.currentPage - 1);
-        } finally {
-          this.isSyncingStPageFlip = false;
-        }
+      const target = this.track.querySelector(`[data-page="${this.currentPage}"]`);
+      if (target) {
+        // A smooth scroll across many pages looks broken; jump straight there instead.
+        const farJump = Math.abs(this.currentPage - previousPage) > 2;
+        target.scrollIntoView({ behavior: smooth && !farJump ? "smooth" : "auto", block: "center", inline: "center" });
       }
-    } else if (target) {
-      // A smooth scroll across many pages looks broken; jump straight there instead.
-      const farJump = Math.abs(this.currentPage - previousPage) > 2;
-      target.scrollIntoView({ behavior: smooth && !farJump ? "smooth" : "auto", block: "center", inline: "center" });
     }
     await this.saveProgress();
     this.status.textContent = `${this.pageStatus()} • ${this.readingTime()}`;
@@ -739,22 +772,19 @@ export class PDFViewer {
     if (!this.pdf || targetPage === this.currentPage) return;
 
     if (this.settings.pageFlip === "realistic") {
-      // Only render when the spread is not ready yet; prefetching usually makes this
-      // a no-op so the flip starts immediately instead of after a long pause.
-      if (!this.hasRenderedSpread(targetPage)) {
-        await Promise.all([
-          this.renderPage(targetPage),
-          targetPage < this.total ? this.renderPage(targetPage + 1) : Promise.resolve(),
-        ]);
-      }
-      await this.ensureStPageFlip();
-      if (this.stPageFlipReady && this.stPageFlip && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        this.animationActive = true;
-        if (direction > 0) this.stPageFlip.flipNext("bottom");
-        else this.stPageFlip.flipPrev("bottom");
+      const engine = await this.ensureBookEngine();
+      if (!engine) {
+        await this.goToPage(targetPage);
         return;
       }
-      await this.goToPage(targetPage);
+      this.animationActive = true;
+      let moved = false;
+      try {
+        moved = direction > 0 ? await engine.next() : await engine.prev();
+      } finally {
+        this.animationActive = false;
+      }
+      if (!moved) await this.goToPage(targetPage);
       return;
     }
 
