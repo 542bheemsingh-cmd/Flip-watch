@@ -943,3 +943,17 @@ body.night-mode .thumb-item canvas {
 @media (prefers-reduced-motion: reduce) {
   .book-sheet { transition-duration: 1ms; }
 }
+
+/* phone: let the document status wrap instead of being cut off */
+@media (max-width: 520px) {
+  .title-block span {
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: clip;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    font-size: 0.72rem;
+    line-height: 1.25;
+  }
+}

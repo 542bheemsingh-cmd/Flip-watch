@@ -5973,7 +5973,14 @@ if (toolSearchInput) {
     card.dataset.category = TOOL_CATEGORIES[card.dataset.openTool] || "Other";
   });
 
+  const CATEGORY_KEY = "flip-watch-tool-category";
   let activeCategory = "All";
+  try {
+    const savedCategory = localStorage.getItem(CATEGORY_KEY);
+    if (savedCategory && CATEGORY_ORDER.includes(savedCategory)) activeCategory = savedCategory;
+  } catch (error) {
+    // Ignore storage failures; the filter simply starts on All.
+  }
 
   const applyFilter = () => {
     const query = toolSearchInput.value.trim().toLowerCase();
@@ -6014,6 +6021,11 @@ if (toolSearchInput) {
       const chip = event.target.closest("[data-filter]");
       if (!chip) return;
       activeCategory = chip.dataset.filter;
+      try {
+        localStorage.setItem(CATEGORY_KEY, activeCategory);
+      } catch (error) {
+        // Filter persistence is optional.
+      }
       applyFilter();
     });
   }
@@ -6023,6 +6035,11 @@ if (toolSearchInput) {
     if (event.key === "Escape") {
       toolSearchInput.value = "";
       activeCategory = "All";
+      try {
+        localStorage.setItem(CATEGORY_KEY, activeCategory);
+      } catch (error) {
+        // Ignore.
+      }
       applyFilter();
       toolSearchInput.blur();
     }
@@ -6161,6 +6178,47 @@ if (calculatorCopyButton) {
       return;
     }
     utilCopy(value, "Result copied.");
+  });
+}
+
+/* clear everything this app stored in the browser */
+const clearDataButton = document.querySelector("[data-clear-data]");
+if (clearDataButton) {
+  clearDataButton.addEventListener("click", async () => {
+    const sure = window.confirm(
+      "Delete saved timers, tasks, recents, settings and cached files from this browser?"
+    );
+    if (!sure) return;
+    try {
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith("flip-watch"))
+        .forEach((key) => localStorage.removeItem(key));
+    } catch (error) {
+      // Storage may be unavailable; nothing else to clean up.
+    }
+    try {
+      if (indexedDB.databases) {
+        const databases = await indexedDB.databases();
+        databases.forEach((database) => {
+          if (database.name) indexedDB.deleteDatabase(database.name);
+        });
+      }
+    } catch (error) {
+      // Ignore — some browsers block enumeration.
+    }
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+    } catch (error) {
+      // Cache API may be unavailable.
+    }
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+    } catch (error) {
+      // No service worker support.
+    }
+    window.location.reload();
   });
 }
 

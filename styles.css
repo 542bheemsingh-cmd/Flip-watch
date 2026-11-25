@@ -4594,3 +4594,39 @@ html[data-theme] .science-toggle[aria-expanded="true"] {
   html[data-theme] .calculator-keypad button { min-height: 36px; font-size: 0.86rem; }
   html[data-theme] .calculator-keypad { gap: 4px; }
 }
+
+/* ---- keyboard hint under the filters ---- */
+html[data-theme] .tool-search__hint {
+  margin: -8px 0 18px;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+html[data-theme] .tool-search__hint kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+@media (max-width: 520px) {
+  html[data-theme] .tool-search__hint { display: none; }
+}
+
+html[data-theme] .app-dialog__privacy {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+html[data-theme] .app-dialog__actions { gap: 10px; align-items: center; }
