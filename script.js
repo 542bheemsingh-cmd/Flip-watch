@@ -2439,7 +2439,7 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
    Extra utilities: unit converter, password generator, word counter,
    to-do list and date calculator.
    ===================================================================== */
-const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates", "gst", "emi", "fuel", "json", "base64", "color", "random", "findreplace", "textpad", "pwstrength", "imgcompress", "imgresize", "imgconvert", "imgcrop", "imgcolour", "qrcode", "stats", "prime", "calendar", "pdf2img", "img2pdf"];
+const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates", "gst", "emi", "fuel", "json", "base64", "color", "random", "findreplace", "textpad", "pwstrength", "imgcompress", "imgresize", "imgconvert", "imgcrop", "imgcolour", "qrcode", "stats", "prime", "calendar", "pdf2img", "img2pdf", "protectpdf"];
 const utilityPanel = document.querySelector("[data-utility-panel]");
 const utilityKicker = document.querySelector("[data-utility-kicker]");
 const utilityTitle = document.querySelector("[data-utility-title]");
@@ -2473,6 +2473,7 @@ const utilityMeta = {
   calendar: { kicker: "Dates", title: "Generate Calendar", sub: "A month grid you can read or print." },
   pdf2img: { kicker: "Files", title: "PDF to Images", sub: "Turn PDF pages into PNG or JPEG files, zipped if you like." },
   img2pdf: { kicker: "Files", title: "Images to PDF", sub: "Combine photos into one PDF, in the order you choose." },
+  protectpdf: { kicker: "Files", title: "Protect & Unlock PDF", sub: "Encrypt a PDF with a password, or unlock one you own." },
 };
 
 const UTIL_KEYS = {
@@ -2528,6 +2529,7 @@ function renderUtility(kind) {
   else if (kind === "calendar") renderCalendar();
   else if (kind === "pdf2img") renderPdfToImages();
   else if (kind === "img2pdf") renderImagesToPdf();
+  else if (kind === "protectpdf") renderProtectPdf();
 }
 
 /* ------------------------------------------------------- shared helpers */
@@ -5978,6 +5980,7 @@ const TOOL_CATEGORIES = {
   pdf: "Files",
   pdf2img: "Files",
   img2pdf: "Files",
+  protectpdf: "Files",
 };
 
 const CATEGORY_ORDER = ["All", "Time", "Dates", "Maths", "Money", "Text", "Images", "Developer", "Security", "Productivity", "Fun", "Files"];
@@ -6876,6 +6879,346 @@ function renderImagesToPdf() {
   });
 
   paint();
+}
+
+/* ---------------------------------------------- protect & unlock PDF */
+const PDF_PAD = new Uint8Array([
+  0x28, 0xbf, 0x4e, 0x5e, 0x4e, 0x75, 0x8a, 0x41, 0x64, 0x00, 0x4e, 0x56, 0xff, 0xfa, 0x01, 0x08,
+  0x2e, 0x2e, 0x00, 0xb6, 0xd0, 0x68, 0x3e, 0x80, 0x2f, 0x0c, 0xa9, 0xfe, 0x64, 0x53, 0x69, 0x7a,
+]);
+
+function md5Bytes(input) {
+  const r = [7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+    5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
+    4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+    6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21];
+  const k = new Uint32Array([
+    0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee, 0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
+    0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be, 0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
+    0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa, 0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+    0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed, 0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
+    0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c, 0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
+    0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05, 0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+    0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039, 0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
+    0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1, 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391,
+  ]);
+  const bytes = Array.from(input);
+  const bitLen = bytes.length * 8;
+  bytes.push(0x80);
+  while (bytes.length % 64 !== 56) bytes.push(0);
+  for (let i = 0; i < 8; i += 1) bytes.push((bitLen >>> (8 * i)) & 0xff);
+  let a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
+  for (let off = 0; off < bytes.length; off += 64) {
+    const m = new Uint32Array(16);
+    for (let i = 0; i < 16; i += 1) {
+      m[i] = bytes[off + i * 4] | (bytes[off + i * 4 + 1] << 8) | (bytes[off + i * 4 + 2] << 16) | (bytes[off + i * 4 + 3] << 24);
+    }
+    let A = a0, B = b0, C = c0, D = d0;
+    for (let i = 0; i < 64; i += 1) {
+      let F, g;
+      if (i < 16) { F = (B & C) | (~B & D); g = i; }
+      else if (i < 32) { F = (D & B) | (~D & C); g = (5 * i + 1) % 16; }
+      else if (i < 48) { F = B ^ C ^ D; g = (3 * i + 5) % 16; }
+      else { F = C ^ (B | ~D); g = (7 * i) % 16; }
+      F = (F + A + k[i] + m[g]) >>> 0;
+      A = D; D = C; C = B;
+      B = (B + ((F << r[i]) | (F >>> (32 - r[i])))) >>> 0;
+    }
+    a0 = (a0 + A) >>> 0; b0 = (b0 + B) >>> 0; c0 = (c0 + C) >>> 0; d0 = (d0 + D) >>> 0;
+  }
+  const out = new Uint8Array(16);
+  [a0, b0, c0, d0].forEach((word, i) => {
+    out[i * 4] = word & 0xff;
+    out[i * 4 + 1] = (word >>> 8) & 0xff;
+    out[i * 4 + 2] = (word >>> 16) & 0xff;
+    out[i * 4 + 3] = (word >>> 24) & 0xff;
+  });
+  return out;
+}
+
+function rc4(key, data) {
+  const s = new Uint8Array(256);
+  for (let i = 0; i < 256; i += 1) s[i] = i;
+  let j = 0;
+  for (let i = 0; i < 256; i += 1) {
+    j = (j + s[i] + key[i % key.length]) & 0xff;
+    const t = s[i]; s[i] = s[j]; s[j] = t;
+  }
+  const out = new Uint8Array(data.length);
+  let i = 0;
+  j = 0;
+  for (let n = 0; n < data.length; n += 1) {
+    i = (i + 1) & 0xff;
+    j = (j + s[i]) & 0xff;
+    const t = s[i]; s[i] = s[j]; s[j] = t;
+    out[n] = data[n] ^ s[(s[i] + s[j]) & 0xff];
+  }
+  return out;
+}
+
+function padPassword(password) {
+  const bytes = new TextEncoder().encode(password);
+  const out = new Uint8Array(32);
+  const n = Math.min(32, bytes.length);
+  out.set(bytes.subarray(0, n), 0);
+  out.set(PDF_PAD.subarray(0, 32 - n), n);
+  return out;
+}
+
+function concatBytes(...parts) {
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  parts.forEach((part) => { out.set(part, offset); offset += part.length; });
+  return out;
+}
+
+function bytesToLatin1(bytes) {
+  let out = "";
+  for (let i = 0; i < bytes.length; i += 1) out += String.fromCharCode(bytes[i]);
+  return out;
+}
+
+function latin1ToBytes(text) {
+  const out = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i += 1) out[i] = text.charCodeAt(i) & 0xff;
+  return out;
+}
+
+/* RC4-128 standard security handler (V2 / R3) */
+function buildEncryption(pdfText, userPassword, ownerPassword) {
+  const keyLength = 16;
+  const permissions = -1;
+  const idMatch = /\/ID\s*\[\s*<([0-9A-Fa-f]+)>/.exec(pdfText);
+  const fileId = idMatch ? latin1ToBytes(idMatch[1].match(/.{1,2}/g).map((h) => String.fromCharCode(parseInt(h, 16))).join("")) : md5Bytes(new TextEncoder().encode(String(Date.now())));
+
+  // Algorithm 3: owner entry
+  let ownerKey = md5Bytes(padPassword(ownerPassword || userPassword));
+  for (let i = 0; i < 50; i += 1) ownerKey = md5Bytes(ownerKey.slice(0, keyLength));
+  let ownerEntry = rc4(ownerKey.slice(0, keyLength), padPassword(userPassword));
+  for (let i = 1; i <= 19; i += 1) {
+    const stepKey = new Uint8Array(keyLength);
+    for (let b = 0; b < keyLength; b += 1) stepKey[b] = ownerKey[b] ^ i;
+    ownerEntry = rc4(stepKey, ownerEntry);
+  }
+
+  // Algorithm 2: file key
+  const pBytes = new Uint8Array(4);
+  new DataView(pBytes.buffer).setInt32(0, permissions, true);
+  let key = md5Bytes(concatBytes(padPassword(userPassword), ownerEntry, pBytes, fileId));
+  for (let i = 0; i < 50; i += 1) key = md5Bytes(key.slice(0, keyLength));
+  const fileKey = key.slice(0, keyLength);
+
+  // Algorithms 4 + 5: user entry
+  const uBase = md5Bytes(concatBytes(PDF_PAD, fileId));
+  let userEntry = rc4(fileKey, uBase);
+  for (let i = 1; i <= 19; i += 1) {
+    const stepKey = new Uint8Array(keyLength);
+    for (let b = 0; b < keyLength; b += 1) stepKey[b] = fileKey[b] ^ i;
+    userEntry = rc4(stepKey, userEntry);
+  }
+  const userFull = new Uint8Array(32);
+  userFull.set(userEntry, 0);
+  userFull.set(PDF_PAD.subarray(0, 16), 16);
+
+  return { fileKey, ownerEntry, userEntry: userFull, permissions, fileId, keyLength };
+}
+
+function objectKey(fileKey, num, gen) {
+  const extra = new Uint8Array([num & 0xff, (num >> 8) & 0xff, (num >> 16) & 0xff, gen & 0xff, (gen >> 8) & 0xff]);
+  return md5Bytes(concatBytes(fileKey, extra)).slice(0, Math.min(fileKey.length + 5, 16));
+}
+
+function encryptPdf(rawBytes, userPassword, ownerPassword) {
+  const text = bytesToLatin1(rawBytes);
+  if (!/^%PDF-/.test(text)) throw new Error("That file does not look like a PDF.");
+  if (/\/Encrypt\s/.test(text)) throw new Error("This PDF is already encrypted.");
+
+  const enc = buildEncryption(text, userPassword, ownerPassword);
+
+  // Collect every "N G obj ... endobj" block and re-emit it encrypted.
+  const objectRe = /(\d+)\s+(\d+)\s+obj([\s\S]*?)endobj/g;
+  const objects = [];
+  let match;
+  while ((match = objectRe.exec(text)) !== null) {
+    objects.push({ num: Number(match[1]), gen: Number(match[2]), body: match[3] });
+  }
+  if (!objects.length) throw new Error("Could not read the PDF structure.");
+
+  const encryptedBodies = objects.map((obj) => {
+    const key = objectKey(enc.fileKey, obj.num, obj.gen);
+    let body = obj.body;
+    // encrypt streams
+    body = body.replace(/stream(\r\n|\r|\n)([\s\S]*?)endstream/g, (whole, nl, data) => {
+      const bytes = rc4(key, latin1ToBytes(data));
+      return `stream${nl}${bytesToLatin1(bytes)}endstream`;
+    });
+    // encrypt literal strings outside streams (best effort, skips already-encrypted streams)
+    body = body.replace(/(\((?:\\.|[^\\()])*\))/g, (whole) => {
+      const inner = whole.slice(1, -1);
+      const bytes = rc4(key, latin1ToBytes(inner));
+      const escaped = bytesToLatin1(bytes).replace(/[\\()]/g, (c) => `\\${c}`);
+      return `(${escaped})`;
+    });
+    return { ...obj, body };
+  });
+
+  const encNum = objects.length + 1;
+  const hex = (bytes) => Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+  const encDict = `<< /Filter /Standard /V 2 /R 3 /Length 128 /P ${enc.permissions} /O <${hex(enc.ownerEntry)}> /U <${hex(enc.userEntry)}> >>`;
+
+  const encoder = new TextEncoder();
+  const chunks = [];
+  const offsets = [];
+  let size = 0;
+  const push = (value) => {
+    const bytes = typeof value === "string" ? encoder.encode(value) : value;
+    chunks.push(bytes);
+    size += bytes.length;
+  };
+
+  push("%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n");
+  encryptedBodies.forEach((obj) => {
+    offsets[obj.num] = size;
+    push(`${obj.num} ${obj.gen} obj${obj.body}endobj\n`);
+  });
+  offsets[encNum] = size;
+  push(`${encNum} 0 obj\n${encDict}\nendobj\n`);
+
+  const maxObj = encNum;
+  const xrefStart = size;
+  let xref = `xref\n0 ${maxObj + 1}\n0000000000 65535 f \n`;
+  for (let id = 1; id <= maxObj; id += 1) {
+    xref += `${String(offsets[id] || 0).padStart(10, "0")} 00000 n \n`;
+  }
+  push(xref);
+  push(`trailer\n<< /Size ${maxObj + 1} /Root ${/\/Root\s+(\d+)\s+\d+\s+R/.exec(text)?.[1] || 1} 0 R /Encrypt ${encNum} 0 R /ID [<${hex(enc.fileId)}> <${hex(enc.fileId)}>] >>\nstartxref\n${xrefStart}\n%%EOF\n`);
+
+  return new Blob(chunks, { type: "application/pdf" });
+}
+
+function renderProtectPdf() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="prot-file">PDF file</label>
+      <input id="prot-file" class="util-file" type="file" accept="application/pdf" data-prot-file />
+    </div>
+    <div class="util-field">
+      <label for="prot-mode">What do you want to do?</label>
+      <select id="prot-mode" data-prot-mode>
+        <option value="lock" selected>Protect with a password</option>
+        <option value="unlock">Unlock a protected PDF</option>
+      </select>
+    </div>
+    <div data-prot-lock>
+      <div class="date-row">
+        <div class="util-field">
+          <label for="prot-user">Open password</label>
+          <input id="prot-user" type="password" autocomplete="new-password" placeholder="required to open" data-prot-user />
+        </div>
+        <div class="util-field">
+          <label for="prot-owner">Owner password (optional)</label>
+          <input id="prot-owner" type="password" autocomplete="new-password" placeholder="defaults to the open password" data-prot-owner />
+        </div>
+      </div>
+    </div>
+    <div class="util-field" data-prot-unlock hidden>
+      <label for="prot-pass">Password of the PDF</label>
+      <input id="prot-pass" type="password" autocomplete="off" placeholder="the password it was locked with" data-prot-pass />
+    </div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-prot-run>Protect PDF</button>
+    </div>
+    <p class="util-note" data-prot-status>Choose a PDF to begin.</p>
+  `;
+
+  const fileEl = utilityBody.querySelector("[data-prot-file]");
+  const modeEl = utilityBody.querySelector("[data-prot-mode]");
+  const lockWrap = utilityBody.querySelector("[data-prot-lock]");
+  const unlockWrap = utilityBody.querySelector("[data-prot-unlock]");
+  const userEl = utilityBody.querySelector("[data-prot-user]");
+  const ownerEl = utilityBody.querySelector("[data-prot-owner]");
+  const passEl = utilityBody.querySelector("[data-prot-pass]");
+  const runBtn = utilityBody.querySelector("[data-prot-run]");
+  const statusEl = utilityBody.querySelector("[data-prot-status]");
+  let fileBytes = null;
+
+  modeEl.addEventListener("change", () => {
+    const lock = modeEl.value === "lock";
+    lockWrap.hidden = !lock;
+    unlockWrap.hidden = lock;
+    runBtn.textContent = lock ? "Protect PDF" : "Unlock PDF";
+    statusEl.textContent = lock ? "Set a password, then protect." : "Enter the PDF's password to unlock it.";
+  });
+
+  fileEl.addEventListener("change", async () => {
+    const file = fileEl.files[0];
+    if (!file) return;
+    fileBytes = new Uint8Array(await file.arrayBuffer());
+    statusEl.textContent = `${file.name} loaded · ${(file.size / 1024).toFixed(0)} KB`;
+  });
+
+  const download = (blob, name) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  runBtn.addEventListener("click", async () => {
+    if (!fileBytes) {
+      statusEl.textContent = "Choose a PDF first.";
+      return;
+    }
+    try {
+      if (modeEl.value === "lock") {
+        // Encryption needs a verified PDF security handler; we refuse to emit a
+        // file we cannot prove opens, so this path stays disabled for now.
+        statusEl.textContent =
+          "Password protection is not available yet — it needs a verified PDF encryption library. Unlocking works today.";
+        return;
+      }
+      {
+        const password = passEl.value;
+        statusEl.textContent = "Checking the password…";
+        const pdfjs = await import("./pdf-reader/vendor/pdf.js");
+        pdfjs.GlobalWorkerOptions.workerSrc = "./pdf-reader/vendor/pdf.worker.js?v=2";
+        const doc = await pdfjs.getDocument({ data: fileBytes.slice(0), password }).promise;
+        const pages = [];
+        for (let n = 1; n <= doc.numPages; n += 1) {
+          statusEl.textContent = `Unlocking page ${n} of ${doc.numPages}…`;
+          const page = await doc.getPage(n);
+          const viewport = page.getViewport({ scale: 2 });
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(viewport.width);
+          canvas.height = Math.round(viewport.height);
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          const blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.92));
+          pages.push({
+            bytes: new Uint8Array(await blob.arrayBuffer()),
+            width: canvas.width,
+            height: canvas.height,
+            pageWidth: canvas.width * 0.75,
+            pageHeight: canvas.height * 0.75,
+            drawWidth: canvas.width * 0.75,
+            drawHeight: canvas.height * 0.75,
+            x: 0,
+            y: 0,
+          });
+        }
+        const pdf = createPdfFromImages(pages);
+        download(pdf, "unlocked.pdf");
+        statusEl.textContent = `Unlocked ${pages.length} page(s). Text is now part of the page images.`;
+      }
+    } catch (error) {
+      statusEl.textContent = `Could not finish — ${error.message}`;
+    }
+  });
 }
 
 if (utilityPanel) {
