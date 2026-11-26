@@ -8182,11 +8182,21 @@ function renderPdfWatermark() {
     const first = Math.max(1, Math.min(pdfDoc.numPages, Math.floor(Number(fromEl.value) || 1)));
     const last = Math.max(first, Math.min(pdfDoc.numPages, Math.floor(Number(toEl.value) || pdfDoc.numPages)));
     meterWrap.hidden = false;
+    reviewPages = [];
+    reviewIndex = 0;
+    showDiff = false;
     let region = null;
     if (options.mode === "remove") {
       let box = null;
-      if (customRect && customRect.w > 0.01 && customRect.h > 0.01) {
-        box = customRect;
+      // Respect the chosen option: each one now uses its own area.
+      if (options.area === "custom") {
+        if (customRect && customRect.w > 0.01 && customRect.h > 0.01) box = customRect;
+      } else if (options.area === "top") {
+        box = { x: 0, y: 0, w: 1, h: 0.22 };
+      } else if (options.area === "bottom") {
+        box = { x: 0, y: 0.78, w: 1, h: 0.22 };
+      } else if (options.area === "center") {
+        box = { x: 0, y: 0.34, w: 1, h: 0.32 };
       } else if (maskInfo) {
         // No box drawn: use the bounds of what detection found.
         let minX = maskInfo.w, minY = maskInfo.h, maxX = -1, maxY = -1;
