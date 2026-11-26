@@ -2109,6 +2109,9 @@ function showDashboard() {
   calculatorPanel.hidden = true;
   equationPanel.hidden = true;
   if (utilityPanel) utilityPanel.hidden = true;
+  if (typeof window.__flipTypingCleanup === "function") {
+    window.__flipTypingCleanup();
+  }
   dashboard.hidden = false;
   try {
     if (location.hash) history.replaceState(null, "", location.pathname + location.search);
@@ -6339,7 +6342,16 @@ function openToolFromHash() {
 }
 
 window.addEventListener("hashchange", openToolFromHash);
-openToolFromHash();
+// Defer: at this point the tool renderers further down the file are still in
+// their temporal dead zone, so opening a tool here produced an empty panel (and
+// the throw stopped the back button from being wired at all).
+window.setTimeout(() => {
+  try {
+    openToolFromHash();
+  } catch (error) {
+    console.error("[FlipWatch] deep link failed", error);
+  }
+}, 0);
 
 /* copy a shareable link to the open tool */
 const utilityLinkButton = document.querySelector("[data-utility-link]");
@@ -8872,10 +8884,18 @@ function renderTypingTest() {
     onKey(event);
   };
   document.addEventListener("keydown", window.__flipTypingHandler);
+  window.__flipTypingCleanup = () => {
+    document.removeEventListener("keydown", window.__flipTypingHandler);
+    window.__flipTypingHandler = null;
+    window.__flipTypingCleanup = null;
+    window.clearInterval(ticker);
+  };
 
   window.setTimeout(() => stage.focus(), 60);
   const storedBest = readStored("flip-watch-typing", { best: 0 }) || { best: 0 };
   if (bestEl) bestEl.textContent = String(storedBest.best || 0);
+  if (!chars.length) buildText();
+  paint();
   reset();
 }
 
