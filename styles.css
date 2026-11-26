@@ -5313,3 +5313,35 @@ html[data-theme] .h2p-preview {
   border-radius: 14px;
   background: #fff;
 }
+
+html[data-theme] .wm-review {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+html[data-theme] .wm-review__item {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+html[data-theme] .wm-review__item figcaption {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+html[data-theme] .wm-review__item canvas {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+@media (max-width: 520px) {
+  html[data-theme] .wm-review { grid-template-columns: 1fr; }
+}

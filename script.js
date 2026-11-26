@@ -7695,6 +7695,19 @@ function renderPdfWatermark() {
       <button class="control-button primary" type="button" data-wm-download>Download PDF</button>
       <span class="util-note" data-wm-result-note></span>
     </div>
+    <div data-wm-review hidden>
+      <p class="util-note" data-wm-review-note>Before and after — check that only the watermark changed.</p>
+      <div class="wm-review">
+        <figure class="wm-review__item"><figcaption>Before</figcaption><canvas data-wm-before></canvas></figure>
+        <figure class="wm-review__item"><figcaption>After</figcaption><canvas data-wm-after></canvas></figure>
+      </div>
+      <div class="util-actions">
+        <button class="util-btn" type="button" data-wm-rprev>‹ Previous</button>
+        <span class="util-note" data-wm-rlabel>Page 1</span>
+        <button class="util-btn" type="button" data-wm-rnext>Next ›</button>
+        <button class="util-btn" type="button" data-wm-diff>Show difference</button>
+      </div>
+    </div>
   `;
 
   const fileEl = utilityBody.querySelector("[data-wm-file]");
@@ -7728,6 +7741,14 @@ function renderPdfWatermark() {
   let previewPage = 1;
   let maskInfo = null;      // { mask, w, h, coverage }
   let resultBlob = null;
+  let reviewPages = [];
+  let reviewIndex = 0;
+  let showDiff = false;
+  const reviewWrap = utilityBody.querySelector("[data-wm-review]");
+  const reviewNote = utilityBody.querySelector("[data-wm-review-note]");
+  const reviewLabel = utilityBody.querySelector("[data-wm-rlabel]");
+  const beforeCanvas = utilityBody.querySelector("[data-wm-before]");
+  const afterCanvas = utilityBody.querySelector("[data-wm-after]");
   const navWrap = utilityBody.querySelector("[data-wm-nav]");
   const pageLabel = utilityBody.querySelector("[data-wm-page-label]");
   const resultWrap = utilityBody.querySelector("[data-wm-result]");
@@ -7923,6 +7944,10 @@ function renderPdfWatermark() {
 
   const syncMode = () => {
     resultWrap.hidden = true;
+    reviewWrap.hidden = true;
+    reviewPages = [];
+    reviewIndex = 0;
+    showDiff = false;
     resultBlob = null;
     const apply = modeEl.value === "apply";
     applyWrap.hidden = !apply;
@@ -7993,6 +8018,56 @@ function renderPdfWatermark() {
     } catch (error) {
       statusEl.textContent = `Could not open that PDF — ${error.message}`;
     }
+  });
+
+  const paintReview = () => {
+    if (!reviewPages.length) return;
+    const entry = reviewPages[Math.min(reviewIndex, reviewPages.length - 1)];
+    beforeCanvas.width = entry.before.width;
+    beforeCanvas.height = entry.before.height;
+    beforeCanvas.getContext("2d").drawImage(entry.before, 0, 0);
+    afterCanvas.width = entry.after.width;
+    afterCanvas.height = entry.after.height;
+    const ctx = afterCanvas.getContext("2d");
+    ctx.drawImage(entry.after, 0, 0);
+    let changed = 0;
+    const total = entry.after.width * entry.after.height;
+    if (showDiff) {
+      const a = entry.before.getContext("2d").getImageData(0, 0, entry.before.width, entry.before.height).data;
+      const img = ctx.getImageData(0, 0, afterCanvas.width, afterCanvas.height);
+      const b = img.data;
+      for (let i = 0; i < b.length; i += 4) {
+        const diff = Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
+        if (diff > 30) {
+          changed += 1;
+          b[i] = 255; b[i + 1] = 40; b[i + 2] = 40;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+    } else {
+      const a = entry.before.getContext("2d").getImageData(0, 0, entry.before.width, entry.before.height).data;
+      const b = entry.after.getContext("2d").getImageData(0, 0, entry.after.width, entry.after.height).data;
+      for (let i = 0; i < b.length; i += 4) {
+        if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 30) changed += 1;
+      }
+    }
+    const pct = ((changed / total) * 100).toFixed(1);
+    reviewLabel.textContent = `Page ${entry.page} · ${reviewIndex + 1} / ${reviewPages.length}`;
+    reviewNote.textContent = changed
+      ? `${pct}% of this page changed. ${showDiff ? "Red = changed pixels." : "Press “Show difference” to highlight them."}`
+      : "Nothing changed on this page.";
+    reviewWrap.hidden = false;
+  };
+
+  utilityBody.querySelector("[data-wm-diff]").addEventListener("click", () => {
+    showDiff = !showDiff;
+    paintReview();
+  });
+  utilityBody.querySelector("[data-wm-rprev]").addEventListener("click", () => {
+    if (reviewIndex > 0) { reviewIndex -= 1; paintReview(); }
+  });
+  utilityBody.querySelector("[data-wm-rnext]").addEventListener("click", () => {
+    if (reviewIndex < reviewPages.length - 1) { reviewIndex += 1; paintReview(); }
   });
 
   utilityBody.querySelector("[data-wm-download]").addEventListener("click", () => {
@@ -8077,6 +8152,14 @@ function renderPdfWatermark() {
         ctx.fillRect(0, 0, out.width, out.height);
         await page.render({ canvasContext: ctx, viewport }).promise;
 
+        if (n >= first && n <= last && reviewPages.length < 40) {
+          const small = document.createElement("canvas");
+          small.width = Math.max(120, Math.round(out.width * 0.32));
+          small.height = Math.max(160, Math.round(out.height * 0.32));
+          small.getContext("2d").drawImage(out, 0, 0, small.width, small.height);
+          var beforeSnapshot = small;
+        }
+
         if (n >= first && n <= last) {
           if (options.mode === "apply") {
             paintWatermark(ctx, out.width, out.height, {
@@ -8115,6 +8198,15 @@ function renderPdfWatermark() {
           }
         }
 
+        if (typeof beforeSnapshot !== "undefined" && beforeSnapshot) {
+          const afterSmall = document.createElement("canvas");
+          afterSmall.width = beforeSnapshot.width;
+          afterSmall.height = beforeSnapshot.height;
+          afterSmall.getContext("2d").drawImage(out, 0, 0, afterSmall.width, afterSmall.height);
+          reviewPages.push({ page: n, before: beforeSnapshot, after: afterSmall });
+          beforeSnapshot = null;
+        }
+
         const blob = await new Promise((r) => out.toBlob(r, "image/jpeg", 0.92));
         // The canvas is rendered at 2x, so the page box in points is half of it.
         const pageW = out.width / 2;
@@ -8139,6 +8231,9 @@ function renderPdfWatermark() {
       link.download = options.mode === "apply" ? `${stem}-watermarked.pdf` : `${stem}-clean.pdf`;
       resultBlob = pdf;
       resultWrap.hidden = false;
+      reviewIndex = 0;
+      showDiff = false;
+      paintReview();
       resultNote.textContent = `${pages.length} page(s) · ${(pdf.size / 1024).toFixed(0)} KB · nothing has downloaded yet`;
       meter.style.width = "100%";
       const what = options.mode === "apply" ? "Watermark applied" : options.area === "auto" ? "Detected watermark erased" : "Marked area erased";
