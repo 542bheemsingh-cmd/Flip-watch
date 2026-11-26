@@ -7132,6 +7132,26 @@ function renderProtectPdf() {
         <button type="button" data-prot-reveal aria-pressed="false">Show</button>
       </div>
     </div>
+    <div class="date-row" data-prot-range hidden>
+      <div class="util-field">
+        <label for="prot-from">From page</label>
+        <input id="prot-from" type="number" inputmode="numeric" min="1" value="1" data-prot-from />
+      </div>
+      <div class="util-field">
+        <label for="prot-to">To page</label>
+        <input id="prot-to" type="number" inputmode="numeric" min="1" data-prot-to />
+      </div>
+    </div>
+    <div class="util-field" data-prot-quality-wrap hidden>
+      <label for="prot-quality">Image quality</label>
+      <select id="prot-quality" data-prot-quality>
+        <option value="0.8">Smaller file</option>
+        <option value="0.92" selected>Balanced</option>
+        <option value="1">Sharpest</option>
+      </select>
+    </div>
+    <div class="meter" data-prot-meter-wrap hidden aria-hidden="true"><span data-prot-meter></span></div>
+    <p class="util-note" data-prot-warning hidden>There is no way to recover a lost password — store it safely.</p>
     <div class="util-field" data-prot-filename-wrap>
       <label for="prot-name">Save as</label>
       <input id="prot-name" type="text" data-prot-name placeholder="unlocked.pdf" />
@@ -7178,9 +7198,16 @@ function renderProtectPdf() {
     const lock = modeEl.value === "lock";
     lockWrap.hidden = !lock;
     unlockWrap.hidden = lock;
+    utilityBody.querySelector("[data-prot-range]").hidden = lock;
+    utilityBody.querySelector("[data-prot-quality-wrap]").hidden = lock;
+    utilityBody.querySelector("[data-prot-warning]").hidden = !lock;
+    utilityBody.querySelector("[data-prot-meter-wrap]").hidden = lock;
     runBtn.textContent = lock ? "Protect PDF" : "Unlock PDF";
     statusEl.textContent = lock ? "Set a password, then protect." : "Enter the PDF's password to unlock it.";
   });
+
+  // apply the initial mode so the right controls and warning show on open
+  modeEl.dispatchEvent(new Event("change"));
 
   fileEl.addEventListener("change", async () => {
     const file = fileEl.files[0];
@@ -7225,9 +7252,19 @@ function renderProtectPdf() {
         const pdfjs = await import("./pdf-reader/vendor/pdf.js");
         pdfjs.GlobalWorkerOptions.workerSrc = "./pdf-reader/vendor/pdf.worker.js?v=2";
         const doc = await pdfjs.getDocument({ data: fileBytes.slice(0), password }).promise;
+        const fromEl = utilityBody.querySelector("[data-prot-from]");
+        const toEl = utilityBody.querySelector("[data-prot-to]");
+        fromEl.max = String(doc.numPages);
+        toEl.max = String(doc.numPages);
+        if (!toEl.value || Number(toEl.value) > doc.numPages) toEl.value = String(doc.numPages);
+        const first = Math.max(1, Math.min(doc.numPages, Math.floor(Number(fromEl.value) || 1)));
+        const last = Math.max(first, Math.min(doc.numPages, Math.floor(Number(toEl.value) || doc.numPages)));
+        const quality = Number(utilityBody.querySelector("[data-prot-quality]").value) || 0.92;
+        const meter = utilityBody.querySelector("[data-prot-meter]");
         const pages = [];
-        for (let n = 1; n <= doc.numPages; n += 1) {
-          statusEl.textContent = `Unlocking page ${n} of ${doc.numPages}…`;
+        for (let n = first; n <= last; n += 1) {
+          statusEl.textContent = `Unlocking page ${n} of ${last}…`;
+          meter.style.width = `${Math.round(((n - first) / (last - first + 1)) * 100)}%`;
           const page = await doc.getPage(n);
           const viewport = page.getViewport({ scale: 2 });
           const canvas = document.createElement("canvas");
@@ -7237,7 +7274,7 @@ function renderProtectPdf() {
           ctx.fillStyle = "#ffffff";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           await page.render({ canvasContext: ctx, viewport }).promise;
-          const blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.92));
+          const blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", quality));
           pages.push({
             bytes: new Uint8Array(await blob.arrayBuffer()),
             width: canvas.width,
@@ -7252,7 +7289,8 @@ function renderProtectPdf() {
         }
         const pdf = createPdfFromImages(pages);
         download(pdf, nameEl.value.trim() || `${baseName}-unlocked.pdf`);
-        statusEl.textContent = `Unlocked ${pages.length} page(s). Text is now part of the page images.`;
+        meter.style.width = "100%";
+        statusEl.textContent = `Unlocked ${pages.length} page(s)${first > 1 || last < doc.numPages ? ` (pages ${first}–${last})` : ""}. Text is now part of the page images.`;
       }
     } catch (error) {
       const message = String(error && error.message ? error.message : error);
@@ -7301,6 +7339,20 @@ function renderHtmlToPdf() {
         <input id="h2p-width" type="number" inputmode="numeric" min="320" max="1600" step="20" value="900" data-h2p-width />
       </div>
     </div>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="h2p-quality">Image quality</label>
+        <select id="h2p-quality" data-h2p-quality>
+          <option value="0.8">Smaller file</option>
+          <option value="0.92" selected>Balanced</option>
+          <option value="1">Sharpest</option>
+        </select>
+      </div>
+      <div class="util-field">
+        <label>Estimated pages</label>
+        <input type="text" readonly data-h2p-pages value="—" />
+      </div>
+    </div>
     <div class="util-toggles">
       <label><input type="checkbox" data-h2p-long /> One long page (image PDF)</label>
     </div>
@@ -7310,6 +7362,8 @@ function renderHtmlToPdf() {
     </div>
     <div class="util-actions">
       <button class="util-btn" type="button" data-h2p-sample>Sample HTML</button>
+      <button class="util-btn" type="button" data-h2p-paste>Paste from clipboard</button>
+      <button class="util-btn" type="button" data-h2p-reset>Reset settings</button>
       <button class="util-btn" type="button" data-h2p-clear>Clear</button>
     </div>
     <div class="util-actions">
@@ -7353,6 +7407,12 @@ function renderHtmlToPdf() {
     const empty = html === "";
     printBtn.disabled = empty;
     imageBtn.disabled = empty;
+    const pagesOut = utilityBody.querySelector("[data-h2p-pages]");
+    const mm = Number(marginEl.value) || 0;
+    const pageH = sizeEl.value === "Letter" ? 792 : 595 * 1.414;
+    const usable = (orientEl.value === "landscape" ? 595 : pageH) - ((mm / 25.4) * 72) * 2;
+    const est = longEl.checked ? 1 : Math.max(1, Math.ceil((Math.max(200, previewEl.clientHeight || 800) * (900 / Math.max(320, Number(widthEl.value) || 900))) / Math.max(60, usable)));
+    if (pagesOut) pagesOut.value = empty ? "—" : `≈ ${est}`;
     window.clearTimeout(previewTimer);
     previewTimer = window.setTimeout(() => {
       previewEl.srcdoc = empty
@@ -7377,6 +7437,31 @@ function renderHtmlToPdf() {
 <p style="color:#777;font-size:13px">Thank you for your purchase.</p>`;
     syncPreview();
     statusEl.textContent = "Sample HTML loaded — try the print view.";
+  });
+
+  utilityBody.querySelector("[data-h2p-paste]").addEventListener("click", async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        statusEl.textContent = "Your clipboard is empty.";
+        return;
+      }
+      htmlEl.value = text;
+      syncPreview();
+      statusEl.textContent = "Pasted from the clipboard.";
+    } catch (error) {
+      statusEl.textContent = "The browser blocked clipboard access — paste with Ctrl+V instead.";
+    }
+  });
+
+  utilityBody.querySelector("[data-h2p-reset]").addEventListener("click", () => {
+    sizeEl.value = "A4";
+    orientEl.value = "portrait";
+    marginEl.value = "12";
+    widthEl.value = "900";
+    longEl.checked = false;
+    persist();
+    statusEl.textContent = "Settings reset to defaults.";
   });
 
   utilityBody.querySelector("[data-h2p-clear]").addEventListener("click", () => {
@@ -7484,7 +7569,7 @@ function renderHtmlToPdf() {
         pctx.fillStyle = "#ffffff";
         pctx.fillRect(0, 0, piece.width, piece.height);
         pctx.drawImage(slice.canvas, slice.sx, slice.sy, slice.sw, slice.sh, 0, 0, piece.width, piece.height);
-        const blob = await new Promise((r) => piece.toBlob(r, "image/jpeg", 0.92));
+        const blob = await new Promise((r) => piece.toBlob(r, "image/jpeg", Number(utilityBody.querySelector("[data-h2p-quality]").value) || 0.92));
         pdfPages.push({
           bytes: new Uint8Array(await blob.arrayBuffer()),
           width: piece.width,
