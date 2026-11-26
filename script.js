@@ -7651,16 +7651,21 @@ function renderPdfWatermark() {
       </div>
     </div>
     <div data-wm-remove hidden>
+      <div class="util-actions">
+        <button class="control-button primary" type="button" data-wm-detect disabled>Detect watermark</button>
+      </div>
+      <p class="util-note" data-wm-detect-note>Detection compares every page: anything that appears in the same place on most pages is treated as a watermark.</p>
       <div class="util-field">
-        <label for="wm-area">Where is the watermark?</label>
+        <label for="wm-area">Or mark the area yourself</label>
         <select id="wm-area" data-wm-area>
-          <option value="center" selected>Centre band</option>
+          <option value="auto" selected>Use the detected watermark</option>
+          <option value="center">Centre band</option>
           <option value="top">Top area</option>
           <option value="bottom">Bottom area</option>
           <option value="custom">Draw it on the preview</option>
         </select>
       </div>
-      <p class="util-note">Drag on the preview to mark the area, then erase it on every page.</p>
+      <p class="util-note">Red area = what will be erased. Drag on the preview to mark an area yourself.</p>
     </div>
     <div class="date-row">
       <div class="util-field">
@@ -7680,7 +7685,16 @@ function renderPdfWatermark() {
     <p class="util-note" data-wm-status>Choose a PDF to begin.</p>
     <p class="util-note">The output keeps the original page size, but pages are re-rendered as images, so text stops being selectable.</p>
     <div class="meter" hidden data-wm-meter-wrap aria-hidden="true"><span data-wm-meter></span></div>
+    <div class="util-actions" data-wm-nav hidden>
+      <button class="util-btn" type="button" data-wm-prev>‹ Previous</button>
+      <span class="util-note" data-wm-page-label>Page 1</span>
+      <button class="util-btn" type="button" data-wm-next>Next ›</button>
+    </div>
     <div class="img-stage" data-wm-stage hidden><canvas class="img-canvas" data-wm-canvas></canvas></div>
+    <div class="util-actions" data-wm-result hidden>
+      <button class="control-button primary" type="button" data-wm-download>Download PDF</button>
+      <span class="util-note" data-wm-result-note></span>
+    </div>
   `;
 
   const fileEl = utilityBody.querySelector("[data-wm-file]");
@@ -7711,6 +7725,15 @@ function renderPdfWatermark() {
   let firstPageCanvas = null;
   let customRect = null;
   let dragging = null;
+  let previewPage = 1;
+  let maskInfo = null;      // { mask, w, h, coverage }
+  let resultBlob = null;
+  const navWrap = utilityBody.querySelector("[data-wm-nav]");
+  const pageLabel = utilityBody.querySelector("[data-wm-page-label]");
+  const resultWrap = utilityBody.querySelector("[data-wm-result]");
+  const resultNote = utilityBody.querySelector("[data-wm-result-note]");
+  const detectBtn = utilityBody.querySelector("[data-wm-detect]");
+  const detectNote = utilityBody.querySelector("[data-wm-detect-note]");
 
   const readOptions = () => ({
     mode: modeEl.value,
@@ -7787,9 +7810,67 @@ function renderPdfWatermark() {
     return { x: 0, y: height * 0.34, w: width, h: height * 0.32 };
   };
 
+  const renderPageToCanvas = async (number, scale) => {
+    const page = await pdfDoc.getPage(number);
+    const viewport = page.getViewport({ scale });
+    const out = document.createElement("canvas");
+    out.width = Math.round(viewport.width);
+    out.height = Math.round(viewport.height);
+    const ctx = out.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, out.width, out.height);
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    return out;
+  };
+
+  // Watermark detection: render a sample of pages and keep the pixels that are
+  // non-background in the same place on most of them. Ordinary content moves
+  // between pages, a stamp does not.
+  const detectWatermark = async () => {
+    if (!pdfDoc) return null;
+    const sample = Math.min(pdfDoc.numPages, 10);
+    const scale = 0.6;
+    const first = await renderPageToCanvas(1, scale);
+    const w = first.width;
+    const h = first.height;
+    const counts = new Uint16Array(w * h);
+    let used = 0;
+    for (let n = 1; n <= sample; n += 1) {
+      const page = n === 1 ? first : await renderPageToCanvas(n, scale);
+      if (page.width !== w || page.height !== h) continue;
+      const data = page.getContext("2d").getImageData(0, 0, w, h).data;
+      for (let i = 0, p = 0; p < w * h; i += 4, p += 1) {
+        if (data[i] < 232 || data[i + 1] < 232 || data[i + 2] < 232) counts[p] += 1;
+      }
+      used += 1;
+    }
+    if (!used) return null;
+    const need = Math.max(2, Math.ceil(used * 0.75));
+    const mask = new Uint8Array(w * h);
+    let hits = 0;
+    for (let p = 0; p < w * h; p += 1) {
+      if (counts[p] >= need) { mask[p] = 1; hits += 1; }
+    }
+    // grow the mask by one pixel so anti-aliased edges go too
+    const grown = new Uint8Array(w * h);
+    for (let y = 0; y < h; y += 1) {
+      for (let x = 0; x < w; x += 1) {
+        const p = y * w + x;
+        if (!mask[p]) continue;
+        for (let dy = -1; dy <= 1; dy += 1) {
+          for (let dx = -1; dx <= 1; dx += 1) {
+            const nx = x + dx, ny = y + dy;
+            if (nx >= 0 && ny >= 0 && nx < w && ny < h) grown[ny * w + nx] = 1;
+          }
+        }
+      }
+    }
+    return { mask: grown, w, h, coverage: (hits / (w * h)) * 100, pages: used };
+  };
+
   const renderPreview = async () => {
     if (!pdfDoc) return;
-    const page = await pdfDoc.getPage(1);
+    const page = await pdfDoc.getPage(Math.min(previewPage, pdfDoc.numPages));
     const viewport = page.getViewport({ scale: 1 });
     const target = Math.min(900, viewport.width * 1.2);
     const scale = target / viewport.width;
@@ -7810,9 +7891,25 @@ function renderPdfWatermark() {
     const options = { ...readOptions(), scaleFactor: 1 };
     if (options.mode === "apply") {
       paintWatermark(ctx, canvas.width, canvas.height, options);
+    } else if (options.area === "auto" && maskInfo) {
+      const { mask, w, h } = maskInfo;
+      const overlay = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = overlay.data;
+      for (let y = 0; y < canvas.height; y += 1) {
+        const my = Math.min(h - 1, Math.floor((y / canvas.height) * h));
+        for (let x = 0; x < canvas.width; x += 1) {
+          const mx = Math.min(w - 1, Math.floor((x / canvas.width) * w));
+          if (!mask[my * w + mx]) continue;
+          const i = (y * canvas.width + x) * 4;
+          data[i] = Math.min(255, data[i] * 0.35 + 170);
+          data[i + 1] = data[i + 1] * 0.35;
+          data[i + 2] = data[i + 2] * 0.35;
+        }
+      }
+      ctx.putImageData(overlay, 0, 0);
     } else {
       const rect = removeRect(canvas.width, canvas.height, options);
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = "rgba(255, 60, 60, 0.35)";
       ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
       ctx.strokeStyle = "#7c5cff";
       ctx.setLineDash([6, 4]);
@@ -7820,9 +7917,13 @@ function renderPdfWatermark() {
       ctx.setLineDash([]);
     }
     stage.hidden = false;
+    navWrap.hidden = false;
+    pageLabel.textContent = `Page ${Math.min(previewPage, pdfDoc.numPages)} / ${pdfDoc.numPages}`;
   };
 
   const syncMode = () => {
+    resultWrap.hidden = true;
+    resultBlob = null;
     const apply = modeEl.value === "apply";
     applyWrap.hidden = !apply;
     removeWrap.hidden = apply;
@@ -7885,10 +7986,51 @@ function renderPdfWatermark() {
       fromEl.value = "1";
       toEl.value = String(pdfDoc.numPages);
       runBtn.disabled = false;
+      detectBtn.disabled = false;
+      previewPage = 1;
       statusEl.textContent = `${pdfDoc.numPages} page(s) ready · ${(file.size / 1024).toFixed(0)} KB`;
       await renderPreview();
     } catch (error) {
       statusEl.textContent = `Could not open that PDF — ${error.message}`;
+    }
+  });
+
+  utilityBody.querySelector("[data-wm-download]").addEventListener("click", () => {
+    if (!resultBlob) return;
+    const stem = (fileEl.files[0]?.name || "document").replace(/\.pdf$/i, "") || "document";
+    const url = URL.createObjectURL(resultBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = modeEl.value === "apply" ? `${stem}-watermarked.pdf` : `${stem}-clean.pdf`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+    resultNote.textContent = `${(resultBlob.size / 1024).toFixed(0)} KB downloaded`;
+  });
+
+  utilityBody.querySelector("[data-wm-prev]").addEventListener("click", () => {
+    if (previewPage > 1) { previewPage -= 1; renderPreview(); }
+  });
+  utilityBody.querySelector("[data-wm-next]").addEventListener("click", () => {
+    if (pdfDoc && previewPage < pdfDoc.numPages) { previewPage += 1; renderPreview(); }
+  });
+
+  detectBtn.addEventListener("click", async () => {
+    if (!pdfDoc) return;
+    detectBtn.disabled = true;
+    detectNote.textContent = "Looking for something that repeats on every page…";
+    try {
+      maskInfo = await detectWatermark();
+      if (!maskInfo) {
+        detectNote.textContent = "Could not analyse the pages.";
+        return;
+      }
+      areaEl.value = "auto";
+      detectNote.textContent = maskInfo.coverage > 0.2
+        ? `Found a repeating mark covering ${maskInfo.coverage.toFixed(1)}% of the page across ${maskInfo.pages} pages. Red = what will be erased.`
+        : "No repeating watermark found. Mark the area yourself instead.";
+      await renderPreview();
+    } finally {
+      detectBtn.disabled = false;
     }
   });
 
@@ -7941,6 +8083,20 @@ function renderPdfWatermark() {
               ...options,
               scaleFactor: firstPageCanvas ? out.width / firstPageCanvas.width : 1,
             });
+          } else if (options.area === "auto" && maskInfo) {
+            const image = ctx.getImageData(0, 0, out.width, out.height);
+            const data = image.data;
+            const { mask, w, h } = maskInfo;
+            for (let y = 0; y < out.height; y += 1) {
+              const my = Math.min(h - 1, Math.floor((y / out.height) * h));
+              for (let x = 0; x < out.width; x += 1) {
+                const mx = Math.min(w - 1, Math.floor((x / out.width) * w));
+                if (!mask[my * w + mx]) continue;
+                const i = (y * out.width + x) * 4;
+                data[i] = 255; data[i + 1] = 255; data[i + 2] = 255;
+              }
+            }
+            ctx.putImageData(image, 0, 0);
           } else {
             const rect = removeRect(out.width, out.height, options);
             // Sample just outside the area so erasing blends into the page
@@ -7981,10 +8137,12 @@ function renderPdfWatermark() {
       link.href = url;
       const stem = (fileEl.files[0]?.name || "document").replace(/\.pdf$/i, "") || "document";
       link.download = options.mode === "apply" ? `${stem}-watermarked.pdf` : `${stem}-clean.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      resultBlob = pdf;
+      resultWrap.hidden = false;
+      resultNote.textContent = `${pages.length} page(s) · ${(pdf.size / 1024).toFixed(0)} KB · nothing has downloaded yet`;
       meter.style.width = "100%";
-      statusEl.textContent = `${options.mode === "apply" ? "Watermark applied" : "Area erased"} on pages ${first}–${last} · ${(pdf.size / 1024).toFixed(0)} KB.`;
+      const what = options.mode === "apply" ? "Watermark applied" : options.area === "auto" ? "Detected watermark erased" : "Marked area erased";
+      statusEl.textContent = `${what} on pages ${first}–${last}. Review it above, then press Download.`;
     } catch (error) {
       statusEl.textContent = `Could not finish — ${error.message}`;
     }
