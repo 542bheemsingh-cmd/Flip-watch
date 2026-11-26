@@ -2439,7 +2439,7 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
    Extra utilities: unit converter, password generator, word counter,
    to-do list and date calculator.
    ===================================================================== */
-const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates", "gst", "emi", "fuel", "json", "base64", "color", "random", "findreplace", "textpad", "pwstrength", "imgcompress", "imgresize", "imgconvert", "imgcrop", "imgcolour", "qrcode", "stats", "prime", "calendar", "pdf2img", "img2pdf", "protectpdf"];
+const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates", "gst", "emi", "fuel", "json", "base64", "color", "random", "findreplace", "textpad", "pwstrength", "imgcompress", "imgresize", "imgconvert", "imgcrop", "imgcolour", "qrcode", "stats", "prime", "calendar", "pdf2img", "img2pdf", "protectpdf", "html2pdf"];
 const utilityPanel = document.querySelector("[data-utility-panel]");
 const utilityKicker = document.querySelector("[data-utility-kicker]");
 const utilityTitle = document.querySelector("[data-utility-title]");
@@ -2474,6 +2474,7 @@ const utilityMeta = {
   pdf2img: { kicker: "Files", title: "PDF to Images", sub: "Turn PDF pages into PNG or JPEG files, zipped if you like." },
   img2pdf: { kicker: "Files", title: "Images to PDF", sub: "Combine photos into one PDF, in the order you choose." },
   protectpdf: { kicker: "Files", title: "Protect & Unlock PDF", sub: "Encrypt a PDF with a password, or unlock one you own." },
+  html2pdf: { kicker: "Files", title: "HTML to PDF", sub: "Turn pasted HTML into a print-ready PDF." },
 };
 
 const UTIL_KEYS = {
@@ -2530,6 +2531,7 @@ function renderUtility(kind) {
   else if (kind === "pdf2img") renderPdfToImages();
   else if (kind === "img2pdf") renderImagesToPdf();
   else if (kind === "protectpdf") renderProtectPdf();
+  else if (kind === "html2pdf") renderHtmlToPdf();
 }
 
 /* ------------------------------------------------------- shared helpers */
@@ -5981,6 +5983,7 @@ const TOOL_CATEGORIES = {
   pdf2img: "Files",
   img2pdf: "Files",
   protectpdf: "Files",
+  html2pdf: "Files",
 };
 
 const CATEGORY_ORDER = ["All", "Time", "Dates", "Maths", "Money", "Text", "Images", "Developer", "Security", "Productivity", "Fun", "Files"];
@@ -7217,6 +7220,188 @@ function renderProtectPdf() {
       }
     } catch (error) {
       statusEl.textContent = `Could not finish — ${error.message}`;
+    }
+  });
+}
+
+/* ------------------------------------------------------- HTML → PDF */
+function renderHtmlToPdf() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="h2p-html">HTML source</label>
+      <textarea id="h2p-html" class="util-textarea util-textarea--code" data-h2p-html spellcheck="false" placeholder="&lt;h1&gt;Invoice&lt;/h1&gt;&lt;p&gt;Paste any HTML here…&lt;/p&gt;"></textarea>
+    </div>
+    <div class="util-field">
+      <label for="h2p-file">…or load an .html file</label>
+      <input id="h2p-file" class="util-file" type="file" accept=".html,.htm,text/html" data-h2p-file />
+    </div>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="h2p-size">Page size</label>
+        <select id="h2p-size" data-h2p-size>
+          <option value="A4" selected>A4</option>
+          <option value="Letter">US Letter</option>
+          <option value="A5">A5</option>
+        </select>
+      </div>
+      <div class="util-field">
+        <label for="h2p-orient">Orientation</label>
+        <select id="h2p-orient" data-h2p-orient>
+          <option value="portrait" selected>Portrait</option>
+          <option value="landscape">Landscape</option>
+        </select>
+      </div>
+    </div>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="h2p-margin">Margin (mm)</label>
+        <input id="h2p-margin" type="number" inputmode="numeric" min="0" max="40" value="12" data-h2p-margin />
+      </div>
+      <div class="util-field">
+        <label for="h2p-width">Render width (px)</label>
+        <input id="h2p-width" type="number" inputmode="numeric" min="320" max="1600" step="20" value="900" data-h2p-width />
+      </div>
+    </div>
+    <div class="util-toggles">
+      <label><input type="checkbox" data-h2p-long /> One long page (image PDF)</label>
+    </div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-h2p-print>Open print view</button>
+      <button class="util-btn" type="button" data-h2p-image>Download image PDF</button>
+    </div>
+    <p class="util-note" data-h2p-status>Paste HTML, then choose print view (real text) or an image PDF.</p>
+  `;
+
+  const htmlEl = utilityBody.querySelector("[data-h2p-html]");
+  const fileEl = utilityBody.querySelector("[data-h2p-file]");
+  const sizeEl = utilityBody.querySelector("[data-h2p-size]");
+  const orientEl = utilityBody.querySelector("[data-h2p-orient]");
+  const marginEl = utilityBody.querySelector("[data-h2p-margin]");
+  const widthEl = utilityBody.querySelector("[data-h2p-width]");
+  const longEl = utilityBody.querySelector("[data-h2p-long]");
+  const statusEl = utilityBody.querySelector("[data-h2p-status]");
+
+  fileEl.addEventListener("change", async () => {
+    const file = fileEl.files[0];
+    if (!file) return;
+    htmlEl.value = await file.text();
+    statusEl.textContent = `${file.name} loaded · ${htmlEl.value.length} characters`;
+  });
+
+  const pageCss = () =>
+    `@page { size: ${sizeEl.value} ${orientEl.value}; margin: ${Number(marginEl.value) || 0}mm; }
+     body { margin: 0; padding: ${Number(marginEl.value) || 0}mm; font: 16px/1.5 system-ui, sans-serif; color: #111; background: #fff; }
+     img, svg, table { max-width: 100%; }`;
+
+  utilityBody.querySelector("[data-h2p-print]").addEventListener("click", () => {
+    const html = htmlEl.value.trim();
+    if (!html) {
+      statusEl.textContent = "Paste some HTML first.";
+      return;
+    }
+    const win = window.open("", "_blank");
+    if (!win) {
+      statusEl.textContent = "Allow pop-ups for this site to open the print view.";
+      return;
+    }
+    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>HTML to PDF</title><style>${pageCss()}</style></head><body>${html}</body></html>`);
+    win.document.close();
+    win.focus();
+    window.setTimeout(() => win.print(), 350);
+    statusEl.textContent = "Print view opened — choose “Save as PDF” in the print dialog.";
+  });
+
+  utilityBody.querySelector("[data-h2p-image]").addEventListener("click", async () => {
+    const html = htmlEl.value.trim();
+    if (!html) {
+      statusEl.textContent = "Paste some HTML first.";
+      return;
+    }
+    statusEl.textContent = "Rendering…";
+    const width = Math.max(320, Math.min(1600, Math.round(Number(widthEl.value) || 900)));
+    try {
+      const frame = document.createElement("iframe");
+      frame.style.cssText = `position:fixed;left:-9999px;top:0;width:${width}px;height:10px;border:0;`;
+      document.body.append(frame);
+      const doc = frame.contentDocument;
+      doc.open();
+      doc.write(`<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;padding:16px;font:16px/1.5 system-ui,sans-serif;color:#111;background:#fff}img,svg,table{max-width:100%}</style></head><body>${html}</body></html>`);
+      doc.close();
+      await new Promise((resolve) => window.setTimeout(resolve, 350));
+      const height = Math.max(200, Math.ceil(frame.contentDocument.body.scrollHeight));
+      frame.style.height = `${height}px`;
+
+      const serialized = new XMLSerializer().serializeToString(frame.contentDocument.documentElement);
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%">${serialized}</foreignObject></svg>`;
+      const image = new Image();
+      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = () => reject(new Error("Could not rasterise that HTML."));
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(image, 0, 0);
+
+      const isLong = longEl.checked;
+      const ratio = sizeEl.value === "Letter" ? 1.294 : sizeEl.value === "A5" ? 1.414 : 1.414;
+      const pageWidth = orientEl.value === "landscape" ? 842 : 595;
+      const pageHeight = Math.round(pageWidth * ratio);
+      const margin = ((Number(marginEl.value) || 0) / 25.4) * 72;
+
+      const pages = [];
+      const usableHeight = pageHeight - margin * 2;
+      const scale = (pageWidth - margin * 2) / width;
+
+      if (isLong) {
+        const sliceHeight = height;
+        pages.push({ canvas, sx: 0, sy: 0, sw: width, sh: sliceHeight });
+      } else {
+        const sliceHeight = Math.max(1, Math.floor(usableHeight / scale));
+        for (let y = 0; y < height; y += sliceHeight) {
+          pages.push({ canvas, sx: 0, sy: y, sw: width, sh: Math.min(sliceHeight, height - y) });
+        }
+      }
+
+      const pdfPages = [];
+      for (const slice of pages) {
+        const piece = document.createElement("canvas");
+        piece.width = Math.round(slice.sw * scale);
+        piece.height = Math.round(slice.sh * scale);
+        const pctx = piece.getContext("2d");
+        pctx.fillStyle = "#ffffff";
+        pctx.fillRect(0, 0, piece.width, piece.height);
+        pctx.drawImage(slice.canvas, slice.sx, slice.sy, slice.sw, slice.sh, 0, 0, piece.width, piece.height);
+        const blob = await new Promise((r) => piece.toBlob(r, "image/jpeg", 0.92));
+        pdfPages.push({
+          bytes: new Uint8Array(await blob.arrayBuffer()),
+          width: piece.width,
+          height: piece.height,
+          pageWidth: isLong ? piece.width * 0.75 + margin * 2 : pageWidth,
+          pageHeight: isLong ? piece.height * 0.75 + margin * 2 : pageHeight,
+          drawWidth: isLong ? piece.width * 0.75 : pageWidth - margin * 2,
+          drawHeight: isLong ? piece.height * 0.75 : (pageHeight - margin * 2),
+          x: margin,
+          y: margin,
+        });
+      }
+
+      const pdf = createPdfFromImages(pdfPages);
+      const url = URL.createObjectURL(pdf);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "html-to-pdf.pdf";
+      link.click();
+      URL.revokeObjectURL(url);
+      frame.remove();
+      statusEl.textContent = `${pdfPages.length} page image PDF created (${(pdf.size / 1024).toFixed(0)} KB).`;
+    } catch (error) {
+      statusEl.textContent = `Could not render — ${error.message}. Try the print view instead.`;
     }
   });
 }
