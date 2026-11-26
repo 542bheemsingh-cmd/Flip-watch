@@ -4889,3 +4889,144 @@ html[data-theme] button:focus-visible { outline: 2px solid hsl(var(--hue-a, 265)
   html[data-theme] .tool-filters, html[data-theme] .tool-recent { display: none !important; }
   html[data-theme] .tool-card { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; }
 }
+
+/* =====================================================================
+   Design pass 2 — layout rhythm, states and contrast
+   ===================================================================== */
+
+/* 1. sticky panel header so the back button is always reachable */
+html[data-theme] .back-button {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  align-self: start;
+  backdrop-filter: blur(12px);
+  background: var(--surface-2);
+  border-radius: 999px;
+}
+
+/* 2-3. equal-height cards with a two-line description clamp */
+html[data-theme] .tool-grid { align-items: stretch; }
+html[data-theme] .tool-card { height: 100%; }
+
+html[data-theme] .tool-meta {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.45;
+}
+
+/* 4. icon inner glow */
+html[data-theme] .tool-icon { box-shadow: inset 0 1px rgba(255, 255, 255, 0.35), 0 6px 16px var(--tool-soft); }
+
+/* 5. numbers line up everywhere */
+html[data-theme] .stat span,
+html[data-theme] .flip-digit,
+html[data-theme] .calendar-table td,
+html[data-theme] .util-table td { font-variant-numeric: tabular-nums; }
+
+/* 6. toast gets the accent edge */
+html[data-theme] .app-toast {
+  border-left: 3px solid hsl(var(--hue-a, 265) 90% 62%);
+  border-radius: 12px;
+}
+
+/* 7. active filter chip gets a dot */
+html[data-theme] .filter-chip[aria-pressed="true"]::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  margin-right: 2px;
+}
+
+/* 8. centred empty state */
+html[data-theme] .tool-search__empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  padding: 22px 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 16px;
+  text-align: center;
+}
+
+/* 9. footer separators */
+html[data-theme] .app-footer > * + * { position: relative; }
+html[data-theme] .app-footer > * + *::before {
+  content: "·";
+  margin-right: 18px;
+  color: var(--border-strong);
+}
+
+/* 10. card focus ring */
+html[data-theme] .tool-card:focus-visible {
+  outline: 2px solid hsl(var(--hue-a, 265) 90% 62%);
+  outline-offset: 3px;
+  border-color: var(--tool-line);
+}
+
+/* 11. select hover */
+html[data-theme] .util-field select:hover,
+html[data-theme] .util-field input:hover { border-color: var(--border-strong); }
+
+/* 12-13. softer panels with a gentle entrance */
+html[data-theme] .utility-panel,
+html[data-theme] .watch-panel,
+html[data-theme] .calculator-panel,
+html[data-theme] .equation-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 32%),
+    var(--surface);
+}
+
+/* 14. consistent vertical rhythm inside panels */
+html[data-theme] .utility-body { gap: 14px; }
+html[data-theme] .utility-panel { gap: 18px; }
+
+/* 16. smaller icons on narrow phones */
+@media (max-width: 380px) {
+  html[data-theme] .tool-icon { width: 38px; height: 38px; font-size: 0.82rem; }
+  html[data-theme] .tool-name { font-size: 0.86rem; }
+  html[data-theme] .tool-meta { font-size: 0.68rem; }
+}
+
+/* 17. respect high-contrast preferences */
+@media (prefers-contrast: more) {
+  html[data-theme] { --border: rgba(255, 255, 255, 0.28); --border-strong: rgba(255, 255, 255, 0.5); }
+  html[data-theme="light"] { --border: rgba(0, 0, 0, 0.24); --border-strong: rgba(0, 0, 0, 0.5); }
+  html[data-theme] .tool-card,
+  html[data-theme] .util-field input,
+  html[data-theme] .util-field select { border-width: 2px; }
+}
+
+/* 18. pressed card */
+html[data-theme] .tool-card:active { transform: translateY(-1px) scale(0.995); }
+
+/* 19. dialog close affordance */
+html[data-theme] .app-dialog::backdrop { background: rgba(4, 6, 16, 0.68); }
+
+/* 20. shorter placeholder on small screens */
+@media (max-width: 420px) {
+  html[data-theme] .tool-search__input::placeholder { color: transparent; }
+  html[data-theme] .tool-search__input { padding-left: 42px; }
+}
+
+/* 21-23. type + pill polish */
+html[data-theme] .dashboard h1 { letter-spacing: -0.02em; }
+html[data-theme] .tool-search__count { letter-spacing: 0.06em; }
+html[data-theme] .dashboard-badge { letter-spacing: 0.04em; }
+
+/* 24. anchor scroll padding for the fixed controls */
+html[data-theme] html { scroll-padding-top: 96px; }
+
+/* 25. accent border on card hover */
+html[data-theme] .tool-card:hover { border-color: var(--tool-line); }
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme] .tool-card:active { transform: none; }
+}
