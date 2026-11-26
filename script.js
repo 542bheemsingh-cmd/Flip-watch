@@ -8687,7 +8687,23 @@ function renderTypingTest() {
   });
 
   stage.addEventListener("click", () => stage.focus());
-  stage.addEventListener("keydown", onKey);
+
+  // Capture keys at the document level too: the stage loses focus easily (after
+  // clicking a mode button, for example) and then nothing was typed at all.
+  if (window.__flipTypingHandler) {
+    document.removeEventListener("keydown", window.__flipTypingHandler);
+  }
+  window.__flipTypingHandler = (event) => {
+    if (!utilityPanel || utilityPanel.hidden) return;
+    if (!utilityBody.querySelector("[data-ty-stage]")) return;
+    const target = event.target;
+    if (target && target.closest && target.closest("input, textarea, select")) return;
+    if (target && target.closest && target.closest("button")) return;
+    onKey(event);
+  };
+  document.addEventListener("keydown", window.__flipTypingHandler);
+
+  window.setTimeout(() => stage.focus(), 60);
   reset();
 }
 
