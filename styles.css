@@ -5192,3 +5192,116 @@ html[data-theme] .utility-body > * + * { margin-top: 2px; }
   html[data-theme] .app-toast { animation: none; }
   html[data-theme] .fab:hover { transform: none; }
 }
+
+/* =====================================================================
+   Design pass 4 — tool widgets, calendar, QR and mobile
+   ===================================================================== */
+
+/* 1. sticky table headers */
+html[data-theme] .util-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  backdrop-filter: blur(8px);
+}
+
+/* 2. file input drag feedback */
+html[data-theme] .util-file:hover { border-color: var(--border-strong); background: var(--surface); }
+html[data-theme] .utility-body.is-dragover .util-file {
+  border-color: hsl(var(--hue-a, 265) 90% 62%);
+  background: hsl(var(--hue-a, 265) 90% 62% / 0.08);
+}
+
+/* 3-4. media lists */
+html[data-theme] .thumb-card { transition: transform var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) ease; }
+html[data-theme] .thumb-card:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+html[data-theme] .thumb-card img { transition: transform 220ms var(--ease-standard); }
+html[data-theme] .thumb-card:hover img { transform: scale(1.03); }
+html[data-theme] .image-row { transition: border-color var(--motion-fast) ease, background var(--motion-fast) ease; }
+html[data-theme] .image-row:hover { border-color: var(--border-strong); background: var(--surface-2); }
+
+/* 5. random result uses the accent gradient */
+html[data-theme] .random-result {
+  background: linear-gradient(160deg, var(--tool-soft, rgba(255,255,255,.06)), var(--card-bg));
+  border-color: var(--tool-line, var(--border));
+}
+
+/* 6. meter glow */
+html[data-theme] .meter span { box-shadow: 0 0 12px hsl(var(--hue-a, 265) 90% 62% / 0.45); }
+
+/* 7. code areas breathe */
+html[data-theme] .util-textarea--code { line-height: 1.6; tab-size: 2; }
+
+/* 8. JSON output accent edge */
+html[data-theme] [data-json-output] { border-left: 3px solid hsl(var(--hue-a, 265) 90% 62% / 0.55); }
+
+/* 9-10. calendar */
+html[data-theme] .calendar-table td:nth-child(6),
+html[data-theme] .calendar-table td:nth-child(7) { color: var(--muted); }
+html[data-theme] .calendar-table td.is-today {
+  box-shadow: 0 0 0 2px hsl(var(--hue-a, 265) 90% 62% / 0.45);
+  border-radius: 10px;
+}
+
+/* 11-12. colour widgets */
+html[data-theme] .swatch { transition: transform var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) ease; }
+html[data-theme] .swatch:hover { transform: translateY(-2px) scale(1.03); box-shadow: var(--shadow-md); }
+html[data-theme] .colour-preview { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
+
+/* 13. QR frame */
+html[data-theme] .qr-stage { border: 1px dashed var(--border-strong); border-radius: 18px; }
+
+/* 14-15. mobile tool actions */
+@media (max-width: 520px) {
+  html[data-theme] .util-actions .control-button.primary { width: 100%; }
+  html[data-theme] .util-actions { gap: 8px; }
+}
+
+/* 16. dialogs scroll instead of overflowing */
+html[data-theme] .app-dialog { max-height: calc(100vh - 48px); overflow: auto; }
+
+/* 17-18. reader depth */
+html[data-theme] .book-face,
+html[data-theme] .page-card { box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4); }
+html[data-theme] .top-app-bar,
+html[data-theme] .reader-toolbar { backdrop-filter: blur(18px) saturate(1.2); }
+
+/* 19. tighter mobile panel padding */
+@media (max-width: 520px) {
+  html[data-theme] .utility-panel,
+  html[data-theme] .watch-panel,
+  html[data-theme] .calculator-panel,
+  html[data-theme] .equation-panel { padding: 16px; border-radius: 18px; }
+}
+
+/* 20-21. card surface per theme */
+html[data-theme="dark"] .tool-card { box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), var(--shadow-md); }
+html[data-theme="light"] .tool-card { border-color: rgba(20, 22, 43, 0.1); }
+
+/* 22. stat hover lift */
+html[data-theme] .stat:hover { transform: translateY(-1px); }
+
+/* 23. notes get a leading dot */
+html[data-theme] .util-note::before {
+  content: "•";
+  margin-right: 6px;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+/* 24. chips press */
+html[data-theme] .filter-chip:active { transform: scale(0.96); }
+
+/* 25. panel body never looks empty */
+html[data-theme] .utility-body:empty::after {
+  content: "Loading…";
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme] .thumb-card:hover,
+  html[data-theme] .swatch:hover,
+  html[data-theme] .stat:hover { transform: none; }
+}
