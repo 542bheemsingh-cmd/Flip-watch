@@ -5386,3 +5386,8 @@ html[data-theme] .ty-hint { margin-top: 10px; color: var(--muted); font-size: 0.
 html[data-theme] .ty-chart { width: 100%; height: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
 html[data-theme] .util-btn.is-on { background: linear-gradient(135deg, var(--grad-a), var(--grad-c)); color: #fff; border-color: transparent; }
 @media (prefers-reduced-motion: reduce) { html[data-theme] .ty-char.is-cursor::before { animation: none; } }
+
+html[data-theme] .ty-word { transition: opacity 160ms ease; }
+html[data-theme] .ty-word.is-done { opacity: 0.45; }
+html[data-theme] .ty-word.is-active { text-decoration: underline; text-decoration-color: hsl(var(--hue-a,265) 90% 62% / .35); text-underline-offset: 6px; }
+html[data-theme] .ty-live { width: 100%; height: 54px; border-radius: 10px; background: var(--surface-2); }

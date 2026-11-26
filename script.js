@@ -8419,13 +8419,23 @@ function renderTypingTest() {
       <label><input type="checkbox" data-ty-punct /> punctuation</label>
       <label><input type="checkbox" data-ty-numbers /> numbers</label>
       <label><input type="checkbox" data-ty-sound checked /> sound</label>
+      <label><input type="checkbox" data-ty-stop /> stop on error</label>
+    </div>
+    <div class="util-field">
+      <label for="ty-custom">Or type your own text</label>
+      <div class="pw-output">
+        <input id="ty-custom" type="text" placeholder="Paste any text to practise with…" data-ty-custom />
+        <button type="button" data-ty-use>Use</button>
+      </div>
     </div>
     <div class="ty-bar">
       <span class="ty-stat"><strong data-ty-time>15</strong><small>sec</small></span>
       <span class="ty-stat"><strong data-ty-wpm>0</strong><small>wpm</small></span>
       <span class="ty-stat"><strong data-ty-acc>100%</strong><small>accuracy</small></span>
+      <span class="ty-stat"><strong data-ty-best>0</strong><small>best wpm</small></span>
       <div class="meter ty-progress"><span data-ty-progress></span></div>
     </div>
+    <canvas class="ty-live" data-ty-live width="720" height="54" hidden></canvas>
     <div class="ty-stage" data-ty-stage tabindex="0" role="textbox" aria-label="Typing area">
       <div class="ty-words" data-ty-words></div>
       <div class="ty-hint" data-ty-hint>Click here and start typing — Tab restarts</div>
@@ -8457,6 +8467,10 @@ function renderTypingTest() {
   const punctEl = utilityBody.querySelector("[data-ty-punct]");
   const numbersEl = utilityBody.querySelector("[data-ty-numbers]");
   const soundEl = utilityBody.querySelector("[data-ty-sound]");
+  const stopEl = utilityBody.querySelector("[data-ty-stop]");
+  const customEl = utilityBody.querySelector("[data-ty-custom]");
+  const bestEl = utilityBody.querySelector("[data-ty-best]");
+  const liveEl = utilityBody.querySelector("[data-ty-live]");
 
   let mode = "time";
   let target = 15;
@@ -8504,21 +8518,31 @@ function renderTypingTest() {
   };
 
   const paint = () => {
-    const html = [];
-    let wordStart = true;
+    const cursor = typed.indexOf(null);
+    const parts = [];
+    let word = [];
+    let wordDone = true;
+    let wordActive = false;
+    const flush = () => {
+      if (!word.length) return;
+      const cls = `ty-word${wordDone ? " is-done" : ""}${wordActive ? " is-active" : ""}`;
+      parts.push(`<span class="${cls}">${word.join("")}</span>`);
+      word = [];
+      wordDone = true;
+      wordActive = false;
+    };
     for (let i = 0; i < chars.length; i += 1) {
       const ch = chars[i] === " " ? "&nbsp;" : chars[i].replace("&", "&amp;").replace("<", "&lt;");
       let cls = "ty-char";
       if (typed[i] === true) cls += " is-ok";
       else if (typed[i] === false) cls += " is-bad";
-      if (i === typed.findIndex((v, idx) => v === null && idx === typed.indexOf(null))) cls += " is-cursor";
-      html.push(`<span class="${cls}">${ch}</span>`);
-      wordStart = chars[i] === " ";
+      if (i === cursor) { cls += " is-cursor"; wordActive = true; }
+      if (typed[i] === null) wordDone = false;
+      word.push(`<span class="${cls}">${ch}</span>`);
+      if (chars[i] === " ") flush();
     }
-    wordsEl.innerHTML = html.join("");
-    const cursor = typed.indexOf(null);
-    const el = wordsEl.children[cursor];
-    if (el) el.classList.add("is-cursor");
+    flush();
+    wordsEl.innerHTML = parts.join("");
   };
 
   const reset = () => {
@@ -8566,6 +8590,26 @@ function renderTypingTest() {
     wpmEl.textContent = String(s.netWpm);
     accEl.textContent = `${s.accuracy}%`;
     if (Math.floor(s.elapsed) % 2 === 0) samples.push({ t: s.elapsed, wpm: s.netWpm, raw: s.rawWpm });
+    drawLive();
+  };
+
+  const drawLive = () => {
+    if (samples.length < 2) return;
+    liveEl.hidden = false;
+    const ctx = liveEl.getContext("2d");
+    const w = liveEl.width;
+    const h = liveEl.height;
+    ctx.clearRect(0, 0, w, h);
+    const max = Math.max(...samples.map((s) => s.wpm), 20);
+    ctx.beginPath();
+    samples.forEach((s, i) => {
+      const x = (i / (samples.length - 1)) * (w - 4) + 2;
+      const y = h - 4 - (s.wpm / max) * (h - 10);
+      if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    });
+    ctx.strokeStyle = "#7c5cff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
   };
 
   const drawChart = () => {
@@ -8626,6 +8670,7 @@ function renderTypingTest() {
     const runs = [{ wpm: s.netWpm, acc: s.accuracy, mode: `${target}${mode === "time" ? "s" : "w"}`, at: Date.now() }, ...(store.runs || [])].slice(0, 10);
     writeStored("flip-watch-typing", { best, runs });
     const avg = Math.round(runs.reduce((a, b) => a + b.wpm, 0) / runs.length);
+    if (bestEl) bestEl.textContent = String(best);
     extraEl.textContent = `Personal best ${best} wpm · last ${runs.length} run average ${avg} wpm${wrong.length ? ` · watch these keys: ${wrong.map(([k, n]) => `${k} (${n})`).join(", ")}` : ""}`;
   };
 
@@ -8639,9 +8684,15 @@ function renderTypingTest() {
       ticker = window.setInterval(tick, 250);
       hintEl.hidden = true;
     }
-    keystrokes += 1;
     const expected = chars[index];
     const ok = ch === expected;
+    if (!ok && stopEl.checked) {
+      keystrokes += 1;
+      keyErrors[expected === " " ? "space" : expected] = (keyErrors[expected === " " ? "space" : expected] || 0) + 1;
+      beep(220, 0.08, "sawtooth");
+      return;
+    }
+    keystrokes += 1;
     if (ok) correctKeys += 1;
     else keyErrors[expected === " " ? "space" : expected] = (keyErrors[expected === " " ? "space" : expected] || 0) + 1;
     typed[index] = ok;
@@ -8651,7 +8702,7 @@ function renderTypingTest() {
   };
 
   const onKey = (event) => {
-    if (event.key === "Tab") {
+    if (event.key === "Tab" || event.key === "Escape") {
       event.preventDefault();
       reset();
       return;
@@ -8687,6 +8738,23 @@ function renderTypingTest() {
   });
 
   stage.addEventListener("click", () => stage.focus());
+  stage.addEventListener("focus", () => { hintEl.hidden = true; });
+  stage.addEventListener("blur", () => {
+    if (!finished) { hintEl.hidden = false; hintEl.textContent = "Click here to keep typing"; }
+  });
+  utilityBody.querySelector("[data-ty-use]").addEventListener("click", () => {
+    const value = customEl.value.trim();
+    if (!value) { statusEl.textContent = "Type or paste some text first."; return; }
+    window.clearInterval(ticker);
+    started = false; finished = false; startTime = 0; samples = []; keystrokes = 0; correctKeys = 0; keyErrors = {};
+    resultsEl.hidden = true; liveEl.hidden = true;
+    text = value;
+    chars = text.split("");
+    typed = new Array(chars.length).fill(null);
+    paint();
+    statusEl.textContent = "Custom text ready — start typing.";
+    stage.focus();
+  });
 
   // Capture keys at the document level too: the stage loses focus easily (after
   // clicking a mode button, for example) and then nothing was typed at all.
@@ -8704,6 +8772,8 @@ function renderTypingTest() {
   document.addEventListener("keydown", window.__flipTypingHandler);
 
   window.setTimeout(() => stage.focus(), 60);
+  const storedBest = readStored("flip-watch-typing", { best: 0 }) || { best: 0 };
+  if (bestEl) bestEl.textContent = String(storedBest.best || 0);
   reset();
 }
 
