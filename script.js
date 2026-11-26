@@ -7861,12 +7861,15 @@ function renderPdfWatermark() {
       if (page.width !== w || page.height !== h) continue;
       const data = page.getContext("2d").getImageData(0, 0, w, h).data;
       for (let i = 0, p = 0; p < w * h; i += 4, p += 1) {
-        if (data[i] < 232 || data[i + 1] < 232 || data[i + 2] < 232) counts[p] += 1;
+        // Only "light ink" (faint stamps). Dark text and borders are ignored,
+        // otherwise repeated page furniture looks like a watermark.
+        const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+        if (avg > 120 && avg < 232) counts[p] += 1;
       }
       used += 1;
     }
     if (!used) return null;
-    const need = Math.max(2, Math.ceil(used * 0.75));
+    const need = Math.max(2, Math.ceil(used * 0.85));
     const mask = new Uint8Array(w * h);
     let hits = 0;
     for (let p = 0; p < w * h; p += 1) {
@@ -8100,6 +8103,12 @@ function renderPdfWatermark() {
         return;
       }
       areaEl.value = "auto";
+      if (maskInfo.coverage > 8) {
+        maskInfo = null;
+        detectNote.textContent = "This PDF repeats a lot of its layout, so an automatic erase would damage it. Mark the area yourself instead.";
+        await renderPreview();
+        return;
+      }
       detectNote.textContent = maskInfo.coverage > 0.2
         ? `Found a repeating mark covering ${maskInfo.coverage.toFixed(1)}% of the page across ${maskInfo.pages} pages. Red = what will be erased.`
         : "No repeating watermark found. Mark the area yourself instead.";
@@ -8170,12 +8179,26 @@ function renderPdfWatermark() {
             const image = ctx.getImageData(0, 0, out.width, out.height);
             const data = image.data;
             const { mask, w, h } = maskInfo;
-            for (let y = 0; y < out.height; y += 1) {
+            const W = out.width;
+            for (let y = 1; y < out.height - 1; y += 1) {
               const my = Math.min(h - 1, Math.floor((y / out.height) * h));
-              for (let x = 0; x < out.width; x += 1) {
-                const mx = Math.min(w - 1, Math.floor((x / out.width) * w));
+              for (let x = 1; x < W - 1; x += 1) {
+                const mx = Math.min(w - 1, Math.floor((x / W) * w));
                 if (!mask[my * w + mx]) continue;
-                const i = (y * out.width + x) * 4;
+                const i = (y * W + x) * 4;
+                // Local contrast: skip anything that looks like text or a line so
+                // only smooth watermark areas are cleared.
+                let min = 255;
+                let max = 0;
+                for (let dy = -1; dy <= 1; dy += 1) {
+                  for (let dx = -1; dx <= 1; dx += 1) {
+                    const j = ((y + dy) * W + (x + dx)) * 4;
+                    const lum = (data[j] + data[j + 1] + data[j + 2]) / 3;
+                    if (lum < min) min = lum;
+                    if (lum > max) max = lum;
+                  }
+                }
+                if (max - min > 55) continue;
                 data[i] = 255; data[i + 1] = 255; data[i + 2] = 255;
               }
             }
