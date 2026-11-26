@@ -7892,6 +7892,42 @@ function renderPdfWatermark() {
     return { mask: grown, w, h, coverage: (hits / (w * h)) * 100, pages: used };
   };
 
+  // Only inside the drawn box: keep what differs between pages (text) and mark
+  // what repeats on almost every page (the watermark).
+  const buildRegionMask = async (rect) => {
+    const sample = Math.min(pdfDoc.numPages, 12);
+    const scale = 0.6;
+    const first = await renderPageToCanvas(1, scale);
+    const w = first.width;
+    const h = first.height;
+    const rx = Math.max(0, Math.round(rect.x * w));
+    const ry = Math.max(0, Math.round(rect.y * h));
+    const rw = Math.max(1, Math.min(w - rx, Math.round(rect.w * w)));
+    const rh = Math.max(1, Math.min(h - ry, Math.round(rect.h * h)));
+    const counts = new Uint16Array(rw * rh);
+    let used = 0;
+    for (let n = 1; n <= sample; n += 1) {
+      const page = n === 1 ? first : await renderPageToCanvas(n, scale);
+      if (page.width !== w || page.height !== h) continue;
+      const data = page.getContext("2d").getImageData(0, 0, w, h).data;
+      for (let y = 0; y < rh; y += 1) {
+        for (let x = 0; x < rw; x += 1) {
+          const i = ((ry + y) * w + (rx + x)) * 4;
+          const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+          if (avg < 246) counts[y * rw + x] += 1;
+        }
+      }
+      used += 1;
+    }
+    const need = Math.max(2, Math.ceil(used * 0.9));
+    const mask = new Uint8Array(rw * rh);
+    let hits = 0;
+    for (let p = 0; p < rw * rh; p += 1) {
+      if (counts[p] >= need) { mask[p] = 1; hits += 1; }
+    }
+    return { mask, rx, ry, rw, rh, w, h, pages: used, coverage: (hits / (rw * rh)) * 100 };
+  };
+
   const renderPreview = async () => {
     if (!pdfDoc) return;
     const page = await pdfDoc.getPage(Math.min(previewPage, pdfDoc.numPages));
@@ -8146,6 +8182,15 @@ function renderPdfWatermark() {
     const first = Math.max(1, Math.min(pdfDoc.numPages, Math.floor(Number(fromEl.value) || 1)));
     const last = Math.max(first, Math.min(pdfDoc.numPages, Math.floor(Number(toEl.value) || pdfDoc.numPages)));
     meterWrap.hidden = false;
+    let region = null;
+    if (options.mode === "remove" && options.area === "custom" && customRect && customRect.w > 0.01 && customRect.h > 0.01) {
+      statusEl.textContent = "Comparing the selected area across pages…";
+      try {
+        region = await buildRegionMask(customRect);
+      } catch (error) {
+        region = null;
+      }
+    }
     const pages = [];
     try {
       for (let n = 1; n <= pdfDoc.numPages; n += 1) {
@@ -8175,6 +8220,28 @@ function renderPdfWatermark() {
               ...options,
               scaleFactor: firstPageCanvas ? out.width / firstPageCanvas.width : 1,
             });
+          } else if (region) {
+            const image = ctx.getImageData(0, 0, out.width, out.height);
+            const data = image.data;
+            const sx = out.width / region.w;
+            const sy = out.height / region.h;
+            for (let y = 0; y < region.rh; y += 1) {
+              for (let x = 0; x < region.rw; x += 1) {
+                if (!region.mask[y * region.rw + x]) continue;
+                const px0 = Math.floor((region.rx + x) * sx);
+                const py0 = Math.floor((region.ry + y) * sy);
+                for (let dy = 0; dy < Math.ceil(sy); dy += 1) {
+                  for (let dx = 0; dx < Math.ceil(sx); dx += 1) {
+                    const px = px0 + dx;
+                    const py = py0 + dy;
+                    if (px < 0 || py < 0 || px >= out.width || py >= out.height) continue;
+                    const i = (py * out.width + px) * 4;
+                    data[i] = 255; data[i + 1] = 255; data[i + 2] = 255;
+                  }
+                }
+              }
+            }
+            ctx.putImageData(image, 0, 0);
           } else if (options.area === "auto" && maskInfo) {
             const image = ctx.getImageData(0, 0, out.width, out.height);
             const data = image.data;
@@ -8259,7 +8326,13 @@ function renderPdfWatermark() {
       paintReview();
       resultNote.textContent = `${pages.length} page(s) · ${(pdf.size / 1024).toFixed(0)} KB · nothing has downloaded yet`;
       meter.style.width = "100%";
-      const what = options.mode === "apply" ? "Watermark applied" : options.area === "auto" ? "Detected watermark erased" : "Marked area erased";
+      const what = options.mode === "apply"
+        ? "Watermark applied"
+        : region
+          ? `Removed only the pattern common to all pages inside your box (${region.coverage.toFixed(1)}% of the box)`
+          : options.area === "auto"
+            ? "Detected watermark erased"
+            : "Marked area erased";
       statusEl.textContent = `${what} on pages ${first}–${last}. Review it above, then press Download.`;
     } catch (error) {
       statusEl.textContent = `Could not finish — ${error.message}`;
