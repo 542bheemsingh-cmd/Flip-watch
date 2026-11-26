@@ -8535,6 +8535,47 @@ function renderTypingTest() {
     "Every expert was once a beginner who refused to stop showing up for the work.",
   ];
 
+  const TYPING_SENTENCES = [
+    "The morning train was late again, so she bought a cup of tea and waited on the platform.",
+    "Good handwriting is not a talent you are born with, it is a habit you build slowly.",
+    "He opened the old notebook and found a list of things he had promised himself to do.",
+    "The garden looked different after the rain, greener and somehow much quieter than before.",
+    "A small lamp on the desk was enough to light the whole room while the storm passed.",
+    "She wrote the answer twice, once quickly and once carefully, and kept the second one.",
+    "The market was crowded with people carrying bags of fruit, flowers and fresh bread.",
+    "Learning to type without looking at the keys takes a week of patience and practice.",
+    "They walked along the river until the street lights came on and the air turned cold.",
+    "Every page of the book had a note in the margin, written in a neat, patient hand.",
+    "The teacher asked the class to read the paragraph aloud and then explain it in their own words.",
+    "A good plan today is worth more than a perfect plan that never leaves the notebook.",
+    "The bus stopped at three villages before it finally reached the edge of the city.",
+    "He kept the receipt in his wallet, not because he needed it, but because it reminded him of the trip.",
+    "The rain started just as the children reached the gate, and they ran the rest of the way home.",
+    "She measured the flour twice, added a pinch of salt, and left the dough to rest for an hour.",
+    "The old clock in the hall still worked, though it lost a minute every single day.",
+    "You can learn a great deal by watching how someone else solves a problem quietly.",
+    "The library closed at six, so they had to finish their work before the lights went out.",
+    "He wrote down the address on the back of his hand and hoped the ink would last.",
+    "The first attempt failed, the second was worse, and the third finally worked perfectly.",
+    "A clear desk and a short list of tasks can change the whole feeling of a working day.",
+    "The road curved past the fields and disappeared behind a line of tall trees.",
+    "She spoke slowly and clearly, and everyone in the room understood every single word.",
+  ];
+
+  const buildParagraph = (minWords) => {
+    const picked = [];
+    let words = 0;
+    let guard = 0;
+    while (words < minWords && guard < 200) {
+      guard += 1;
+      const sentence = TYPING_SENTENCES[Math.floor(Math.random() * TYPING_SENTENCES.length)];
+      if (picked.length && picked[picked.length - 1] === sentence) continue;
+      picked.push(sentence);
+      words += sentence.split(" ").length;
+    }
+    return picked.join(" ");
+  };
+
   const buildText = () => {
     if (mode === "quote") {
       text = TYPING_QUOTES[Math.floor(Math.random() * TYPING_QUOTES.length)];
@@ -8542,15 +8583,18 @@ function renderTypingTest() {
       typed = new Array(chars.length).fill(null);
       return;
     }
-    const words = [];
     const count = mode === "words" ? target : 90;
-    for (let i = 0; i < count; i += 1) {
-      let word = TYPING_WORDS[Math.floor(Math.random() * TYPING_WORDS.length)];
-      if (numbersEl.checked && Math.random() < 0.18) word = String(Math.floor(Math.random() * 9999));
-      if (punctEl.checked && Math.random() < 0.22) word += TYPING_PUNCT[Math.floor(Math.random() * TYPING_PUNCT.length)];
-      words.push(word);
+    const paragraph = buildParagraph(count + 12);
+    const words = paragraph.split(" ");
+    if (mode === "words") {
+      text = words.slice(0, count).join(" ").replace(/[,\.;:]$/, "");
+    } else {
+      text = words.slice(0, count).join(" ");
     }
-    text = words.join(" ");
+    if (numbersEl.checked) {
+      text = text.replace(/\b(\w{4,})\b/, (m) => `${m} ${Math.floor(Math.random() * 90) + 10}`);
+    }
+    if (!text.trim()) text = TYPING_SENTENCES[0];
     chars = text.split("");
     typed = new Array(chars.length).fill(null);
   };

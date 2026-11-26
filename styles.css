@@ -5430,3 +5430,6 @@ html[data-theme] .ty-caps {
   font-weight: 800;
 }
 @media (prefers-reduced-motion: reduce) { html[data-theme] .ty-stage.is-shake { animation: none; } }
+
+/* keep whole words on one line */
+html[data-theme] .ty-word { white-space: nowrap; }
