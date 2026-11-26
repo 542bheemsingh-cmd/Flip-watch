@@ -8420,6 +8420,8 @@ function renderTypingTest() {
       <label><input type="checkbox" data-ty-numbers /> numbers</label>
       <label><input type="checkbox" data-ty-sound checked /> sound</label>
       <label><input type="checkbox" data-ty-stop /> stop on error</label>
+      <label><input type="checkbox" data-ty-nobs /> no backspace</label>
+      <label><input type="checkbox" data-ty-zen /> zen mode (no timer)</label>
     </div>
     <div class="util-field">
       <label for="ty-custom">Or type your own text</label>
@@ -8443,9 +8445,11 @@ function renderTypingTest() {
     <div class="ty-results" data-ty-results hidden>
       <div class="stat-grid" data-ty-stats></div>
       <canvas class="ty-chart" data-ty-chart width="720" height="180"></canvas>
+      <div class="ty-heat" data-ty-heat></div>
       <div class="util-actions">
         <button class="control-button primary" type="button" data-ty-again>Try again</button>
         <button class="util-btn" type="button" data-ty-share>Copy result</button>
+        <button class="util-btn" type="button" data-ty-retry>Retry missed words</button>
       </div>
       <p class="util-note" data-ty-extra></p>
     </div>
@@ -8468,6 +8472,8 @@ function renderTypingTest() {
   const numbersEl = utilityBody.querySelector("[data-ty-numbers]");
   const soundEl = utilityBody.querySelector("[data-ty-sound]");
   const stopEl = utilityBody.querySelector("[data-ty-stop]");
+  const nobsEl = utilityBody.querySelector("[data-ty-nobs]");
+  const zenEl = utilityBody.querySelector("[data-ty-zen]");
   const customEl = utilityBody.querySelector("[data-ty-custom]");
   const bestEl = utilityBody.querySelector("[data-ty-best]");
   const liveEl = utilityBody.querySelector("[data-ty-live]");
@@ -8578,6 +8584,15 @@ function renderTypingTest() {
 
   const tick = () => {
     const s = stats();
+    if (zenEl.checked) {
+      timeEl.textContent = String(Math.round(s.elapsed));
+      progressEl.style.width = "100%";
+      wpmEl.textContent = String(s.netWpm);
+      accEl.textContent = `${s.accuracy}%`;
+      if (Math.floor(s.elapsed) % 2 === 0) samples.push({ t: s.elapsed, wpm: s.netWpm, raw: s.rawWpm });
+      drawLive();
+      return;
+    }
     if (mode === "time") {
       const left = Math.max(0, target - s.elapsed);
       timeEl.textContent = String(Math.ceil(left));
@@ -8610,6 +8625,18 @@ function renderTypingTest() {
     ctx.strokeStyle = "#7c5cff";
     ctx.lineWidth = 2;
     ctx.stroke();
+    const ghost = Number(bestEl ? bestEl.textContent : 0) || 0;
+    if (ghost > 0) {
+      const gy = h - 4 - (ghost / max) * (h - 10);
+      ctx.beginPath();
+      ctx.setLineDash([4, 4]);
+      ctx.moveTo(2, gy);
+      ctx.lineTo(w - 2, gy);
+      ctx.strokeStyle = "rgba(255,255,255,0.35)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
   };
 
   const drawChart = () => {
@@ -8661,6 +8688,17 @@ function renderTypingTest() {
     ].join("");
 
     drawChart();
+
+    // keyboard heatmap of missed keys
+    const heatEl = utilityBody.querySelector("[data-ty-heat]");
+    const rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+    const worst = Math.max(1, ...Object.values(keyErrors));
+    heatEl.innerHTML = rows.map((row) => `<div class="ty-heat__row">${row.split("").map((k) => {
+      const n = keyErrors[k] || 0;
+      const alpha = n ? 0.2 + (n / worst) * 0.7 : 0;
+      return `<span class="ty-heat__key${n ? " is-hot" : ""}" style="--heat:${alpha}">${k}${n ? `<i>${n}</i>` : ""}</span>`;
+    }).join("")}</div>`).join("");
+
     resultsEl.hidden = false;
     hintEl.hidden = true;
     statusEl.textContent = "Done — Tab or “Try again” for another run.";
@@ -8710,6 +8748,7 @@ function renderTypingTest() {
     if (finished) return;
     if (event.key === "Backspace") {
       event.preventDefault();
+      if (nobsEl.checked) return;
       const last = typed.lastIndexOf(true, typed.length - 1);
       let idx = -1;
       for (let i = typed.length - 1; i >= 0; i -= 1) if (typed[i] !== null) { idx = i; break; }
@@ -8732,6 +8771,34 @@ function renderTypingTest() {
   });
   [punctEl, numbersEl].forEach((el) => el.addEventListener("change", reset));
   utilityBody.querySelector("[data-ty-again]").addEventListener("click", reset);
+  utilityBody.querySelector("[data-ty-retry]").addEventListener("click", () => {
+    const wrongWords = new Set();
+    let start = 0;
+    for (let i = 0; i <= chars.length; i += 1) {
+      if (i === chars.length || chars[i] === " ") {
+        const word = chars.slice(start, i).join("");
+        let bad = false;
+        for (let j = start; j < i; j += 1) if (typed[j] === false) bad = true;
+        if (bad && word.trim()) wrongWords.add(word.trim());
+        start = i + 1;
+      }
+    }
+    if (!wrongWords.size) {
+      statusEl.textContent = "No missed words to practise — nice run.";
+      return;
+    }
+    window.clearInterval(ticker);
+    started = false; finished = false; startTime = 0; samples = []; keystrokes = 0; correctKeys = 0; keyErrors = {};
+    resultsEl.hidden = true;
+    liveEl.hidden = true;
+    text = Array.from(wrongWords).join(" ");
+    chars = text.split("");
+    typed = new Array(chars.length).fill(null);
+    paint();
+    statusEl.textContent = `Practising ${wrongWords.size} missed word(s).`;
+    stage.focus();
+  });
+
   utilityBody.querySelector("[data-ty-share]").addEventListener("click", () => {
     const s = stats();
     utilCopy(`${s.netWpm} wpm · ${s.accuracy}% accuracy · ${target}${mode === "time" ? "s" : " words"} on Flip Watch`, "Result copied.");

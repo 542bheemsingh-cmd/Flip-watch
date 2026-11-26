@@ -5391,3 +5391,27 @@ html[data-theme] .ty-word { transition: opacity 160ms ease; }
 html[data-theme] .ty-word.is-done { opacity: 0.45; }
 html[data-theme] .ty-word.is-active { text-decoration: underline; text-decoration-color: hsl(var(--hue-a,265) 90% 62% / .35); text-underline-offset: 6px; }
 html[data-theme] .ty-live { width: 100%; height: 54px; border-radius: 10px; background: var(--surface-2); }
+
+html[data-theme] .ty-heat { display: grid; gap: 6px; justify-items: center; }
+html[data-theme] .ty-heat__row { display: flex; gap: 6px; }
+html[data-theme] .ty-heat__key {
+  position: relative;
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.8rem; font-weight: 700;
+  color: var(--muted);
+  background: var(--surface-2);
+}
+html[data-theme] .ty-heat__key.is-hot {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(180deg, rgba(255,90,90,var(--heat)), rgba(200,30,30,var(--heat)));
+}
+html[data-theme] .ty-heat__key i {
+  position: absolute; top: -6px; right: -4px;
+  font-style: normal; font-size: 0.6rem;
+  background: var(--surface); border-radius: 999px; padding: 1px 4px;
+  border: 1px solid var(--border);
+}
