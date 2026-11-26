@@ -8617,14 +8617,24 @@ function renderTypingTest() {
       wordActive = false;
     };
     for (let i = 0; i < chars.length; i += 1) {
-      const ch = chars[i] === " " ? "&nbsp;" : chars[i].replace("&", "&amp;").replace("<", "&lt;");
+      if (chars[i] === " ") {
+        // A real space OUTSIDE the nowrap word: that is what lets the browser
+        // wrap between words. A &nbsp; inside the word made one endless line.
+        flush();
+        let spaceCls = "ty-char ty-space";
+        if (typed[i] === true) spaceCls += " is-ok";
+        else if (typed[i] === false) spaceCls += " is-bad";
+        if (i === cursor) spaceCls += " is-cursor";
+        parts.push(`<span class="${spaceCls}"> </span>`);
+        continue;
+      }
+      const ch = chars[i].replace("&", "&amp;").replace("<", "&lt;");
       let cls = "ty-char";
       if (typed[i] === true) cls += " is-ok";
       else if (typed[i] === false) cls += " is-bad";
       if (i === cursor) { cls += " is-cursor"; wordActive = true; }
       if (typed[i] === null) wordDone = false;
       word.push(`<span class="${cls}">${ch}</span>`);
-      if (chars[i] === " ") flush();
     }
     flush();
     wordsEl.innerHTML = parts.join("");

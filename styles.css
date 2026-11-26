@@ -5453,3 +5453,7 @@ html[data-theme] .ty-count span {
 @keyframes ty-pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 html[data-theme] .ty-stage { position: relative; }
 @media (prefers-reduced-motion: reduce) { html[data-theme] .ty-count span { animation: none; } }
+
+/* allow wrapping between words while keeping each word intact */
+html[data-theme] .ty-words { overflow-wrap: anywhere; word-break: normal; }
+html[data-theme] .ty-space { white-space: pre; }
