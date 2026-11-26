@@ -2439,7 +2439,7 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
    Extra utilities: unit converter, password generator, word counter,
    to-do list and date calculator.
    ===================================================================== */
-const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates", "gst", "emi", "fuel", "json", "base64", "color", "random", "findreplace", "textpad", "pwstrength", "imgcompress", "imgresize", "imgconvert", "imgcrop", "imgcolour", "qrcode", "stats", "prime", "calendar", "pdf2img", "img2pdf", "protectpdf", "html2pdf"];
+const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates", "gst", "emi", "fuel", "json", "base64", "color", "random", "findreplace", "textpad", "pwstrength", "imgcompress", "imgresize", "imgconvert", "imgcrop", "imgcolour", "qrcode", "stats", "prime", "calendar", "pdf2img", "img2pdf", "protectpdf", "html2pdf", "watermark"];
 const utilityPanel = document.querySelector("[data-utility-panel]");
 const utilityKicker = document.querySelector("[data-utility-kicker]");
 const utilityTitle = document.querySelector("[data-utility-title]");
@@ -2475,6 +2475,7 @@ const utilityMeta = {
   img2pdf: { kicker: "Files", title: "Images to PDF", sub: "Combine photos into one PDF, in the order you choose." },
   protectpdf: { kicker: "Files", title: "Protect & Unlock PDF", sub: "Encrypt a PDF with a password, or unlock one you own." },
   html2pdf: { kicker: "Files", title: "HTML to PDF", sub: "Turn pasted HTML into a print-ready PDF." },
+  watermark: { kicker: "Files", title: "PDF Watermark", sub: "Stamp a watermark on a PDF, or erase one you own." },
 };
 
 const UTIL_KEYS = {
@@ -2532,6 +2533,7 @@ function renderUtility(kind) {
   else if (kind === "img2pdf") renderImagesToPdf();
   else if (kind === "protectpdf") renderProtectPdf();
   else if (kind === "html2pdf") renderHtmlToPdf();
+  else if (kind === "watermark") renderPdfWatermark();
 }
 
 /* ------------------------------------------------------- shared helpers */
@@ -5984,6 +5986,7 @@ const TOOL_CATEGORIES = {
   img2pdf: "Files",
   protectpdf: "Files",
   html2pdf: "Files",
+  watermark: "Files",
 };
 
 const CATEGORY_ORDER = ["All", "Time", "Dates", "Maths", "Money", "Text", "Images", "Developer", "Security", "Productivity", "Fun", "Files"];
@@ -7596,6 +7599,362 @@ function renderHtmlToPdf() {
       statusEl.textContent = `Could not render — ${error.message}. Try the print view instead.`;
     }
   });
+}
+
+/* ------------------------------------------------ PDF watermark tool */
+function renderPdfWatermark() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="wm-file">PDF file</label>
+      <input id="wm-file" class="util-file" type="file" accept="application/pdf" data-wm-file />
+    </div>
+    <div class="util-field">
+      <label for="wm-mode">What do you want to do?</label>
+      <select id="wm-mode" data-wm-mode>
+        <option value="apply" selected>Apply a watermark</option>
+        <option value="remove">Remove a watermark (erase an area)</option>
+      </select>
+    </div>
+    <div data-wm-apply>
+      <div class="util-field">
+        <label for="wm-text">Watermark text</label>
+        <input id="wm-text" type="text" value="CONFIDENTIAL" data-wm-text />
+      </div>
+      <div class="date-row">
+        <div class="util-field">
+          <label for="wm-size">Font size: <output data-wm-size-out>64</output></label>
+          <input id="wm-size" type="range" min="16" max="160" value="64" data-wm-size />
+        </div>
+        <div class="util-field">
+          <label for="wm-opacity">Opacity: <output data-wm-opacity-out>18</output>%</label>
+          <input id="wm-opacity" type="range" min="4" max="100" value="18" data-wm-opacity />
+        </div>
+      </div>
+      <div class="date-row">
+        <div class="util-field">
+          <label for="wm-angle">Angle: <output data-wm-angle-out>-30</output>°</label>
+          <input id="wm-angle" type="range" min="-90" max="90" value="-30" data-wm-angle />
+        </div>
+        <div class="util-field">
+          <label for="wm-colour">Colour</label>
+          <input id="wm-colour" type="color" value="#ff3b30" data-wm-colour />
+        </div>
+      </div>
+      <div class="util-field">
+        <label for="wm-layout">Layout</label>
+        <select id="wm-layout" data-wm-layout>
+          <option value="center" selected>One in the centre</option>
+          <option value="tile">Tiled across the page</option>
+          <option value="corner">Bottom-right corner</option>
+          <option value="diag">Diagonal band across the page</option>
+        </select>
+      </div>
+    </div>
+    <div data-wm-remove hidden>
+      <div class="util-field">
+        <label for="wm-area">Where is the watermark?</label>
+        <select id="wm-area" data-wm-area>
+          <option value="center" selected>Centre band</option>
+          <option value="top">Top area</option>
+          <option value="bottom">Bottom area</option>
+          <option value="custom">Draw it on the preview</option>
+        </select>
+      </div>
+      <p class="util-note">Drag on the preview to mark the area, then erase it on every page.</p>
+    </div>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="wm-from">From page</label>
+        <input id="wm-from" type="number" inputmode="numeric" min="1" value="1" data-wm-from />
+      </div>
+      <div class="util-field">
+        <label for="wm-to">To page</label>
+        <input id="wm-to" type="number" inputmode="numeric" min="1" data-wm-to />
+      </div>
+    </div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-wm-run disabled>Apply to PDF</button>
+      <button class="util-btn" type="button" data-wm-reset>Reset options</button>
+    </div>
+    <p class="util-note" data-wm-status>Choose a PDF to begin.</p>
+    <div class="meter" hidden data-wm-meter-wrap aria-hidden="true"><span data-wm-meter></span></div>
+    <div class="img-stage" data-wm-stage hidden><canvas class="img-canvas" data-wm-canvas></canvas></div>
+  `;
+
+  const fileEl = utilityBody.querySelector("[data-wm-file]");
+  const modeEl = utilityBody.querySelector("[data-wm-mode]");
+  const applyWrap = utilityBody.querySelector("[data-wm-apply]");
+  const removeWrap = utilityBody.querySelector("[data-wm-remove]");
+  const textEl = utilityBody.querySelector("[data-wm-text]");
+  const sizeEl = utilityBody.querySelector("[data-wm-size]");
+  const sizeOut = utilityBody.querySelector("[data-wm-size-out]");
+  const opacityEl = utilityBody.querySelector("[data-wm-opacity]");
+  const opacityOut = utilityBody.querySelector("[data-wm-opacity-out]");
+  const angleEl = utilityBody.querySelector("[data-wm-angle]");
+  const angleOut = utilityBody.querySelector("[data-wm-angle-out]");
+  const colourEl = utilityBody.querySelector("[data-wm-colour]");
+  const layoutEl = utilityBody.querySelector("[data-wm-layout]");
+  const areaEl = utilityBody.querySelector("[data-wm-area]");
+  const fromEl = utilityBody.querySelector("[data-wm-from]");
+  const toEl = utilityBody.querySelector("[data-wm-to]");
+  const runBtn = utilityBody.querySelector("[data-wm-run]");
+  const resetBtn = utilityBody.querySelector("[data-wm-reset]");
+  const statusEl = utilityBody.querySelector("[data-wm-status]");
+  const meterWrap = utilityBody.querySelector("[data-wm-meter-wrap]");
+  const meter = utilityBody.querySelector("[data-wm-meter]");
+  const stage = utilityBody.querySelector("[data-wm-stage]");
+  const canvas = utilityBody.querySelector("[data-wm-canvas]");
+
+  let pdfDoc = null;
+  let firstPageCanvas = null;
+  let customRect = null;
+  let dragging = null;
+
+  const readOptions = () => ({
+    mode: modeEl.value,
+    text: textEl.value || "WATERMARK",
+    size: Number(sizeEl.value),
+    opacity: Number(opacityEl.value) / 100,
+    angle: (Number(angleEl.value) * Math.PI) / 180,
+    colour: colourEl.value,
+    layout: layoutEl.value,
+    area: areaEl.value,
+  });
+
+  const paintWatermark = (ctx, width, height, options) => {
+    ctx.save();
+    ctx.globalAlpha = options.opacity;
+    ctx.fillStyle = options.colour;
+    ctx.font = `800 ${options.size}px system-ui, -apple-system, Segoe UI, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const draw = (x, y, angle) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      ctx.fillText(options.text, 0, 0);
+      ctx.restore();
+    };
+
+    if (options.layout === "center") {
+      draw(width / 2, height / 2, options.angle);
+    } else if (options.layout === "corner") {
+      ctx.font = `700 ${Math.round(options.size * 0.45)}px system-ui, sans-serif`;
+      ctx.textAlign = "right";
+      ctx.textBaseline = "bottom";
+      draw(width - 24, height - 24, 0);
+    } else if (options.layout === "diag") {
+      const step = options.size * 2.4;
+      ctx.font = `800 ${Math.round(options.size * 0.7)}px system-ui, sans-serif`;
+      for (let i = -Math.ceil(height / step); i <= Math.ceil(height / step); i += 1) {
+        draw(width / 2, height / 2 + i * step, options.angle);
+      }
+    } else {
+      const stepX = options.size * 4.5;
+      const stepY = options.size * 2.6;
+      for (let y = stepY / 2; y < height + stepY; y += stepY) {
+        for (let x = stepX / 2; x < width + stepX; x += stepX) {
+          draw(x, y, options.angle);
+        }
+      }
+    }
+    ctx.restore();
+  };
+
+  const removeRect = (width, height, options) => {
+    if (options.area === "custom" && customRect) {
+      return {
+        x: customRect.x * width,
+        y: customRect.y * height,
+        w: customRect.w * width,
+        h: customRect.h * height,
+      };
+    }
+    if (options.area === "top") return { x: 0, y: 0, w: width, h: height * 0.22 };
+    if (options.area === "bottom") return { x: 0, y: height * 0.78, w: width, h: height * 0.22 };
+    return { x: 0, y: height * 0.34, w: width, h: height * 0.32 };
+  };
+
+  const renderPreview = async () => {
+    if (!pdfDoc) return;
+    const page = await pdfDoc.getPage(1);
+    const viewport = page.getViewport({ scale: 1 });
+    const target = Math.min(900, viewport.width * 1.2);
+    const scale = target / viewport.width;
+    const vp = page.getViewport({ scale });
+    const off = document.createElement("canvas");
+    off.width = Math.round(vp.width);
+    off.height = Math.round(vp.height);
+    const octx = off.getContext("2d");
+    octx.fillStyle = "#ffffff";
+    octx.fillRect(0, 0, off.width, off.height);
+    await page.render({ canvasContext: octx, viewport: vp }).promise;
+    firstPageCanvas = off;
+
+    canvas.width = off.width;
+    canvas.height = off.height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(off, 0, 0);
+    const options = readOptions();
+    if (options.mode === "apply") {
+      paintWatermark(ctx, canvas.width, canvas.height, options);
+    } else {
+      const rect = removeRect(canvas.width, canvas.height, options);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.strokeStyle = "#7c5cff";
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.setLineDash([]);
+    }
+    stage.hidden = false;
+  };
+
+  const syncMode = () => {
+    const apply = modeEl.value === "apply";
+    applyWrap.hidden = !apply;
+    removeWrap.hidden = apply;
+    runBtn.textContent = apply ? "Apply watermark" : "Remove watermark";
+    renderPreview();
+  };
+
+  [textEl, sizeEl, opacityEl, angleEl, colourEl, layoutEl, areaEl].forEach((el) => {
+    el.addEventListener("input", () => {
+      sizeOut.textContent = sizeEl.value;
+      opacityOut.textContent = opacityEl.value;
+      angleOut.textContent = angleEl.value;
+      renderPreview();
+    });
+  });
+  modeEl.addEventListener("change", syncMode);
+
+  const toRelative = (event) => {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (event.clientX - rect.left) / rect.width,
+      y: (event.clientY - rect.top) / rect.height,
+    };
+  };
+
+  canvas.addEventListener("pointerdown", (event) => {
+    if (readOptions().mode !== "remove") return;
+    areaEl.value = "custom";
+    canvas.setPointerCapture(event.pointerId);
+    dragging = toRelative(event);
+    customRect = { x: dragging.x, y: dragging.y, w: 0, h: 0 };
+  });
+
+  canvas.addEventListener("pointermove", (event) => {
+    if (!dragging) return;
+    const point = toRelative(event);
+    customRect = {
+      x: Math.min(dragging.x, point.x),
+      y: Math.min(dragging.y, point.y),
+      w: Math.abs(point.x - dragging.x),
+      h: Math.abs(point.y - dragging.y),
+    };
+    renderPreview();
+  });
+
+  canvas.addEventListener("pointerup", () => {
+    dragging = null;
+  });
+
+  fileEl.addEventListener("change", async () => {
+    const file = fileEl.files[0];
+    if (!file) return;
+    statusEl.textContent = "Reading the PDF…";
+    try {
+      const pdfjs = await import("./pdf-reader/vendor/pdf.js");
+      pdfjs.GlobalWorkerOptions.workerSrc = "./pdf-reader/vendor/pdf.worker.js?v=2";
+      pdfDoc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+      fromEl.max = String(pdfDoc.numPages);
+      toEl.max = String(pdfDoc.numPages);
+      fromEl.value = "1";
+      toEl.value = String(pdfDoc.numPages);
+      runBtn.disabled = false;
+      statusEl.textContent = `${pdfDoc.numPages} page(s) ready · ${(file.size / 1024).toFixed(0)} KB`;
+      await renderPreview();
+    } catch (error) {
+      statusEl.textContent = `Could not open that PDF — ${error.message}`;
+    }
+  });
+
+  resetBtn.addEventListener("click", () => {
+    textEl.value = "CONFIDENTIAL";
+    sizeEl.value = "64";
+    opacityEl.value = "18";
+    angleEl.value = "-30";
+    colourEl.value = "#ff3b30";
+    layoutEl.value = "center";
+    areaEl.value = "center";
+    customRect = null;
+    sizeOut.textContent = "64";
+    opacityOut.textContent = "18";
+    angleOut.textContent = "-30";
+    renderPreview();
+  });
+
+  runBtn.addEventListener("click", async () => {
+    if (!pdfDoc) return;
+    const options = readOptions();
+    const first = Math.max(1, Math.min(pdfDoc.numPages, Math.floor(Number(fromEl.value) || 1)));
+    const last = Math.max(first, Math.min(pdfDoc.numPages, Math.floor(Number(toEl.value) || pdfDoc.numPages)));
+    meterWrap.hidden = false;
+    const pages = [];
+    try {
+      for (let n = 1; n <= pdfDoc.numPages; n += 1) {
+        statusEl.textContent = `Processing page ${n} of ${pdfDoc.numPages}…`;
+        meter.style.width = `${Math.round((n / pdfDoc.numPages) * 100)}%`;
+        const page = await pdfDoc.getPage(n);
+        const viewport = page.getViewport({ scale: 2 });
+        const out = document.createElement("canvas");
+        out.width = Math.round(viewport.width);
+        out.height = Math.round(viewport.height);
+        const ctx = out.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, out.width, out.height);
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        if (n >= first && n <= last) {
+          if (options.mode === "apply") {
+            paintWatermark(ctx, out.width, out.height, options);
+          } else {
+            const rect = removeRect(out.width, out.height, options);
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+          }
+        }
+
+        const blob = await new Promise((r) => out.toBlob(r, "image/jpeg", 0.92));
+        pages.push({
+          bytes: new Uint8Array(await blob.arrayBuffer()),
+          width: out.width,
+          height: out.height,
+          pageWidth: out.width * 0.75,
+          pageHeight: out.height * 0.75,
+          drawWidth: out.width * 0.75,
+          drawHeight: out.height * 0.75,
+          x: 0,
+          y: 0,
+        });
+      }
+      const pdf = createPdfFromImages(pages);
+      const url = URL.createObjectURL(pdf);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = options.mode === "apply" ? "watermarked.pdf" : "watermark-removed.pdf";
+      link.click();
+      URL.revokeObjectURL(url);
+      meter.style.width = "100%";
+      statusEl.textContent = `${options.mode === "apply" ? "Watermark applied" : "Area erased"} on pages ${first}–${last} · ${(pdf.size / 1024).toFixed(0)} KB.`;
+    } catch (error) {
+      statusEl.textContent = `Could not finish — ${error.message}`;
+    }
+  });
+
+  syncMode();
 }
 
 if (utilityPanel) {
