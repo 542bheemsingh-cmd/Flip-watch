@@ -5305,3 +5305,11 @@ html[data-theme] .utility-body:empty::after {
   html[data-theme] .swatch:hover,
   html[data-theme] .stat:hover { transform: none; }
 }
+
+html[data-theme] .h2p-preview {
+  width: 100%;
+  height: 260px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+}

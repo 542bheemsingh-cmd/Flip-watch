@@ -7127,12 +7127,20 @@ function renderProtectPdf() {
     </div>
     <div class="util-field" data-prot-unlock hidden>
       <label for="prot-pass">Password of the PDF</label>
-      <input id="prot-pass" type="password" autocomplete="off" placeholder="the password it was locked with" data-prot-pass />
+      <div class="pw-output">
+        <input id="prot-pass" type="password" autocomplete="off" placeholder="the password it was locked with" data-prot-pass />
+        <button type="button" data-prot-reveal aria-pressed="false">Show</button>
+      </div>
+    </div>
+    <div class="util-field" data-prot-filename-wrap>
+      <label for="prot-name">Save as</label>
+      <input id="prot-name" type="text" data-prot-name placeholder="unlocked.pdf" />
     </div>
     <div class="util-actions">
-      <button class="control-button primary" type="button" data-prot-run>Protect PDF</button>
+      <button class="control-button primary" type="button" data-prot-run disabled>Protect PDF</button>
     </div>
     <p class="util-note" data-prot-status>Choose a PDF to begin.</p>
+    <p class="util-note" data-prot-info></p>
   `;
 
   const fileEl = utilityBody.querySelector("[data-prot-file]");
@@ -7144,9 +7152,29 @@ function renderProtectPdf() {
   const passEl = utilityBody.querySelector("[data-prot-pass]");
   const runBtn = utilityBody.querySelector("[data-prot-run]");
   const statusEl = utilityBody.querySelector("[data-prot-status]");
+  const infoEl = utilityBody.querySelector("[data-prot-info]");
+  const revealBtn = utilityBody.querySelector("[data-prot-reveal]");
+  const nameEl = utilityBody.querySelector("[data-prot-name]");
   let fileBytes = null;
+  let baseName = "document";
+
+  revealBtn.addEventListener("click", () => {
+    const shown = passEl.type === "text";
+    passEl.type = shown ? "password" : "text";
+    revealBtn.textContent = shown ? "Show" : "Hide";
+    revealBtn.setAttribute("aria-pressed", String(!shown));
+  });
+
+  const PROT_KEY = "flip-watch-protect-mode";
+  const savedProt = readStored(PROT_KEY, null) || {};
+  if (savedProt.mode === "unlock") {
+    modeEl.value = "unlock";
+    modeEl.dispatchEvent(new Event("change"));
+  }
 
   modeEl.addEventListener("change", () => {
+    writeStored(PROT_KEY, { mode: modeEl.value });
+    if (fileBytes) nameEl.value = modeEl.value === "unlock" ? `${baseName}-unlocked.pdf` : `${baseName}-protected.pdf`;
     const lock = modeEl.value === "lock";
     lockWrap.hidden = !lock;
     unlockWrap.hidden = lock;
@@ -7158,7 +7186,15 @@ function renderProtectPdf() {
     const file = fileEl.files[0];
     if (!file) return;
     fileBytes = new Uint8Array(await file.arrayBuffer());
-    statusEl.textContent = `${file.name} loaded · ${(file.size / 1024).toFixed(0)} KB`;
+    baseName = file.name.replace(/\.pdf$/i, "") || "document";
+    nameEl.value = modeEl.value === "unlock" ? `${baseName}-unlocked.pdf` : `${baseName}-protected.pdf`;
+    runBtn.disabled = false;
+    const latin1 = bytesToLatin1(fileBytes.slice(0, Math.min(fileBytes.length, 400000)));
+    const encrypted = /\/Encrypt\s*\d/.test(latin1);
+    statusEl.textContent = `${file.name} · ${(file.size / 1024).toFixed(0)} KB${encrypted ? " · password-protected" : ""}`;
+    infoEl.textContent = encrypted
+      ? "This PDF is already locked — use Unlock with its password."
+      : "This PDF has no password — you can unlock it only if it is locked.";
   });
 
   const download = (blob, name) => {
@@ -7215,11 +7251,14 @@ function renderProtectPdf() {
           });
         }
         const pdf = createPdfFromImages(pages);
-        download(pdf, "unlocked.pdf");
+        download(pdf, nameEl.value.trim() || `${baseName}-unlocked.pdf`);
         statusEl.textContent = `Unlocked ${pages.length} page(s). Text is now part of the page images.`;
       }
     } catch (error) {
-      statusEl.textContent = `Could not finish — ${error.message}`;
+      const message = String(error && error.message ? error.message : error);
+      statusEl.textContent = /password/i.test(message)
+        ? "That password is not correct for this PDF."
+        : `Could not finish — ${message}`;
     }
   });
 }
@@ -7265,11 +7304,23 @@ function renderHtmlToPdf() {
     <div class="util-toggles">
       <label><input type="checkbox" data-h2p-long /> One long page (image PDF)</label>
     </div>
+    <div class="util-field">
+      <label for="h2p-name">Save as</label>
+      <input id="h2p-name" type="text" value="html-to-pdf.pdf" data-h2p-name />
+    </div>
     <div class="util-actions">
-      <button class="control-button primary" type="button" data-h2p-print>Open print view</button>
-      <button class="util-btn" type="button" data-h2p-image>Download image PDF</button>
+      <button class="util-btn" type="button" data-h2p-sample>Sample HTML</button>
+      <button class="util-btn" type="button" data-h2p-clear>Clear</button>
+    </div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-h2p-print disabled>Open print view</button>
+      <button class="util-btn" type="button" data-h2p-image disabled>Download image PDF</button>
     </div>
     <p class="util-note" data-h2p-status>Paste HTML, then choose print view (real text) or an image PDF.</p>
+    <div class="util-field">
+      <label>Live preview</label>
+      <iframe class="h2p-preview" data-h2p-preview sandbox="" title="HTML preview"></iframe>
+    </div>
   `;
 
   const htmlEl = utilityBody.querySelector("[data-h2p-html]");
@@ -7281,10 +7332,66 @@ function renderHtmlToPdf() {
   const longEl = utilityBody.querySelector("[data-h2p-long]");
   const statusEl = utilityBody.querySelector("[data-h2p-status]");
 
+  const nameEl = utilityBody.querySelector("[data-h2p-name]");
+  const previewEl = utilityBody.querySelector("[data-h2p-preview]");
+  const printBtn = utilityBody.querySelector("[data-h2p-print]");
+  const imageBtn = utilityBody.querySelector("[data-h2p-image]");
+
+  const H2P_KEY = "flip-watch-html2pdf";
+  const savedH2P = readStored(H2P_KEY, null) || {};
+  if (savedH2P.size) sizeEl.value = savedH2P.size;
+  if (savedH2P.orient) orientEl.value = savedH2P.orient;
+  if (savedH2P.margin !== undefined) marginEl.value = String(savedH2P.margin);
+  if (savedH2P.width) widthEl.value = String(savedH2P.width);
+
+  const persist = () =>
+    writeStored(H2P_KEY, { size: sizeEl.value, orient: orientEl.value, margin: marginEl.value, width: widthEl.value });
+
+  let previewTimer = 0;
+  const syncPreview = () => {
+    const html = htmlEl.value.trim();
+    const empty = html === "";
+    printBtn.disabled = empty;
+    imageBtn.disabled = empty;
+    window.clearTimeout(previewTimer);
+    previewTimer = window.setTimeout(() => {
+      previewEl.srcdoc = empty
+        ? "<body style=\"font:14px system-ui;color:#8b90a8;padding:16px\">Preview appears here.</body>"
+        : `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;padding:14px;font:15px/1.5 system-ui,sans-serif;color:#111;background:#fff}img,svg,table{max-width:100%}</style></head><body>${html}</body></html>`;
+    }, 300);
+  };
+
+  [sizeEl, orientEl, marginEl, widthEl].forEach((el) => el.addEventListener("input", persist));
+  htmlEl.addEventListener("input", syncPreview);
+  syncPreview();
+
+  utilityBody.querySelector("[data-h2p-sample]").addEventListener("click", () => {
+    htmlEl.value = `<h1 style="color:#6c5ce7;margin:0 0 8px">Invoice #1042</h1>
+<p style="color:#555">Flip Watch · 26 November 2026</p>
+<table border="1" cellpadding="8" style="border-collapse:collapse;width:100%">
+  <tr><th align="left">Item</th><th align="right">Amount</th></tr>
+  <tr><td>Stopwatch Pro licence</td><td align="right">₹499</td></tr>
+  <tr><td>PDF toolkit</td><td align="right">₹299</td></tr>
+  <tr><td><strong>Total</strong></td><td align="right"><strong>₹798</strong></td></tr>
+</table>
+<p style="color:#777;font-size:13px">Thank you for your purchase.</p>`;
+    syncPreview();
+    statusEl.textContent = "Sample HTML loaded — try the print view.";
+  });
+
+  utilityBody.querySelector("[data-h2p-clear]").addEventListener("click", () => {
+    htmlEl.value = "";
+    syncPreview();
+    statusEl.textContent = "Cleared.";
+    htmlEl.focus();
+  });
+
   fileEl.addEventListener("change", async () => {
     const file = fileEl.files[0];
     if (!file) return;
     htmlEl.value = await file.text();
+    nameEl.value = `${file.name.replace(/\.html?$/i, "") || "page"}.pdf`;
+    syncPreview();
     statusEl.textContent = `${file.name} loaded · ${htmlEl.value.length} characters`;
   });
 
@@ -7395,7 +7502,7 @@ function renderHtmlToPdf() {
       const url = URL.createObjectURL(pdf);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "html-to-pdf.pdf";
+      link.download = nameEl.value.trim() || "html-to-pdf.pdf";
       link.click();
       URL.revokeObjectURL(url);
       frame.remove();
