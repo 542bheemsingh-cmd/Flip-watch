@@ -4728,3 +4728,164 @@ html[data-theme] .tool-search__reset {
   padding: 5px 12px;
   font-size: 0.76rem;
 }
+
+/* =====================================================================
+   Design polish pass
+   ===================================================================== */
+
+/* 1. selection + scrollbar */
+html[data-theme] ::selection { background: hsl(var(--hue-a, 265) 90% 62% / 0.32); }
+
+html[data-theme] * { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+html[data-theme] ::-webkit-scrollbar { width: 10px; height: 10px; }
+html[data-theme] ::-webkit-scrollbar-track { background: transparent; }
+html[data-theme] ::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+  background-color: var(--border-strong);
+}
+
+/* 2. search field: icon, clear button, focus glow */
+html[data-theme] .tool-search { position: relative; }
+
+html[data-theme] .tool-search__icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 1.1rem;
+  pointer-events: none;
+}
+
+html[data-theme] .tool-search__input { padding-left: 42px; padding-right: 44px; }
+
+html[data-theme] .tool-search__input:focus-visible {
+  outline: none;
+  border-color: hsl(var(--hue-a, 265) 90% 62% / 0.7);
+  box-shadow: 0 0 0 4px hsl(var(--hue-a, 265) 90% 62% / 0.16);
+}
+
+html[data-theme] .tool-search__clear {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+html[data-theme] .tool-search__clear:hover { color: var(--text); }
+
+/* 3. category tag on every card */
+html[data-theme] .tool-card { position: relative; }
+
+html[data-theme] .tool-tag {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  padding: 3px 9px;
+  border: 1px solid var(--tool-line);
+  border-radius: 999px;
+  background: var(--tool-soft);
+  color: var(--tool-accent-bright);
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* 4. card hover + icon ring */
+html[data-theme] .tool-card:hover { transform: translateY(-3px); }
+html[data-theme] .tool-icon { position: relative; }
+html[data-theme] .tool-icon::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: inherit;
+  border: 1px solid var(--tool-line);
+  opacity: 0;
+  transition: opacity var(--motion-fast) ease;
+}
+html[data-theme] .tool-card:hover .tool-icon::after { opacity: 1; }
+
+/* 5. inputs, sliders, selects */
+html[data-theme] .util-field input:focus-visible,
+html[data-theme] .util-field select:focus-visible,
+html[data-theme] .util-textarea:focus-visible {
+  box-shadow: 0 0 0 3px hsl(var(--hue-a, 265) 90% 62% / 0.14);
+}
+
+html[data-theme] .util-field select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 18px) calc(50% - 2px), calc(100% - 13px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+}
+
+html[data-theme] input[type="range"] { accent-color: hsl(var(--hue-a, 265) 90% 62%); }
+
+/* 6. footer */
+html[data-theme] .app-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+html[data-theme] .app-footer strong { color: var(--text); }
+html[data-theme] .app-footer a { color: var(--accent); text-decoration: none; }
+html[data-theme] .app-footer a:hover { text-decoration: underline; }
+
+/* 7. misc polish */
+html[data-theme] [id] { scroll-margin-top: 90px; }
+html[data-theme] .control-button:active,
+html[data-theme] .util-btn:active,
+html[data-theme] .filter-chip:active { transform: scale(0.97); }
+
+html[data-theme] .util-heading,
+html[data-theme] .utility-heading { padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+
+html[data-theme] .stat { transition: border-color var(--motion-fast) ease, transform var(--motion-fast) var(--ease-standard); }
+html[data-theme] .stat:hover { border-color: var(--border-strong); }
+html[data-theme] .util-table tbody tr:hover { background: var(--surface-2); }
+
+html[data-theme] .app-dialog[open] { animation: dialog-in 180ms cubic-bezier(0.2, 0.9, 0.2, 1) both; }
+@keyframes dialog-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+html[data-theme] a:focus-visible,
+html[data-theme] button:focus-visible { outline: 2px solid hsl(var(--hue-a, 265) 90% 62%); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme] .tool-card:hover { transform: none; }
+  html[data-theme] .app-dialog[open] { animation: none; }
+}
+
+@media print {
+  html[data-theme] .app-footer, html[data-theme] .tool-search,
+  html[data-theme] .tool-filters, html[data-theme] .tool-recent { display: none !important; }
+  html[data-theme] .tool-card { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; }
+}

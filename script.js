@@ -5991,6 +5991,12 @@ if (toolSearchInput) {
   const cards = Array.from(document.querySelectorAll("[data-open-tool]"));
   cards.forEach((card) => {
     card.dataset.category = TOOL_CATEGORIES[card.dataset.openTool] || "Other";
+    if (!card.querySelector(".tool-tag")) {
+      const tag = document.createElement("span");
+      tag.className = "tool-tag";
+      tag.textContent = card.dataset.category;
+      card.append(tag);
+    }
   });
 
   const CATEGORY_KEY = "flip-watch-tool-category";
@@ -6065,6 +6071,22 @@ if (toolSearchInput) {
       toolSearchInput.focus();
     });
   }
+
+  const clearButton = document.querySelector("[data-tool-clear]");
+  if (clearButton) {
+    clearButton.addEventListener("click", () => {
+      toolSearchInput.value = "";
+      clearButton.hidden = true;
+      applyFilter();
+      toolSearchInput.focus();
+    });
+  }
+
+  const syncClear = () => {
+    if (clearButton) clearButton.hidden = toolSearchInput.value === "";
+  };
+  toolSearchInput.addEventListener("input", syncClear);
+  syncClear();
 
   toolSearchInput.addEventListener("input", applyFilter);
   toolSearchInput.addEventListener("keydown", (event) => {

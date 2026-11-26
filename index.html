@@ -83,7 +83,7 @@
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#0a0b16" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="styles.css?v=premium-36" />
+    <link rel="stylesheet" href="styles.css?v=premium-39" />
   </head>
   <body>
     <a class="skip-link" href="#dashboard">Skip to tools</a>
@@ -149,6 +149,7 @@
         </div>
 
         <div class="tool-search">
+          <span class="tool-search__icon" aria-hidden="true">⌕</span>
           <input
             type="search"
             class="tool-search__input"
@@ -156,6 +157,7 @@
             aria-label="Search tools"
             data-tool-search
           />
+          <button class="tool-search__clear" type="button" data-tool-clear aria-label="Clear search" hidden>×</button>
           <span class="tool-search__count" data-tool-search-count>30 tools</span>
         </div>
         <p class="tool-search__empty" data-tool-search-empty hidden>
@@ -359,6 +361,10 @@
             <span class="tool-meta">Combine photos into one PDF in your order</span>
           </button>
         </div>
+              <footer class="app-footer">
+          <span>Flip Watch <strong data-app-version>2.1.0</strong> · 32 tools · all offline</span>
+          <a href="https://github.com/542bheemsingh-cmd/Flip-watch" target="_blank" rel="noopener">Source on GitHub</a>
+        </footer>
       </section>
 
       <section class="watch-panel" data-tool-panel aria-label="Time tool" tabindex="-1" hidden>
@@ -874,6 +880,6 @@
     </main>
 
     <script src="vendor/qrcode.js"></script>
-    <script src="script.js?v=premium-48"></script>
+    <script src="script.js?v=premium-51"></script>
   </body>
 </html>
