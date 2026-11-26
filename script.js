@@ -8456,6 +8456,7 @@ function renderTypingTest() {
     <div class="ty-stage" data-ty-stage tabindex="0" role="textbox" aria-label="Typing area">
       <div class="ty-words" data-ty-words></div>
       <div class="ty-hint" data-ty-hint>Click here and start typing — Tab restarts</div>
+      <div class="ty-count" data-ty-count hidden><span>3</span></div>
     </div>
     <div class="ty-results" data-ty-results hidden>
       <div class="stat-grid" data-ty-stats></div>
@@ -8492,6 +8493,7 @@ function renderTypingTest() {
   const zenEl = utilityBody.querySelector("[data-ty-zen]");
   const blindEl = utilityBody.querySelector("[data-ty-blind]");
   const capsEl = utilityBody.querySelector("[data-ty-caps]");
+  const countEl = utilityBody.querySelector("[data-ty-count]");
   const customEl = utilityBody.querySelector("[data-ty-custom]");
   const bestEl = utilityBody.querySelector("[data-ty-best]");
   const liveEl = utilityBody.querySelector("[data-ty-live]");
@@ -8510,6 +8512,7 @@ function renderTypingTest() {
   let correctKeys = 0;
   let keyErrors = {};
   let audioCtx = null;
+  let counting = false;
 
   const beep = (freq, dur, type) => {
     if (!soundEl.checked) return;
@@ -8793,13 +8796,54 @@ function renderTypingTest() {
         runs.map((r, i) => `<tr><td>${i + 1}</td><td>${r.wpm}</td><td>${r.acc}%</td><td>${r.mode}</td></tr>`).join("")
       }</tbody></table>`;
     }
-    extraEl.textContent = `Personal best ${best} wpm · last ${runs.length} run average ${avg} wpm${wrong.length ? ` · watch these keys: ${wrong.map(([k, n]) => `${k} (${n})`).join(", ")}` : ""}`;
+    let streak = 1;
+    try {
+      const today = new Date().toDateString();
+      const yesterday = new Date(Date.now() - 86400000).toDateString();
+      const streakStore = readStored("flip-watch-typing-streak", { day: "", streak: 0 }) || { day: "", streak: 0 };
+      streak = streakStore.streak || 0;
+      if (streakStore.day !== today) {
+        streak = streakStore.day === yesterday ? streak + 1 : 1;
+        writeStored("flip-watch-typing-streak", { day: today, streak });
+      }
+    } catch (error) {
+      streak = 1;
+    }
+    extraEl.textContent = `Personal best ${best} wpm · ${streak}-day streak · last ${runs.length} run average ${avg} wpm${wrong.length ? ` · watch these keys: ${wrong.map(([k, n]) => `${k} (${n})`).join(", ")}` : ""}`;
   };
 
   const typeChar = (ch) => {
     if (finished) return;
     const index = typed.indexOf(null);
     if (index < 0) return finish();
+    if (!started && !counting) {
+      counting = true;
+      const shown = typed.filter((v) => v !== null).length;
+      if (shown === 0) {
+        let n = 3;
+        countEl.hidden = false;
+        countEl.firstElementChild.textContent = String(n);
+        beep(660, 0.06, "sine");
+        const step = window.setInterval(() => {
+          n -= 1;
+          if (n > 0) {
+            countEl.firstElementChild.textContent = String(n);
+            beep(660, 0.06, "sine");
+          } else {
+            window.clearInterval(step);
+            countEl.hidden = true;
+            counting = false;
+            started = true;
+            startTime = performance.now();
+            ticker = window.setInterval(tick, 250);
+            beep(990, 0.08, "sine");
+          }
+        }, 500);
+        return;
+      }
+      counting = false;
+    }
+    if (counting) return;
     if (!started) {
       started = true;
       startTime = performance.now();

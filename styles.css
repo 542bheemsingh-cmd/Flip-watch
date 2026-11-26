@@ -5433,3 +5433,23 @@ html[data-theme] .ty-caps {
 
 /* keep whole words on one line */
 html[data-theme] .ty-word { white-space: nowrap; }
+
+html[data-theme] .ty-count {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  border-radius: 16px;
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+html[data-theme] .ty-count span {
+  font-size: clamp(3rem, 12vw, 6rem);
+  font-weight: 900;
+  color: hsl(var(--hue-a, 265) 90% 68%);
+  animation: ty-pop 500ms ease;
+}
+@keyframes ty-pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+html[data-theme] .ty-stage { position: relative; }
+@media (prefers-reduced-motion: reduce) { html[data-theme] .ty-count span { animation: none; } }
