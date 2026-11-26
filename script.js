@@ -8183,12 +8183,39 @@ function renderPdfWatermark() {
     const last = Math.max(first, Math.min(pdfDoc.numPages, Math.floor(Number(toEl.value) || pdfDoc.numPages)));
     meterWrap.hidden = false;
     let region = null;
-    if (options.mode === "remove" && options.area === "custom" && customRect && customRect.w > 0.01 && customRect.h > 0.01) {
-      statusEl.textContent = "Comparing the selected area across pages…";
-      try {
-        region = await buildRegionMask(customRect);
-      } catch (error) {
-        region = null;
+    if (options.mode === "remove") {
+      let box = null;
+      if (customRect && customRect.w > 0.01 && customRect.h > 0.01) {
+        box = customRect;
+      } else if (maskInfo) {
+        // No box drawn: use the bounds of what detection found.
+        let minX = maskInfo.w, minY = maskInfo.h, maxX = -1, maxY = -1;
+        for (let y = 0; y < maskInfo.h; y += 1) {
+          for (let x = 0; x < maskInfo.w; x += 1) {
+            if (!maskInfo.mask[y * maskInfo.w + x]) continue;
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+          }
+        }
+        if (maxX >= minX && maxY >= minY) {
+          const pad = 2;
+          box = {
+            x: Math.max(0, (minX - pad) / maskInfo.w),
+            y: Math.max(0, (minY - pad) / maskInfo.h),
+            w: Math.min(1, (maxX - minX + pad * 2) / maskInfo.w),
+            h: Math.min(1, (maxY - minY + pad * 2) / maskInfo.h),
+          };
+        }
+      }
+      if (box) {
+        statusEl.textContent = "Comparing that area across pages…";
+        try {
+          region = await buildRegionMask(box);
+        } catch (error) {
+          region = null;
+        }
       }
     }
     const pages = [];
@@ -8223,22 +8250,40 @@ function renderPdfWatermark() {
           } else if (region) {
             const image = ctx.getImageData(0, 0, out.width, out.height);
             const data = image.data;
-            const sx = out.width / region.w;
-            const sy = out.height / region.h;
-            for (let y = 0; y < region.rh; y += 1) {
-              for (let x = 0; x < region.rw; x += 1) {
-                if (!region.mask[y * region.rw + x]) continue;
-                const px0 = Math.floor((region.rx + x) * sx);
-                const py0 = Math.floor((region.ry + y) * sy);
-                for (let dy = 0; dy < Math.ceil(sy); dy += 1) {
-                  for (let dx = 0; dx < Math.ceil(sx); dx += 1) {
-                    const px = px0 + dx;
-                    const py = py0 + dy;
-                    if (px < 0 || py < 0 || px >= out.width || py >= out.height) continue;
-                    const i = (py * out.width + px) * 4;
-                    data[i] = 255; data[i + 1] = 255; data[i + 2] = 255;
+            const W = out.width;
+            const H = out.height;
+            // Walk the output pixels once and look each one up in the mask. Doing
+            // it the other way round (one mask pixel -> a block of output pixels)
+            // erased 4x too much and swallowed nearby text.
+            const left = Math.floor((region.rx / region.w) * W);
+            const top = Math.floor((region.ry / region.h) * H);
+            const right = Math.min(W - 1, Math.ceil(((region.rx + region.rw) / region.w) * W));
+            const bottom = Math.min(H - 1, Math.ceil(((region.ry + region.rh) / region.h) * H));
+            for (let py = top; py <= bottom; py += 1) {
+              const my = Math.min(region.rh - 1, Math.floor(((py / H) * region.h - region.ry)));
+              if (my < 0) continue;
+              for (let px = left; px <= right; px += 1) {
+                const mx = Math.min(region.rw - 1, Math.floor(((px / W) * region.w - region.rx)));
+                if (mx < 0) continue;
+                if (!region.mask[my * region.rw + mx]) continue;
+                const i = (py * W + px) * 4;
+                // Never touch high-contrast pixels: that is text or a rule.
+                let min = 255;
+                let max = 0;
+                if (px > 0 && py > 0 && px < W - 1 && py < H - 1) {
+                  for (let dy = -1; dy <= 1; dy += 1) {
+                    for (let dx = -1; dx <= 1; dx += 1) {
+                      const j = ((py + dy) * W + (px + dx)) * 4;
+                      const lum = (data[j] + data[j + 1] + data[j + 2]) / 3;
+                      if (lum < min) min = lum;
+                      if (lum > max) max = lum;
+                    }
                   }
                 }
+                if (max - min > 60) continue;
+                data[i] = 255;
+                data[i + 1] = 255;
+                data[i + 2] = 255;
               }
             }
             ctx.putImageData(image, 0, 0);
