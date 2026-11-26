@@ -7674,9 +7674,11 @@ function renderPdfWatermark() {
     </div>
     <div class="util-actions">
       <button class="control-button primary" type="button" data-wm-run disabled>Apply to PDF</button>
+      <button class="util-btn" type="button" data-wm-all>All pages</button>
       <button class="util-btn" type="button" data-wm-reset>Reset options</button>
     </div>
     <p class="util-note" data-wm-status>Choose a PDF to begin.</p>
+    <p class="util-note">The output keeps the original page size, but pages are re-rendered as images, so text stops being selectable.</p>
     <div class="meter" hidden data-wm-meter-wrap aria-hidden="true"><span data-wm-meter></span></div>
     <div class="img-stage" data-wm-stage hidden><canvas class="img-canvas" data-wm-canvas></canvas></div>
   `;
@@ -7722,12 +7724,21 @@ function renderPdfWatermark() {
   });
 
   const paintWatermark = (ctx, width, height, options) => {
+    // Font size is authored against the preview canvas, so scale it to whatever
+    // canvas we are drawing on. Long text shrinks until it fits the page.
+    const factor = options.scaleFactor || 1;
+    let size = options.size * factor;
+    const fontOf = (value) => `800 ${Math.max(8, Math.round(value))}px system-ui, -apple-system, Segoe UI, sans-serif`;
     ctx.save();
     ctx.globalAlpha = options.opacity;
     ctx.fillStyle = options.colour;
-    ctx.font = `800 ${options.size}px system-ui, -apple-system, Segoe UI, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
+    ctx.font = fontOf(size);
+    while (ctx.measureText(options.text).width > width * 0.92 && size > 10) {
+      size *= 0.92;
+      ctx.font = fontOf(size);
+    }
 
     const draw = (x, y, angle) => {
       ctx.save();
@@ -7740,19 +7751,19 @@ function renderPdfWatermark() {
     if (options.layout === "center") {
       draw(width / 2, height / 2, options.angle);
     } else if (options.layout === "corner") {
-      ctx.font = `700 ${Math.round(options.size * 0.45)}px system-ui, sans-serif`;
+      ctx.font = `700 ${Math.max(8, Math.round(size * 0.45))}px system-ui, sans-serif`;
       ctx.textAlign = "right";
       ctx.textBaseline = "bottom";
       draw(width - 24, height - 24, 0);
     } else if (options.layout === "diag") {
-      const step = options.size * 2.4;
-      ctx.font = `800 ${Math.round(options.size * 0.7)}px system-ui, sans-serif`;
+      const step = size * 2.4;
+      ctx.font = fontOf(size * 0.7);
       for (let i = -Math.ceil(height / step); i <= Math.ceil(height / step); i += 1) {
         draw(width / 2, height / 2 + i * step, options.angle);
       }
     } else {
-      const stepX = options.size * 4.5;
-      const stepY = options.size * 2.6;
+      const stepX = size * 4.5;
+      const stepY = size * 2.6;
       for (let y = stepY / 2; y < height + stepY; y += stepY) {
         for (let x = stepX / 2; x < width + stepX; x += stepX) {
           draw(x, y, options.angle);
@@ -7796,7 +7807,7 @@ function renderPdfWatermark() {
     canvas.height = off.height;
     const ctx = canvas.getContext("2d");
     ctx.drawImage(off, 0, 0);
-    const options = readOptions();
+    const options = { ...readOptions(), scaleFactor: 1 };
     if (options.mode === "apply") {
       paintWatermark(ctx, canvas.width, canvas.height, options);
     } else {
@@ -7881,6 +7892,13 @@ function renderPdfWatermark() {
     }
   });
 
+  utilityBody.querySelector("[data-wm-all]").addEventListener("click", () => {
+    if (!pdfDoc) return;
+    fromEl.value = "1";
+    toEl.value = String(pdfDoc.numPages);
+    statusEl.textContent = `All ${pdfDoc.numPages} page(s) selected.`;
+  });
+
   resetBtn.addEventListener("click", () => {
     textEl.value = "CONFIDENTIAL";
     sizeEl.value = "64";
@@ -7919,23 +7937,40 @@ function renderPdfWatermark() {
 
         if (n >= first && n <= last) {
           if (options.mode === "apply") {
-            paintWatermark(ctx, out.width, out.height, options);
+            paintWatermark(ctx, out.width, out.height, {
+              ...options,
+              scaleFactor: firstPageCanvas ? out.width / firstPageCanvas.width : 1,
+            });
           } else {
             const rect = removeRect(out.width, out.height, options);
-            ctx.fillStyle = "#ffffff";
+            // Sample just outside the area so erasing blends into the page
+            // instead of leaving a bright white patch.
+            let fill = "#ffffff";
+            try {
+              const sx = Math.min(out.width - 1, Math.max(0, Math.round(rect.x + rect.w / 2)));
+              const sy = Math.max(0, Math.round(rect.y) - 4);
+              const sample = ctx.getImageData(sx, sy, 1, 1).data;
+              fill = `rgb(${sample[0]}, ${sample[1]}, ${sample[2]})`;
+            } catch (error) {
+              fill = "#ffffff";
+            }
+            ctx.fillStyle = fill;
             ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
           }
         }
 
         const blob = await new Promise((r) => out.toBlob(r, "image/jpeg", 0.92));
+        // The canvas is rendered at 2x, so the page box in points is half of it.
+        const pageW = out.width / 2;
+        const pageH = out.height / 2;
         pages.push({
           bytes: new Uint8Array(await blob.arrayBuffer()),
           width: out.width,
           height: out.height,
-          pageWidth: out.width * 0.75,
-          pageHeight: out.height * 0.75,
-          drawWidth: out.width * 0.75,
-          drawHeight: out.height * 0.75,
+          pageWidth: pageW,
+          pageHeight: pageH,
+          drawWidth: pageW,
+          drawHeight: pageH,
           x: 0,
           y: 0,
         });
@@ -7944,7 +7979,8 @@ function renderPdfWatermark() {
       const url = URL.createObjectURL(pdf);
       const link = document.createElement("a");
       link.href = url;
-      link.download = options.mode === "apply" ? "watermarked.pdf" : "watermark-removed.pdf";
+      const stem = (fileEl.files[0]?.name || "document").replace(/\.pdf$/i, "") || "document";
+      link.download = options.mode === "apply" ? `${stem}-watermarked.pdf` : `${stem}-clean.pdf`;
       link.click();
       URL.revokeObjectURL(url);
       meter.style.width = "100%";
