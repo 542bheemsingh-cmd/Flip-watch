@@ -5457,3 +5457,19 @@ html[data-theme] .ty-stage { position: relative; }
 /* allow wrapping between words while keeping each word intact */
 html[data-theme] .ty-words { overflow-wrap: anywhere; word-break: normal; }
 html[data-theme] .ty-space { white-space: pre; }
+
+/* hard guarantee: the typing paragraph can never escape the card */
+html[data-theme] .ty-stage { overflow: hidden; }
+html[data-theme] .ty-words {
+  display: block;
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+  word-break: normal;
+  max-width: 100%;
+}
+html[data-theme] .ty-word {
+  display: inline-block;
+  white-space: nowrap;
+  max-width: 100%;
+}
+html[data-theme] .ty-space { display: inline; white-space: pre; }

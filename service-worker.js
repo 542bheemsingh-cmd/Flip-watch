@@ -7,7 +7,7 @@
  *    network, falling back to a query-insensitive cache hit when offline.
  *  - Cross-origin requests (e.g. Unsplash) are left to the network.
  */
-const CACHE = "flip-watch-v7";
+const CACHE = "flip-watch-v8";
 
 const CORE = [
   "./",
