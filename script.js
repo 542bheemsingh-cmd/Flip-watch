@@ -2439,7 +2439,7 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
    Extra utilities: unit converter, password generator, word counter,
    to-do list and date calculator.
    ===================================================================== */
-const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates", "gst", "emi", "fuel", "json", "base64", "color", "random", "findreplace", "textpad", "pwstrength", "imgcompress", "imgresize", "imgconvert", "imgcrop", "imgcolour", "qrcode", "stats", "prime", "calendar", "pdf2img", "img2pdf", "protectpdf", "html2pdf", "watermark"];
+const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates", "gst", "emi", "fuel", "json", "base64", "color", "random", "findreplace", "textpad", "pwstrength", "imgcompress", "imgresize", "imgconvert", "imgcrop", "imgcolour", "qrcode", "stats", "prime", "calendar", "pdf2img", "img2pdf", "protectpdf", "html2pdf", "watermark", "typing"];
 const utilityPanel = document.querySelector("[data-utility-panel]");
 const utilityKicker = document.querySelector("[data-utility-kicker]");
 const utilityTitle = document.querySelector("[data-utility-title]");
@@ -2476,6 +2476,7 @@ const utilityMeta = {
   protectpdf: { kicker: "Files", title: "Protect & Unlock PDF", sub: "Encrypt a PDF with a password, or unlock one you own." },
   html2pdf: { kicker: "Files", title: "HTML to PDF", sub: "Turn pasted HTML into a print-ready PDF." },
   watermark: { kicker: "Files", title: "PDF Watermark", sub: "Stamp a watermark on a PDF, or erase one you own." },
+  typing: { kicker: "Practice", title: "Typing Test", sub: "Live WPM, accuracy, consistency and a speed graph." },
 };
 
 const UTIL_KEYS = {
@@ -2534,6 +2535,7 @@ function renderUtility(kind) {
   else if (kind === "protectpdf") renderProtectPdf();
   else if (kind === "html2pdf") renderHtmlToPdf();
   else if (kind === "watermark") renderPdfWatermark();
+  else if (kind === "typing") renderTypingTest();
 }
 
 /* ------------------------------------------------------- shared helpers */
@@ -5987,6 +5989,7 @@ const TOOL_CATEGORIES = {
   protectpdf: "Files",
   html2pdf: "Files",
   watermark: "Files",
+  typing: "Practice",
 };
 
 const CATEGORY_ORDER = ["All", "Time", "Dates", "Maths", "Money", "Text", "Images", "Developer", "Security", "Productivity", "Fun", "Files"];
@@ -8395,6 +8398,297 @@ function renderPdfWatermark() {
   });
 
   syncMode();
+}
+
+/* ---------------------------------------------------------- typing test */
+const TYPING_WORDS = ("the be to of and a in that have it for not on with he as you do at this but his by from they we say her she or an will my one all would there their what so up out if about who get which go me when make can like time no just him know take people into year your good some could them see other than then now look only come its over think also back after use two how our work first well way even new want because any these give day most us").split(" ");
+const TYPING_PUNCT = [",", ".", ";", ":", "!", "?"];
+
+function renderTypingTest() {
+  utilityBody.innerHTML = `
+    <div class="util-actions" data-ty-modes>
+      <button class="util-btn is-on" type="button" data-ty-mode="time" data-ty-value="15">15s</button>
+      <button class="util-btn" type="button" data-ty-mode="time" data-ty-value="30">30s</button>
+      <button class="util-btn" type="button" data-ty-mode="time" data-ty-value="60">60s</button>
+      <button class="util-btn" type="button" data-ty-mode="time" data-ty-value="120">120s</button>
+      <button class="util-btn" type="button" data-ty-mode="words" data-ty-value="10">10 words</button>
+      <button class="util-btn" type="button" data-ty-mode="words" data-ty-value="25">25 words</button>
+      <button class="util-btn" type="button" data-ty-mode="words" data-ty-value="50">50 words</button>
+    </div>
+    <div class="util-toggles">
+      <label><input type="checkbox" data-ty-punct /> punctuation</label>
+      <label><input type="checkbox" data-ty-numbers /> numbers</label>
+      <label><input type="checkbox" data-ty-sound checked /> sound</label>
+    </div>
+    <div class="ty-bar">
+      <span class="ty-stat"><strong data-ty-time>15</strong><small>sec</small></span>
+      <span class="ty-stat"><strong data-ty-wpm>0</strong><small>wpm</small></span>
+      <span class="ty-stat"><strong data-ty-acc>100%</strong><small>accuracy</small></span>
+      <div class="meter ty-progress"><span data-ty-progress></span></div>
+    </div>
+    <div class="ty-stage" data-ty-stage tabindex="0" role="textbox" aria-label="Typing area">
+      <div class="ty-words" data-ty-words></div>
+      <div class="ty-hint" data-ty-hint>Click here and start typing — Tab restarts</div>
+    </div>
+    <div class="ty-results" data-ty-results hidden>
+      <div class="stat-grid" data-ty-stats></div>
+      <canvas class="ty-chart" data-ty-chart width="720" height="180"></canvas>
+      <div class="util-actions">
+        <button class="control-button primary" type="button" data-ty-again>Try again</button>
+        <button class="util-btn" type="button" data-ty-share>Copy result</button>
+      </div>
+      <p class="util-note" data-ty-extra></p>
+    </div>
+    <p class="util-note" data-ty-status>Pick a mode, then start typing.</p>
+  `;
+
+  const stage = utilityBody.querySelector("[data-ty-stage]");
+  const wordsEl = utilityBody.querySelector("[data-ty-words]");
+  const hintEl = utilityBody.querySelector("[data-ty-hint]");
+  const timeEl = utilityBody.querySelector("[data-ty-time]");
+  const wpmEl = utilityBody.querySelector("[data-ty-wpm]");
+  const accEl = utilityBody.querySelector("[data-ty-acc]");
+  const progressEl = utilityBody.querySelector("[data-ty-progress]");
+  const statusEl = utilityBody.querySelector("[data-ty-status]");
+  const resultsEl = utilityBody.querySelector("[data-ty-results]");
+  const statsEl = utilityBody.querySelector("[data-ty-stats]");
+  const chartEl = utilityBody.querySelector("[data-ty-chart]");
+  const extraEl = utilityBody.querySelector("[data-ty-extra]");
+  const punctEl = utilityBody.querySelector("[data-ty-punct]");
+  const numbersEl = utilityBody.querySelector("[data-ty-numbers]");
+  const soundEl = utilityBody.querySelector("[data-ty-sound]");
+
+  let mode = "time";
+  let target = 15;
+  let text = "";
+  let chars = [];
+  let typed = [];
+  let started = false;
+  let finished = false;
+  let startTime = 0;
+  let ticker = 0;
+  let samples = [];
+  let keystrokes = 0;
+  let correctKeys = 0;
+  let keyErrors = {};
+  let audioCtx = null;
+
+  const beep = (freq, dur, type) => {
+    if (!soundEl.checked) return;
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type || "square";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.035, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + dur);
+    } catch (error) { /* audio is a nicety */ }
+  };
+
+  const buildText = () => {
+    const words = [];
+    const count = mode === "words" ? target : 90;
+    for (let i = 0; i < count; i += 1) {
+      let word = TYPING_WORDS[Math.floor(Math.random() * TYPING_WORDS.length)];
+      if (numbersEl.checked && Math.random() < 0.18) word = String(Math.floor(Math.random() * 9999));
+      if (punctEl.checked && Math.random() < 0.22) word += TYPING_PUNCT[Math.floor(Math.random() * TYPING_PUNCT.length)];
+      words.push(word);
+    }
+    text = words.join(" ");
+    chars = text.split("");
+    typed = new Array(chars.length).fill(null);
+  };
+
+  const paint = () => {
+    const html = [];
+    let wordStart = true;
+    for (let i = 0; i < chars.length; i += 1) {
+      const ch = chars[i] === " " ? "&nbsp;" : chars[i].replace("&", "&amp;").replace("<", "&lt;");
+      let cls = "ty-char";
+      if (typed[i] === true) cls += " is-ok";
+      else if (typed[i] === false) cls += " is-bad";
+      if (i === typed.findIndex((v, idx) => v === null && idx === typed.indexOf(null))) cls += " is-cursor";
+      html.push(`<span class="${cls}">${ch}</span>`);
+      wordStart = chars[i] === " ";
+    }
+    wordsEl.innerHTML = html.join("");
+    const cursor = typed.indexOf(null);
+    const el = wordsEl.children[cursor];
+    if (el) el.classList.add("is-cursor");
+  };
+
+  const reset = () => {
+    window.clearInterval(ticker);
+    started = false;
+    finished = false;
+    startTime = 0;
+    samples = [];
+    keystrokes = 0;
+    correctKeys = 0;
+    keyErrors = {};
+    resultsEl.hidden = true;
+    buildText();
+    paint();
+    timeEl.textContent = String(target);
+    wpmEl.textContent = "0";
+    accEl.textContent = "100%";
+    progressEl.style.width = "0%";
+    hintEl.hidden = false;
+    statusEl.textContent = mode === "time" ? `${target} second test — start typing.` : `${target} words — start typing.`;
+  };
+
+  const stats = () => {
+    const elapsed = startTime ? (performance.now() - startTime) / 1000 : 0;
+    const correctChars = typed.reduce((sum, v, i) => sum + (v === true && chars[i] !== " " ? 1 : 0), 0);
+    const typedChars = typed.reduce((sum, v) => sum + (v === null ? 0 : 1), 0);
+    const minutes = Math.max(elapsed / 60, 1 / 60);
+    const netWpm = Math.max(0, Math.round((correctChars / 5) / minutes));
+    const rawWpm = Math.max(0, Math.round((typedChars / 5) / minutes));
+    const accuracy = keystrokes ? Math.round((correctKeys / keystrokes) * 100) : 100;
+    return { elapsed, correctChars, typedChars, netWpm, rawWpm, accuracy };
+  };
+
+  const tick = () => {
+    const s = stats();
+    if (mode === "time") {
+      const left = Math.max(0, target - s.elapsed);
+      timeEl.textContent = String(Math.ceil(left));
+      progressEl.style.width = `${Math.min(100, (s.elapsed / target) * 100)}%`;
+      if (left <= 0) return finish();
+    } else {
+      timeEl.textContent = String(Math.round(s.elapsed));
+      progressEl.style.width = `${Math.min(100, (typed.filter((v) => v !== null).length / chars.length) * 100)}%`;
+    }
+    wpmEl.textContent = String(s.netWpm);
+    accEl.textContent = `${s.accuracy}%`;
+    if (Math.floor(s.elapsed) % 2 === 0) samples.push({ t: s.elapsed, wpm: s.netWpm, raw: s.rawWpm });
+  };
+
+  const drawChart = () => {
+    const ctx = chartEl.getContext("2d");
+    const w = chartEl.width;
+    const h = chartEl.height;
+    ctx.clearRect(0, 0, w, h);
+    if (samples.length < 2) return;
+    const maxWpm = Math.max(...samples.map((s) => Math.max(s.wpm, s.raw)), 20);
+    const x = (i) => 12 + (i / (samples.length - 1)) * (w - 24);
+    const y = (v) => h - 16 - (v / maxWpm) * (h - 36);
+    ctx.strokeStyle = "rgba(255,255,255,0.14)";
+    ctx.lineWidth = 1;
+    for (let g = 0; g <= 3; g += 1) {
+      const gy = 16 + (g / 3) * (h - 36);
+      ctx.beginPath(); ctx.moveTo(12, gy); ctx.lineTo(w - 12, gy); ctx.stroke();
+    }
+    ctx.beginPath();
+    samples.forEach((s, i) => (i ? ctx.lineTo(x(i), y(s.raw)) : ctx.moveTo(x(i), y(s.raw))));
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    samples.forEach((s, i) => (i ? ctx.lineTo(x(i), y(s.wpm)) : ctx.moveTo(x(i), y(s.wpm))));
+    ctx.strokeStyle = "#7c5cff";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  };
+
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    window.clearInterval(ticker);
+    const s = stats();
+    const wpmList = samples.map((x) => x.wpm);
+    const mean = wpmList.reduce((a, b) => a + b, 0) / Math.max(1, wpmList.length);
+    const variance = wpmList.reduce((a, b) => a + (b - mean) ** 2, 0) / Math.max(1, wpmList.length);
+    const consistency = mean ? Math.max(0, Math.round(100 - (Math.sqrt(variance) / mean) * 100)) : 0;
+    const wrong = Object.entries(keyErrors).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+    const stat = (value, label) => `<div class="stat"><span>${value}</span><small>${label}</small></div>`;
+    statsEl.innerHTML = [
+      stat(`${s.netWpm}`, "net wpm"),
+      stat(`${s.rawWpm}`, "raw wpm"),
+      stat(`${s.accuracy}%`, "accuracy"),
+      stat(`${consistency}%`, "consistency"),
+      stat(`${s.correctChars}`, "correct chars"),
+      stat(`${Math.round(s.elapsed)}s`, "time"),
+    ].join("");
+
+    drawChart();
+    resultsEl.hidden = false;
+    hintEl.hidden = true;
+    statusEl.textContent = "Done — Tab or “Try again” for another run.";
+
+    const store = readStored("flip-watch-typing", { best: 0, runs: [] }) || { best: 0, runs: [] };
+    const best = Math.max(store.best || 0, s.netWpm);
+    const runs = [{ wpm: s.netWpm, acc: s.accuracy, mode: `${target}${mode === "time" ? "s" : "w"}`, at: Date.now() }, ...(store.runs || [])].slice(0, 10);
+    writeStored("flip-watch-typing", { best, runs });
+    const avg = Math.round(runs.reduce((a, b) => a + b.wpm, 0) / runs.length);
+    extraEl.textContent = `Personal best ${best} wpm · last ${runs.length} run average ${avg} wpm${wrong.length ? ` · watch these keys: ${wrong.map(([k, n]) => `${k} (${n})`).join(", ")}` : ""}`;
+  };
+
+  const typeChar = (ch) => {
+    if (finished) return;
+    const index = typed.indexOf(null);
+    if (index < 0) return finish();
+    if (!started) {
+      started = true;
+      startTime = performance.now();
+      ticker = window.setInterval(tick, 250);
+      hintEl.hidden = true;
+    }
+    keystrokes += 1;
+    const expected = chars[index];
+    const ok = ch === expected;
+    if (ok) correctKeys += 1;
+    else keyErrors[expected === " " ? "space" : expected] = (keyErrors[expected === " " ? "space" : expected] || 0) + 1;
+    typed[index] = ok;
+    beep(ok ? 880 : 220, ok ? 0.03 : 0.08, ok ? "square" : "sawtooth");
+    paint();
+    if (mode === "words" && typed.filter((v) => v !== null).length >= chars.length) finish();
+  };
+
+  const onKey = (event) => {
+    if (event.key === "Tab") {
+      event.preventDefault();
+      reset();
+      return;
+    }
+    if (finished) return;
+    if (event.key === "Backspace") {
+      event.preventDefault();
+      const last = typed.lastIndexOf(true, typed.length - 1);
+      let idx = -1;
+      for (let i = typed.length - 1; i >= 0; i -= 1) if (typed[i] !== null) { idx = i; break; }
+      if (idx >= 0) { typed[idx] = null; paint(); }
+      return;
+    }
+    if (event.key.length !== 1) return;
+    event.preventDefault();
+    typeChar(event.key);
+  };
+
+  utilityBody.querySelectorAll("[data-ty-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      utilityBody.querySelectorAll("[data-ty-mode]").forEach((b) => b.classList.remove("is-on"));
+      button.classList.add("is-on");
+      mode = button.dataset.tyMode;
+      target = Number(button.dataset.tyValue);
+      reset();
+    });
+  });
+  [punctEl, numbersEl].forEach((el) => el.addEventListener("change", reset));
+  utilityBody.querySelector("[data-ty-again]").addEventListener("click", reset);
+  utilityBody.querySelector("[data-ty-share]").addEventListener("click", () => {
+    const s = stats();
+    utilCopy(`${s.netWpm} wpm · ${s.accuracy}% accuracy · ${target}${mode === "time" ? "s" : " words"} on Flip Watch`, "Result copied.");
+  });
+
+  stage.addEventListener("click", () => stage.focus());
+  stage.addEventListener("keydown", onKey);
+  reset();
 }
 
 if (utilityPanel) {

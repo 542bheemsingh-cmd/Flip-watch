@@ -5345,3 +5345,44 @@ html[data-theme] .wm-review__item canvas {
 @media (max-width: 520px) {
   html[data-theme] .wm-review { grid-template-columns: 1fr; }
 }
+
+/* ---- typing test ---- */
+html[data-theme] .ty-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+html[data-theme] .ty-stat { display: grid; justify-items: start; }
+html[data-theme] .ty-stat strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; line-height: 1; }
+html[data-theme] .ty-stat small { color: var(--muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; }
+html[data-theme] .ty-progress { flex: 1; min-width: 120px; }
+html[data-theme] .ty-stage {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card-bg);
+  outline: none;
+  cursor: text;
+}
+html[data-theme] .ty-stage:focus-visible { border-color: hsl(var(--hue-a,265) 90% 62% / .6); }
+html[data-theme] .ty-words {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(1rem, 2.4vw, 1.35rem);
+  line-height: 2;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  word-break: break-word;
+}
+html[data-theme] .ty-char { transition: color 90ms ease; }
+html[data-theme] .ty-char.is-ok { color: var(--text); }
+html[data-theme] .ty-char.is-bad { color: #ff6b6b; text-decoration: underline wavy rgba(255,107,107,.6); }
+html[data-theme] .ty-char.is-cursor { position: relative; }
+html[data-theme] .ty-char.is-cursor::before {
+  content: "";
+  position: absolute;
+  left: -1px; top: 0.1em; bottom: 0.1em;
+  width: 2px;
+  background: hsl(var(--hue-a,265) 90% 62%);
+  animation: ty-blink 1s steps(2, start) infinite;
+}
+@keyframes ty-blink { 50% { opacity: 0; } }
+html[data-theme] .ty-hint { margin-top: 10px; color: var(--muted); font-size: 0.8rem; }
+html[data-theme] .ty-chart { width: 100%; height: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+html[data-theme] .util-btn.is-on { background: linear-gradient(135deg, var(--grad-a), var(--grad-c)); color: #fff; border-color: transparent; }
+@media (prefers-reduced-motion: reduce) { html[data-theme] .ty-char.is-cursor::before { animation: none; } }
