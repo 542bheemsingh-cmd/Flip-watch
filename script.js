@@ -8414,6 +8414,7 @@ function renderTypingTest() {
       <button class="util-btn" type="button" data-ty-mode="words" data-ty-value="10">10 words</button>
       <button class="util-btn" type="button" data-ty-mode="words" data-ty-value="25">25 words</button>
       <button class="util-btn" type="button" data-ty-mode="words" data-ty-value="50">50 words</button>
+      <button class="util-btn" type="button" data-ty-mode="quote" data-ty-value="0">quote</button>
     </div>
     <div class="util-toggles">
       <label><input type="checkbox" data-ty-punct /> punctuation</label>
@@ -8422,6 +8423,7 @@ function renderTypingTest() {
       <label><input type="checkbox" data-ty-stop /> stop on error</label>
       <label><input type="checkbox" data-ty-nobs /> no backspace</label>
       <label><input type="checkbox" data-ty-zen /> zen mode (no timer)</label>
+      <label><input type="checkbox" data-ty-blind /> blind mode (hide mistakes)</label>
     </div>
     <div class="util-field">
       <label for="ty-custom">Or type your own text</label>
@@ -8438,6 +8440,7 @@ function renderTypingTest() {
       <div class="meter ty-progress"><span data-ty-progress></span></div>
     </div>
     <canvas class="ty-live" data-ty-live width="720" height="54" hidden></canvas>
+    <div class="ty-caps" data-ty-caps hidden>Caps Lock is on</div>
     <div class="ty-stage" data-ty-stage tabindex="0" role="textbox" aria-label="Typing area">
       <div class="ty-words" data-ty-words></div>
       <div class="ty-hint" data-ty-hint>Click here and start typing — Tab restarts</div>
@@ -8446,6 +8449,7 @@ function renderTypingTest() {
       <div class="stat-grid" data-ty-stats></div>
       <canvas class="ty-chart" data-ty-chart width="720" height="180"></canvas>
       <div class="ty-heat" data-ty-heat></div>
+      <div data-ty-history></div>
       <div class="util-actions">
         <button class="control-button primary" type="button" data-ty-again>Try again</button>
         <button class="util-btn" type="button" data-ty-share>Copy result</button>
@@ -8474,6 +8478,8 @@ function renderTypingTest() {
   const stopEl = utilityBody.querySelector("[data-ty-stop]");
   const nobsEl = utilityBody.querySelector("[data-ty-nobs]");
   const zenEl = utilityBody.querySelector("[data-ty-zen]");
+  const blindEl = utilityBody.querySelector("[data-ty-blind]");
+  const capsEl = utilityBody.querySelector("[data-ty-caps]");
   const customEl = utilityBody.querySelector("[data-ty-custom]");
   const bestEl = utilityBody.querySelector("[data-ty-best]");
   const liveEl = utilityBody.querySelector("[data-ty-live]");
@@ -8509,7 +8515,21 @@ function renderTypingTest() {
     } catch (error) { /* audio is a nicety */ }
   };
 
+  const TYPING_QUOTES = [
+    "The quick brown fox jumps over the lazy dog while the sun sets behind the quiet hills.",
+    "Small steps taken every day will always beat one giant leap taken once a year.",
+    "Practice does not make perfect, but it does make permanent, so practise carefully.",
+    "A calm mind and steady hands will finish far more work than a hurried rush ever can.",
+    "Every expert was once a beginner who refused to stop showing up for the work.",
+  ];
+
   const buildText = () => {
+    if (mode === "quote") {
+      text = TYPING_QUOTES[Math.floor(Math.random() * TYPING_QUOTES.length)];
+      chars = text.split("");
+      typed = new Array(chars.length).fill(null);
+      return;
+    }
     const words = [];
     const count = mode === "words" ? target : 90;
     for (let i = 0; i < count; i += 1) {
@@ -8568,7 +8588,9 @@ function renderTypingTest() {
     accEl.textContent = "100%";
     progressEl.style.width = "0%";
     hintEl.hidden = false;
-    statusEl.textContent = mode === "time" ? `${target} second test — start typing.` : `${target} words — start typing.`;
+    statusEl.textContent = mode === "time" ? `${target} second test — start typing.`
+      : mode === "quote" ? "Quote test — start typing."
+      : `${target} words — start typing.`;
   };
 
   const stats = () => {
@@ -8709,6 +8731,12 @@ function renderTypingTest() {
     writeStored("flip-watch-typing", { best, runs });
     const avg = Math.round(runs.reduce((a, b) => a + b.wpm, 0) / runs.length);
     if (bestEl) bestEl.textContent = String(best);
+    const historyEl = utilityBody.querySelector("[data-ty-history]");
+    if (historyEl) {
+      historyEl.innerHTML = `<table class="util-table"><caption>Last runs</caption><thead><tr><th>#</th><th>WPM</th><th>Accuracy</th><th>Mode</th></tr></thead><tbody>${
+        runs.map((r, i) => `<tr><td>${i + 1}</td><td>${r.wpm}</td><td>${r.acc}%</td><td>${r.mode}</td></tr>`).join("")
+      }</tbody></table>`;
+    }
     extraEl.textContent = `Personal best ${best} wpm · last ${runs.length} run average ${avg} wpm${wrong.length ? ` · watch these keys: ${wrong.map(([k, n]) => `${k} (${n})`).join(", ")}` : ""}`;
   };
 
@@ -8740,6 +8768,9 @@ function renderTypingTest() {
   };
 
   const onKey = (event) => {
+    if (capsEl && typeof event.getModifierState === "function") {
+      capsEl.hidden = !event.getModifierState("CapsLock");
+    }
     if (event.key === "Tab" || event.key === "Escape") {
       event.preventDefault();
       reset();
@@ -8809,6 +8840,10 @@ function renderTypingTest() {
   stage.addEventListener("blur", () => {
     if (!finished) { hintEl.hidden = false; hintEl.textContent = "Click here to keep typing"; }
   });
+  blindEl.addEventListener("change", () => {
+    stage.classList.toggle("is-blind", blindEl.checked);
+  });
+
   utilityBody.querySelector("[data-ty-use]").addEventListener("click", () => {
     const value = customEl.value.trim();
     if (!value) { statusEl.textContent = "Type or paste some text first."; return; }

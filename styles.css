@@ -5415,3 +5415,18 @@ html[data-theme] .ty-heat__key i {
   background: var(--surface); border-radius: 999px; padding: 1px 4px;
   border: 1px solid var(--border);
 }
+
+html[data-theme] .ty-stage.is-blind .ty-char.is-bad { color: inherit; text-decoration: none; }
+html[data-theme] .ty-stage.is-shake { animation: ty-shake 140ms ease; }
+@keyframes ty-shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+html[data-theme] .ty-caps {
+  margin-bottom: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 170, 60, 0.16);
+  border: 1px solid rgba(255, 170, 60, 0.4);
+  color: #ffc46b;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+@media (prefers-reduced-motion: reduce) { html[data-theme] .ty-stage.is-shake { animation: none; } }
