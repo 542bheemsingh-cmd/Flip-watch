@@ -5030,3 +5030,165 @@ html[data-theme] .tool-card:hover { border-color: var(--tool-line); }
 @media (prefers-reduced-motion: reduce) {
   html[data-theme] .tool-card:active { transform: none; }
 }
+
+/* =====================================================================
+   Design pass 3 — watch, calculator, panels and reader
+   ===================================================================== */
+
+/* 1. flip digits get a soft gradient */
+html[data-theme] .flip-digit,
+html[data-theme] .digit {
+  background: linear-gradient(180deg, #ffffff, rgba(255, 255, 255, 0.72));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+html[data-theme="light"] .flip-digit,
+html[data-theme="light"] .digit {
+  background: linear-gradient(180deg, #14162b, rgba(20, 22, 43, 0.75));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* 2. mode tabs as a pill group */
+html[data-theme] .mode-switch {
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+html[data-theme] .mode-switch button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+}
+
+html[data-theme] .mode-switch button[aria-pressed="true"],
+html[data-theme] .mode-switch button.active {
+  background: linear-gradient(135deg, var(--grad-a), var(--grad-c));
+  color: #fff;
+  box-shadow: 0 6px 16px hsl(var(--hue-a, 265) 90% 60% / 0.35);
+}
+
+/* 3. active preset ring */
+html[data-theme] .preset-button.active {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px hsl(var(--hue-a, 265) 90% 62% / 0.45);
+}
+
+/* 4. lap rows zebra */
+html[data-theme] .lap-row:nth-child(odd) { background: var(--surface-2); }
+html[data-theme] .lap-row { border-radius: 10px; }
+
+/* 5-7. calculator */
+html[data-theme] .calculator-input {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+html[data-theme] .calculator-keypad button:active {
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.35);
+  filter: brightness(0.96);
+}
+
+html[data-theme] .calculator-memory {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* 8. equation preview card */
+html[data-theme] .equation-visual-card,
+html[data-theme] .equation-visual {
+  border-radius: 18px;
+  box-shadow: var(--shadow-md);
+}
+
+/* 9. kicker accent bar */
+html[data-theme] .utility-kicker,
+html[data-theme] .dashboard-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+html[data-theme] .utility-kicker::before,
+html[data-theme] .dashboard-kicker::before {
+  content: "";
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+/* 10. stat cards share a minimum height */
+html[data-theme] .stat { min-height: 74px; align-content: start; }
+
+/* 11-12. buttons */
+html[data-theme] .control-button.primary {
+  position: relative;
+  overflow: hidden;
+}
+
+html[data-theme] .control-button.primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 55%);
+  pointer-events: none;
+}
+
+html[data-theme] .util-btn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* 13-14. form type */
+html[data-theme] .util-field label { letter-spacing: 0.08em; }
+html[data-theme] .util-note { font-size: 0.84rem; line-height: 1.45; }
+
+/* 15. panels scroll with a fade at the bottom edge */
+html[data-theme] .utility-panel { scrollbar-gutter: stable; }
+
+/* 17. consistent icon radius */
+html[data-theme] .tool-icon { border-radius: 14px; }
+
+/* 18. chips fade at the edges on phones */
+@media (max-width: 520px) {
+  html[data-theme] .tool-filters {
+    mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 12px), transparent);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 12px), transparent);
+  }
+}
+
+/* 19. toast slides up */
+html[data-theme] .app-toast { animation: toast-in 180ms cubic-bezier(0.2, 0.9, 0.2, 1) both; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* 20-21. reader chrome */
+html[data-theme] .fab:hover { transform: translateY(-2px) scale(1.04); }
+html[data-theme] .icon-button,
+html[data-theme] .fab { transition: transform var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) ease; }
+
+/* 22. consistent focus offset */
+html[data-theme] button:focus-visible,
+html[data-theme] a:focus-visible,
+html[data-theme] input:focus-visible,
+html[data-theme] select:focus-visible,
+html[data-theme] textarea:focus-visible { outline-offset: 2px; }
+
+/* 23-24. images and links */
+html[data-theme] img { border-radius: 10px; }
+html[data-theme] a { text-underline-offset: 3px; }
+
+/* 25. divider rhythm inside panels */
+html[data-theme] .utility-body > * + * { margin-top: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme] .app-toast { animation: none; }
+  html[data-theme] .fab:hover { transform: none; }
+}
