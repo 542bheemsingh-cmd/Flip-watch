@@ -5992,10 +5992,10 @@ const TOOL_CATEGORIES = {
   protectpdf: "Files",
   html2pdf: "Files",
   watermark: "Files",
-  typing: "Practice",
+  typing: "Skill",
 };
 
-const CATEGORY_ORDER = ["All", "Time", "Dates", "Maths", "Money", "Text", "Images", "Developer", "Security", "Productivity", "Fun", "Files"];
+const CATEGORY_ORDER = ["All", "Time", "Dates", "Maths", "Money", "Text", "Images", "Developer", "Security", "Productivity", "Skill", "Fun", "Files"];
 
 const toolSearchInput = document.querySelector("[data-tool-search]");
 const toolSearchCount = document.querySelector("[data-tool-search-count]");
