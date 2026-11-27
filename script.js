@@ -9054,6 +9054,34 @@ async function pdfKitPage(doc, number, scale, quality) {
   };
 }
 
+async function pdfKitInfo(doc, file) {
+  let label = "—";
+  try {
+    const page = await doc.getPage(1);
+    const vp = page.getViewport({ scale: 1 });
+    const mm = (pt) => Math.round((pt * 25.4) / 72);
+    label = `${mm(vp.width)} × ${mm(vp.height)} mm`;
+  } catch (error) { /* page size is a nicety */ }
+  return {
+    pages: doc.numPages,
+    size: file.size,
+    pageSize: label,
+  };
+}
+
+function pdfKitSize(bytes) {
+  return bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function pdfKitStatsHtml(info) {
+  return [
+    `<div class="stat"><span>${info.pages}</span><small>pages</small></div>`,
+    `<div class="stat"><span>${pdfKitSize(info.size)}</span><small>file size</small></div>`,
+    `<div class="stat"><span>${info.pageSize}</span><small>page size</small></div>`,
+    `<div class="stat"><span>${pdfKitSize(info.size / Math.max(1, info.pages))}</span><small>per page</small></div>`,
+  ].join("");
+}
+
 function pdfKitDownload(blob, name) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -9087,6 +9115,7 @@ function renderCompressPdf() {
     <div class="util-actions">
       <button class="control-button primary" type="button" data-cp-run disabled>Compress PDF</button>
     </div>
+    <div class="stat-grid" data-cp-info hidden></div>
     <p class="util-note" data-cp-status>Choose a PDF to begin.</p>
     <div class="meter" hidden data-cp-meter-wrap aria-hidden="true"><span data-cp-meter></span></div>
   `;
@@ -9096,6 +9125,7 @@ function renderCompressPdf() {
   const runBtn = utilityBody.querySelector("[data-cp-run]");
   const statusEl = utilityBody.querySelector("[data-cp-status]");
   const meter = utilityBody.querySelector("[data-cp-meter]");
+  const infoEl = utilityBody.querySelector("[data-cp-info]");
   const meterWrap = utilityBody.querySelector("[data-cp-meter-wrap]");
   let doc = null;
   let originalSize = 0;
@@ -9109,7 +9139,9 @@ function renderCompressPdf() {
       originalSize = file.size;
       runBtn.disabled = false;
       nameEl.placeholder = `${file.name.replace(/\.pdf$/i, "")}-compressed.pdf`;
-      statusEl.textContent = `${doc.numPages} page(s) · ${(file.size / 1024).toFixed(0)} KB`;
+      const info = await pdfKitInfo(doc, file);
+      if (infoEl) { infoEl.innerHTML = pdfKitStatsHtml(info); infoEl.hidden = false; }
+      statusEl.textContent = `${file.name} loaded — choose a level and compress.`;
     } catch (error) {
       statusEl.textContent = `Could not open that PDF — ${error.message}`;
     }
@@ -9156,6 +9188,7 @@ function renderMergePdf() {
       <button class="control-button primary" type="button" data-mg-run disabled>Merge PDFs</button>
       <button class="util-btn" type="button" data-mg-clear>Clear list</button>
     </div>
+    <div class="stat-grid" data-mg-info hidden></div>
     <p class="util-note" data-mg-status>Add two or more PDFs.</p>
     <div class="meter" hidden data-mg-meter-wrap aria-hidden="true"><span data-mg-meter"></span></div>
   `;
@@ -9165,6 +9198,7 @@ function renderMergePdf() {
   const runBtn = utilityBody.querySelector("[data-mg-run]");
   const statusEl = utilityBody.querySelector("[data-mg-status]");
   const meter = utilityBody.querySelector("[data-mg-meter]");
+  const infoEl = utilityBody.querySelector("[data-mg-info]");
   const meterWrap = utilityBody.querySelector("[data-mg-meter-wrap]");
   let items = [];
 
@@ -9173,7 +9207,7 @@ function renderMergePdf() {
     items.forEach((item, index) => {
       const row = document.createElement("div");
       row.className = "image-row";
-      row.innerHTML = `<span class="tool-icon" style="width:34px;height:34px;font-size:.7rem">PDF</span><span class="image-row__name">${item.file.name} · ${item.pages} page(s)</span>`;
+      row.innerHTML = `<span class="tool-icon" style="width:34px;height:34px;font-size:.7rem">PDF</span><span class="image-row__name">${item.file.name} · ${item.pages} page(s) · ${pdfKitSize(item.file.size)}</span>`;
       const actions = document.createElement("span");
       actions.className = "image-row__actions";
       const up = document.createElement("button");
@@ -9190,14 +9224,29 @@ function renderMergePdf() {
       listEl.append(row);
     });
     runBtn.disabled = items.length < 2;
-    statusEl.textContent = items.length ? `${items.length} PDF(s) · ${items.reduce((a, b) => a + b.pages, 0)} pages total` : "Add two or more PDFs.";
+    const totalPages = items.reduce((a, b) => a + b.pages, 0);
+    const totalSize = items.reduce((a, b) => a + b.file.size, 0);
+    if (infoEl) {
+      if (items.length) {
+        infoEl.innerHTML = [
+          `<div class="stat"><span>${items.length}</span><small>files</small></div>`,
+          `<div class="stat"><span>${totalPages}</span><small>pages total</small></div>`,
+          `<div class="stat"><span>${pdfKitSize(totalSize)}</span><small>combined size</small></div>`,
+          `<div class="stat"><span>${pdfKitSize(totalSize / Math.max(1, totalPages))}</span><small>per page</small></div>`,
+        ].join("");
+        infoEl.hidden = false;
+      } else {
+        infoEl.hidden = true;
+      }
+    }
+    statusEl.textContent = items.length ? `${items.length} PDF(s) · ${totalPages} pages · ${pdfKitSize(totalSize)}` : "Add two or more PDFs.";
   };
 
   fileEl.addEventListener("change", async () => {
     for (const file of Array.from(fileEl.files)) {
       try {
         const doc = await pdfKitOpen(file);
-        items.push({ file, doc, pages: doc.numPages });
+        items.push({ file, doc, pages: doc.numPages, size: file.size });
       } catch (error) {
         statusEl.textContent = `Skipped ${file.name} — ${error.message}`;
       }
@@ -9262,6 +9311,7 @@ function renderSplitPdf() {
     <div class="util-actions">
       <button class="control-button primary" type="button" data-sp-run disabled>Split and download ZIP</button>
     </div>
+    <div class="stat-grid" data-sp-info hidden></div>
     <p class="util-note" data-sp-status>Choose a PDF to begin.</p>
     <div class="meter" hidden data-sp-meter-wrap aria-hidden="true"><span data-sp-meter></span></div>
   `;
@@ -9274,6 +9324,7 @@ function renderSplitPdf() {
   const runBtn = utilityBody.querySelector("[data-sp-run]");
   const statusEl = utilityBody.querySelector("[data-sp-status]");
   const meter = utilityBody.querySelector("[data-sp-meter]");
+  const infoEl = utilityBody.querySelector("[data-sp-info]");
   const meterWrap = utilityBody.querySelector("[data-sp-meter-wrap]");
   let doc = null;
 
@@ -9288,7 +9339,9 @@ function renderSplitPdf() {
     try {
       doc = await pdfKitOpen(file);
       runBtn.disabled = false;
-      statusEl.textContent = `${doc.numPages} page(s) · ${(file.size / 1024).toFixed(0)} KB`;
+      const info = await pdfKitInfo(doc, file);
+      if (infoEl) { infoEl.innerHTML = pdfKitStatsHtml(info); infoEl.hidden = false; }
+      statusEl.textContent = `${file.name} loaded — pick how to split.`;
     } catch (error) {
       statusEl.textContent = `Could not open that PDF — ${error.message}`;
     }
