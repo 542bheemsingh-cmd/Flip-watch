@@ -16,7 +16,7 @@
 
 ## ✨ What's inside
 
-Flip Watch is a single-page web app that opens into a dashboard of thirty-two tools. Every tool shares the same design system: an animated flip clock, light/dark themes, and a colour palette that slowly drifts through the spectrum.
+Flip Watch is a single-page web app that opens into a dashboard of **forty** tools. Every tool shares the same design system: an animated flip clock, light/dark themes, and a colour palette that slowly drifts through the spectrum.
 
 | Tool | What it does |
 | --- | --- |
@@ -50,6 +50,14 @@ Flip Watch is a single-page web app that opens into a dashboard of thirty-two to
 | 📊 **Statistics Calculator** | Mean, median, mode, spread and quartiles |
 | 🔢 **Prime Checker & Factoriser** | Prime test and full prime factorisation |
 | 🗓 **Generate Calendar** | A printable month grid |
+| 🧩 **Organise PDF** | Reorder or drop pages, then build a new PDF |
+| 🗜 **Compress PDF** | Shrink a PDF and see exactly how many KB you saved |
+| 🔗 **Merge PDF** | Join several PDFs into one, in the order you choose |
+| ✂ **Split PDF** | Every page, every N pages or custom ranges, zipped |
+| 🖋 **PDF Watermark** | Stamp text on a page range, or erase a repeating mark |
+| 🔒 **Protect & Unlock PDF** | Unlock a password-protected PDF you own |
+| 🌐 **HTML to PDF** | Turn pasted HTML into a print-ready PDF |
+| ⌨ **Typing Test** | 8 modes, live WPM, consistency, heatmap, history and streaks |
 | 🖼 **PDF to Images** | Save PDF pages as PNG or JPEG, with a ZIP of all pages |
 | 📄 **Images to PDF** | Combine photos into one PDF, in the order you choose |
 
