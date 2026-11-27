@@ -2442,7 +2442,7 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
    Extra utilities: unit converter, password generator, word counter,
    to-do list and date calculator.
    ===================================================================== */
-const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates", "gst", "emi", "fuel", "json", "base64", "color", "random", "findreplace", "textpad", "pwstrength", "imgcompress", "imgresize", "imgconvert", "imgcrop", "imgcolour", "qrcode", "stats", "prime", "calendar", "pdf2img", "img2pdf", "protectpdf", "html2pdf", "watermark", "typing"];
+const UTILITY_TOOLS = ["converter", "password", "wordcount", "todo", "dates", "gst", "emi", "fuel", "json", "base64", "color", "random", "findreplace", "textpad", "pwstrength", "imgcompress", "imgresize", "imgconvert", "imgcrop", "imgcolour", "qrcode", "stats", "prime", "calendar", "pdf2img", "img2pdf", "protectpdf", "html2pdf", "watermark", "typing", "compresspdf", "mergepdf", "splitpdf", "organisepdf"];
 const utilityPanel = document.querySelector("[data-utility-panel]");
 const utilityKicker = document.querySelector("[data-utility-kicker]");
 const utilityTitle = document.querySelector("[data-utility-title]");
@@ -2539,6 +2539,10 @@ function renderUtility(kind) {
   else if (kind === "html2pdf") renderHtmlToPdf();
   else if (kind === "watermark") renderPdfWatermark();
   else if (kind === "typing") renderTypingTest();
+  else if (kind === "compresspdf") renderCompressPdf();
+  else if (kind === "mergepdf") renderMergePdf();
+  else if (kind === "splitpdf") renderSplitPdf();
+  else if (kind === "organisepdf") renderOrganisePdf();
 }
 
 /* ------------------------------------------------------- shared helpers */
@@ -2979,7 +2983,7 @@ function renderWordCounter() {
 
     limitOut.textContent = String(limit);
     const ratio = limit ? Math.min(1, text.length / limit) : 0;
-    meter.style.width = `${Math.round(ratio * 100)}%`;
+    if (meter) meter.style.width = `${Math.round(ratio * 100)}%`;
     meter.parentElement.classList.toggle("is-over", text.length > limit);
 
     const counts = new Map();
@@ -4698,7 +4702,7 @@ function renderPasswordStrength() {
     if (!password) {
       statsEl.innerHTML = "";
       classesEl.innerHTML = "";
-      meter.style.width = "0%";
+      if (meter) meter.style.width = "0%";
       verdictEl.textContent = "";
       tipsEl.textContent = "";
       return;
@@ -4737,7 +4741,7 @@ function renderPasswordStrength() {
       stat(humanTime(guesses / 1e10), "Offline attack"),
       stat(humanTime(guesses / 1e13), "GPU farm"),
     ].join("");
-    meter.style.width = `${score}%`;
+    if (meter) meter.style.width = `${score}%`;
 
     const chip = (on, text) => `<span class="chip${on ? " is-on" : ""}">${text}</span>`;
     classesEl.innerHTML = [
@@ -5993,6 +5997,10 @@ const TOOL_CATEGORIES = {
   html2pdf: "Files",
   watermark: "Files",
   typing: "Skill",
+  compresspdf: "Files",
+  mergepdf: "Files",
+  splitpdf: "Files",
+  organisepdf: "Files",
 };
 
 const CATEGORY_ORDER = ["All", "Time", "Dates", "Maths", "Money", "Text", "Images", "Developer", "Security", "Productivity", "Skill", "Fun", "Files"];
@@ -7294,7 +7302,7 @@ function renderProtectPdf() {
         const pages = [];
         for (let n = first; n <= last; n += 1) {
           statusEl.textContent = `Unlocking page ${n} of ${last}…`;
-          meter.style.width = `${Math.round(((n - first) / (last - first + 1)) * 100)}%`;
+          if (meter) meter.style.width = `${Math.round(((n - first) / (last - first + 1)) * 100)}%`;
           const page = await doc.getPage(n);
           const viewport = page.getViewport({ scale: 2 });
           const canvas = document.createElement("canvas");
@@ -7319,7 +7327,7 @@ function renderProtectPdf() {
         }
         const pdf = createPdfFromImages(pages);
         download(pdf, nameEl.value.trim() || `${baseName}-unlocked.pdf`);
-        meter.style.width = "100%";
+        if (meter) meter.style.width = "100%";
         statusEl.textContent = `Unlocked ${pages.length} page(s)${first > 1 || last < doc.numPages ? ` (pages ${first}–${last})` : ""}. Text is now part of the page images.`;
       }
     } catch (error) {
@@ -8208,7 +8216,7 @@ function renderPdfWatermark() {
     const options = readOptions();
     const first = Math.max(1, Math.min(pdfDoc.numPages, Math.floor(Number(fromEl.value) || 1)));
     const last = Math.max(first, Math.min(pdfDoc.numPages, Math.floor(Number(toEl.value) || pdfDoc.numPages)));
-    meterWrap.hidden = false;
+    if (meterWrap) meterWrap.hidden = false;
     reviewPages = [];
     reviewIndex = 0;
     showDiff = false;
@@ -8259,7 +8267,7 @@ function renderPdfWatermark() {
     try {
       for (let n = 1; n <= pdfDoc.numPages; n += 1) {
         statusEl.textContent = `Processing page ${n} of ${pdfDoc.numPages}…`;
-        meter.style.width = `${Math.round((n / pdfDoc.numPages) * 100)}%`;
+        if (meter) meter.style.width = `${Math.round((n / pdfDoc.numPages) * 100)}%`;
         const page = await pdfDoc.getPage(n);
         const viewport = page.getViewport({ scale: 2 });
         const out = document.createElement("canvas");
@@ -8407,7 +8415,7 @@ function renderPdfWatermark() {
       showDiff = false;
       paintReview();
       resultNote.textContent = `${pages.length} page(s) · ${(pdf.size / 1024).toFixed(0)} KB · nothing has downloaded yet`;
-      meter.style.width = "100%";
+      if (meter) meter.style.width = "100%";
       const what = options.mode === "apply"
         ? "Watermark applied"
         : region
@@ -9007,6 +9015,458 @@ function renderTypingTest() {
   if (!chars.length) buildText();
   paint();
   reset();
+}
+
+/* --------------------------------------------- shared PDF helpers */
+async function pdfKitLoad() {
+  const pdfjs = await import("./pdf-reader/vendor/pdf.js");
+  pdfjs.GlobalWorkerOptions.workerSrc = "./pdf-reader/vendor/pdf.worker.js?v=2";
+  return pdfjs;
+}
+
+async function pdfKitOpen(file) {
+  const pdfjs = await pdfKitLoad();
+  return pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+}
+
+async function pdfKitPage(doc, number, scale, quality) {
+  const page = await doc.getPage(number);
+  const base = page.getViewport({ scale: 1 });
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(viewport.width);
+  canvas.height = Math.round(viewport.height);
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  const blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", quality));
+  return {
+    bytes: new Uint8Array(await blob.arrayBuffer()),
+    width: canvas.width,
+    height: canvas.height,
+    pageWidth: base.width,
+    pageHeight: base.height,
+    drawWidth: base.width,
+    drawHeight: base.height,
+    x: 0,
+    y: 0,
+  };
+}
+
+function pdfKitDownload(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+/* ------------------------------------------------------ compress PDF */
+function renderCompressPdf() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="cp-file">PDF file</label>
+      <input id="cp-file" class="util-file" type="file" accept="application/pdf" data-cp-file />
+    </div>
+    <div class="date-row">
+      <div class="util-field">
+        <label for="cp-level">Compression</label>
+        <select id="cp-level" data-cp-level>
+          <option value="0.55,0.9">Strong (smallest)</option>
+          <option value="0.72,1.3" selected>Balanced</option>
+          <option value="0.85,1.8">Light (sharpest)</option>
+        </select>
+      </div>
+      <div class="util-field">
+        <label for="cp-name">File name</label>
+        <input id="cp-name" type="text" placeholder="compressed.pdf" data-cp-name />
+      </div>
+    </div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-cp-run disabled>Compress PDF</button>
+    </div>
+    <p class="util-note" data-cp-status>Choose a PDF to begin.</p>
+    <div class="meter" hidden data-cp-meter-wrap aria-hidden="true"><span data-cp-meter></span></div>
+  `;
+  const fileEl = utilityBody.querySelector("[data-cp-file]");
+  const levelEl = utilityBody.querySelector("[data-cp-level]");
+  const nameEl = utilityBody.querySelector("[data-cp-name]");
+  const runBtn = utilityBody.querySelector("[data-cp-run]");
+  const statusEl = utilityBody.querySelector("[data-cp-status]");
+  const meter = utilityBody.querySelector("[data-cp-meter]");
+  const meterWrap = utilityBody.querySelector("[data-cp-meter-wrap]");
+  let doc = null;
+  let originalSize = 0;
+
+  fileEl.addEventListener("change", async () => {
+    const file = fileEl.files[0];
+    if (!file) return;
+    statusEl.textContent = "Reading the PDF…";
+    try {
+      doc = await pdfKitOpen(file);
+      originalSize = file.size;
+      runBtn.disabled = false;
+      nameEl.placeholder = `${file.name.replace(/\.pdf$/i, "")}-compressed.pdf`;
+      statusEl.textContent = `${doc.numPages} page(s) · ${(file.size / 1024).toFixed(0)} KB`;
+    } catch (error) {
+      statusEl.textContent = `Could not open that PDF — ${error.message}`;
+    }
+  });
+
+  runBtn.addEventListener("click", async () => {
+    if (!doc) return;
+    const [quality, scale] = levelEl.value.split(",").map(Number);
+    if (meterWrap) meterWrap.hidden = false;
+    runBtn.disabled = true;
+    const pages = [];
+    try {
+      for (let n = 1; n <= doc.numPages; n += 1) {
+        statusEl.textContent = `Compressing page ${n} of ${doc.numPages}…`;
+        if (meter) meter.style.width = `${Math.round((n / doc.numPages) * 100)}%`;
+        pages.push(await pdfKitPage(doc, n, scale, quality));
+      }
+      const pdf = createPdfFromImages(pages);
+      const saved = Math.round((1 - pdf.size / originalSize) * 100);
+      const typed = nameEl.value.trim();
+      pdfKitDownload(pdf, typed ? (/\.pdf$/i.test(typed) ? typed : `${typed}.pdf`) : `${(fileEl.files[0].name || "file").replace(/\.pdf$/i, "")}-compressed.pdf`);
+      statusEl.textContent = `${(originalSize / 1024).toFixed(0)} KB → ${(pdf.size / 1024).toFixed(0)} KB (${saved > 0 ? `${saved}% smaller` : `${Math.abs(saved)}% larger — this PDF was already optimised`}).`;
+    } catch (error) {
+      statusEl.textContent = `Could not finish — ${error.message}`;
+    } finally {
+      runBtn.disabled = false;
+    }
+  });
+}
+
+/* --------------------------------------------------------- merge PDF */
+function renderMergePdf() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="mg-files">PDF files (in order)</label>
+      <input id="mg-files" class="util-file" type="file" accept="application/pdf" multiple data-mg-files />
+    </div>
+    <div class="image-list" data-mg-list></div>
+    <div class="util-field">
+      <label for="mg-name">File name</label>
+      <input id="mg-name" type="text" placeholder="merged.pdf" data-mg-name />
+    </div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-mg-run disabled>Merge PDFs</button>
+      <button class="util-btn" type="button" data-mg-clear>Clear list</button>
+    </div>
+    <p class="util-note" data-mg-status>Add two or more PDFs.</p>
+    <div class="meter" hidden data-mg-meter-wrap aria-hidden="true"><span data-mg-meter"></span></div>
+  `;
+  const fileEl = utilityBody.querySelector("[data-mg-files]");
+  const listEl = utilityBody.querySelector("[data-mg-list]");
+  const nameEl = utilityBody.querySelector("[data-mg-name]");
+  const runBtn = utilityBody.querySelector("[data-mg-run]");
+  const statusEl = utilityBody.querySelector("[data-mg-status]");
+  const meter = utilityBody.querySelector("[data-mg-meter]");
+  const meterWrap = utilityBody.querySelector("[data-mg-meter-wrap]");
+  let items = [];
+
+  const paint = () => {
+    listEl.innerHTML = "";
+    items.forEach((item, index) => {
+      const row = document.createElement("div");
+      row.className = "image-row";
+      row.innerHTML = `<span class="tool-icon" style="width:34px;height:34px;font-size:.7rem">PDF</span><span class="image-row__name">${item.file.name} · ${item.pages} page(s)</span>`;
+      const actions = document.createElement("span");
+      actions.className = "image-row__actions";
+      const up = document.createElement("button");
+      up.type = "button"; up.textContent = "↑"; up.disabled = index === 0;
+      up.addEventListener("click", () => { [items[index - 1], items[index]] = [items[index], items[index - 1]]; paint(); });
+      const down = document.createElement("button");
+      down.type = "button"; down.textContent = "↓"; down.disabled = index === items.length - 1;
+      down.addEventListener("click", () => { [items[index + 1], items[index]] = [items[index], items[index + 1]]; paint(); });
+      const remove = document.createElement("button");
+      remove.type = "button"; remove.textContent = "×";
+      remove.addEventListener("click", () => { items = items.filter((e) => e !== item); paint(); });
+      actions.append(up, down, remove);
+      row.append(actions);
+      listEl.append(row);
+    });
+    runBtn.disabled = items.length < 2;
+    statusEl.textContent = items.length ? `${items.length} PDF(s) · ${items.reduce((a, b) => a + b.pages, 0)} pages total` : "Add two or more PDFs.";
+  };
+
+  fileEl.addEventListener("change", async () => {
+    for (const file of Array.from(fileEl.files)) {
+      try {
+        const doc = await pdfKitOpen(file);
+        items.push({ file, doc, pages: doc.numPages });
+      } catch (error) {
+        statusEl.textContent = `Skipped ${file.name} — ${error.message}`;
+      }
+    }
+    fileEl.value = "";
+    paint();
+  });
+
+  utilityBody.querySelector("[data-mg-clear]").addEventListener("click", () => { items = []; paint(); });
+
+  runBtn.addEventListener("click", async () => {
+    if (items.length < 2) return;
+    if (meterWrap) meterWrap.hidden = false;
+    runBtn.disabled = true;
+    const total = items.reduce((a, b) => a + b.pages, 0);
+    const pages = [];
+    let done = 0;
+    try {
+      for (const item of items) {
+        for (let n = 1; n <= item.pages; n += 1) {
+          done += 1;
+          statusEl.textContent = `Merging page ${done} of ${total}…`;
+          if (meter) meter.style.width = `${Math.round((done / total) * 100)}%`;
+          pages.push(await pdfKitPage(item.doc, n, 1.6, 0.9));
+        }
+      }
+      const pdf = createPdfFromImages(pages);
+      const typed = nameEl.value.trim();
+      pdfKitDownload(pdf, typed ? (/\.pdf$/i.test(typed) ? typed : `${typed}.pdf`) : "merged.pdf");
+      statusEl.textContent = `Merged ${items.length} PDFs into ${pages.length} pages · ${(pdf.size / 1024).toFixed(0)} KB`;
+    } catch (error) {
+      statusEl.textContent = `Could not finish — ${error.message}`;
+    } finally {
+      runBtn.disabled = false;
+    }
+  });
+}
+
+/* --------------------------------------------------------- split PDF */
+function renderSplitPdf() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="sp-file">PDF file</label>
+      <input id="sp-file" class="util-file" type="file" accept="application/pdf" data-sp-file />
+    </div>
+    <div class="util-field">
+      <label for="sp-mode">Split by</label>
+      <select id="sp-mode" data-sp-mode>
+        <option value="each" selected>Every page as its own PDF</option>
+        <option value="chunks">Every N pages</option>
+        <option value="ranges">Custom ranges (e.g. 1-3, 4-6)</option>
+      </select>
+    </div>
+    <div class="util-field" data-sp-chunk-wrap hidden>
+      <label for="sp-chunk">Pages per file</label>
+      <input id="sp-chunk" type="number" inputmode="numeric" min="1" value="2" data-sp-chunk />
+    </div>
+    <div class="util-field" data-sp-range-wrap hidden>
+      <label for="sp-ranges">Ranges</label>
+      <input id="sp-ranges" type="text" placeholder="1-3, 4-6, 7" data-sp-ranges />
+    </div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-sp-run disabled>Split and download ZIP</button>
+    </div>
+    <p class="util-note" data-sp-status>Choose a PDF to begin.</p>
+    <div class="meter" hidden data-sp-meter-wrap aria-hidden="true"><span data-sp-meter></span></div>
+  `;
+  const fileEl = utilityBody.querySelector("[data-sp-file]");
+  const modeEl = utilityBody.querySelector("[data-sp-mode]");
+  const chunkWrap = utilityBody.querySelector("[data-sp-chunk-wrap]");
+  const chunkEl = utilityBody.querySelector("[data-sp-chunk]");
+  const rangeWrap = utilityBody.querySelector("[data-sp-range-wrap]");
+  const rangeEl = utilityBody.querySelector("[data-sp-ranges]");
+  const runBtn = utilityBody.querySelector("[data-sp-run]");
+  const statusEl = utilityBody.querySelector("[data-sp-status]");
+  const meter = utilityBody.querySelector("[data-sp-meter]");
+  const meterWrap = utilityBody.querySelector("[data-sp-meter-wrap]");
+  let doc = null;
+
+  modeEl.addEventListener("change", () => {
+    chunkWrap.hidden = modeEl.value !== "chunks";
+    rangeWrap.hidden = modeEl.value !== "ranges";
+  });
+
+  fileEl.addEventListener("change", async () => {
+    const file = fileEl.files[0];
+    if (!file) return;
+    try {
+      doc = await pdfKitOpen(file);
+      runBtn.disabled = false;
+      statusEl.textContent = `${doc.numPages} page(s) · ${(file.size / 1024).toFixed(0)} KB`;
+    } catch (error) {
+      statusEl.textContent = `Could not open that PDF — ${error.message}`;
+    }
+  });
+
+  runBtn.addEventListener("click", async () => {
+    if (!doc) return;
+    const total = doc.numPages;
+    let groups = [];
+    if (modeEl.value === "each") {
+      groups = Array.from({ length: total }, (_, i) => [i + 1]);
+    } else if (modeEl.value === "chunks") {
+      const size = Math.max(1, Number(chunkEl.value) || 1);
+      for (let i = 1; i <= total; i += size) {
+        groups.push(Array.from({ length: Math.min(size, total - i + 1) }, (_, k) => i + k));
+      }
+    } else {
+      groups = rangeEl.value.split(",").map((part) => {
+        const bits = part.trim().split("-").map(Number);
+        if (!bits[0]) return [];
+        const a = Math.max(1, Math.min(total, bits[0]));
+        const b = Math.max(a, Math.min(total, bits[1] || a));
+        return Array.from({ length: b - a + 1 }, (_, k) => a + k);
+      }).filter((g) => g.length);
+    }
+    if (!groups.length) {
+      statusEl.textContent = "Nothing to split with those settings.";
+      return;
+    }
+    if (meterWrap) meterWrap.hidden = false;
+    runBtn.disabled = true;
+    const files = [];
+    let done = 0;
+    try {
+      for (let g = 0; g < groups.length; g += 1) {
+        const pages = [];
+        for (const n of groups[g]) {
+          done += 1;
+          statusEl.textContent = `Splitting page ${done}…`;
+          if (meter) meter.style.width = `${Math.round((done / total) * 100)}%`;
+          pages.push(await pdfKitPage(doc, n, 1.5, 0.9));
+        }
+        const pdf = createPdfFromImages(pages);
+        files.push({ name: `part-${String(g + 1).padStart(2, "0")}.pdf`, data: new Uint8Array(await pdf.arrayBuffer()) });
+      }
+      const zip = buildZip(files);
+      pdfKitDownload(zip, "split-pdf.zip");
+      statusEl.textContent = `Made ${files.length} PDF(s) from ${total} page(s) · ${(zip.size / 1024).toFixed(0)} KB ZIP`;
+    } catch (error) {
+      statusEl.textContent = `Could not finish — ${error.message}`;
+    } finally {
+      runBtn.disabled = false;
+    }
+  });
+}
+
+/* ------------------------------------------------------- organise PDF */
+function renderOrganisePdf() {
+  utilityBody.innerHTML = `
+    <div class="util-field">
+      <label for="or-file">PDF file</label>
+      <input id="or-file" class="util-file" type="file" accept="application/pdf" data-or-file />
+    </div>
+    <p class="util-note">Use ← → to move a page, × to drop it. Then build the new PDF.</p>
+    <div class="thumb-grid" data-or-grid></div>
+    <div class="util-field">
+      <label for="or-name">File name</label>
+      <input id="or-name" type="text" placeholder="organised.pdf" data-or-name />
+    </div>
+    <div class="util-actions">
+      <button class="control-button primary" type="button" data-or-run disabled>Build PDF</button>
+      <button class="util-btn" type="button" data-or-reset disabled>Reset order</button>
+    </div>
+    <p class="util-note" data-or-status>Choose a PDF to begin.</p>
+    <div class="meter" hidden data-or-meter-wrap aria-hidden="true"><span data-or-meter></span></div>
+  `;
+  const fileEl = utilityBody.querySelector("[data-or-file]");
+  const gridEl = utilityBody.querySelector("[data-or-grid]");
+  const nameEl = utilityBody.querySelector("[data-or-name]");
+  const runBtn = utilityBody.querySelector("[data-or-run]");
+  const resetBtn = utilityBody.querySelector("[data-or-reset]");
+  const statusEl = utilityBody.querySelector("[data-or-status]");
+  const meter = utilityBody.querySelector("[data-or-meter]");
+  const meterWrap = utilityBody.querySelector("[data-or-meter-wrap]");
+  let doc = null;
+  let order = [];
+
+  const paint = () => {
+    gridEl.innerHTML = "";
+    order.forEach((n, index) => {
+      const card = document.createElement("figure");
+      card.className = "thumb-card";
+      card.innerHTML = `<img alt="Page ${n}" src="" data-or-thumb="${n}" /><figcaption>Page ${n}<span>${index + 1}</span></figcaption>`;
+      const actions = document.createElement("div");
+      actions.className = "image-row__actions";
+      const left = document.createElement("button");
+      left.type = "button"; left.textContent = "←"; left.disabled = index === 0;
+      left.addEventListener("click", () => { [order[index - 1], order[index]] = [order[index], order[index - 1]]; paint(); });
+      const right = document.createElement("button");
+      right.type = "button"; right.textContent = "→"; right.disabled = index === order.length - 1;
+      right.addEventListener("click", () => { [order[index + 1], order[index]] = [order[index], order[index + 1]]; paint(); });
+      const drop = document.createElement("button");
+      drop.type = "button"; drop.textContent = "×";
+      drop.addEventListener("click", () => { order.splice(index, 1); paint(); });
+      actions.append(left, right, drop);
+      card.append(actions);
+      gridEl.append(card);
+    });
+    runBtn.disabled = order.length === 0;
+    resetBtn.disabled = !doc;
+  };
+
+  const loadThumbs = async () => {
+    const images = gridEl.querySelectorAll("[data-or-thumb]");
+    for (const img of images) {
+      const n = Number(img.dataset.orThumb);
+      try {
+        const canvas = await (async () => {
+          const page = await doc.getPage(n);
+          const viewport = page.getViewport({ scale: 0.35 });
+          const c = document.createElement("canvas");
+          c.width = Math.round(viewport.width);
+          c.height = Math.round(viewport.height);
+          const ctx = c.getContext("2d");
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, c.width, c.height);
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          return c;
+        })();
+        img.src = canvas.toDataURL("image/jpeg", 0.7);
+      } catch (error) { /* thumbnail is optional */ }
+    }
+  };
+
+  fileEl.addEventListener("change", async () => {
+    const file = fileEl.files[0];
+    if (!file) return;
+    try {
+      doc = await pdfKitOpen(file);
+      order = Array.from({ length: doc.numPages }, (_, i) => i + 1);
+      nameEl.placeholder = `${file.name.replace(/\.pdf$/i, "")}-organised.pdf`;
+      statusEl.textContent = `${doc.numPages} page(s) loaded.`;
+      paint();
+      loadThumbs();
+    } catch (error) {
+      statusEl.textContent = `Could not open that PDF — ${error.message}`;
+    }
+  });
+
+  resetBtn.addEventListener("click", () => {
+    if (!doc) return;
+    order = Array.from({ length: doc.numPages }, (_, i) => i + 1);
+    paint();
+    loadThumbs();
+    statusEl.textContent = "Order reset.";
+  });
+
+  runBtn.addEventListener("click", async () => {
+    if (!doc || !order.length) return;
+    if (meterWrap) meterWrap.hidden = false;
+    runBtn.disabled = true;
+    const pages = [];
+    try {
+      for (let i = 0; i < order.length; i += 1) {
+        statusEl.textContent = `Building page ${i + 1} of ${order.length}…`;
+        if (meter) meter.style.width = `${Math.round(((i + 1) / order.length) * 100)}%`;
+        pages.push(await pdfKitPage(doc, order[i], 1.6, 0.9));
+      }
+      const pdf = createPdfFromImages(pages);
+      const typed = nameEl.value.trim();
+      pdfKitDownload(pdf, typed ? (/\.pdf$/i.test(typed) ? typed : `${typed}.pdf`) : "organised.pdf");
+      statusEl.textContent = `${pages.length} page(s) in your new order · ${(pdf.size / 1024).toFixed(0)} KB`;
+    } catch (error) {
+      statusEl.textContent = `Could not finish — ${error.message}`;
+    } finally {
+      runBtn.disabled = false;
+    }
+  });
 }
 
 if (utilityPanel) {
