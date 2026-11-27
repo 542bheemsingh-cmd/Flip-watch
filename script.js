@@ -6739,6 +6739,10 @@ function renderImagesToPdf() {
         <input id="i2p-margin" type="number" inputmode="numeric" min="0" max="40" value="0" data-i2p-margin />
       </div>
     </div>
+    <div class="util-field">
+      <label for="i2p-name">PDF file name</label>
+      <input id="i2p-name" type="text" placeholder="images.pdf" data-i2p-name />
+    </div>
     <div class="util-actions">
       <button class="control-button primary" type="button" data-i2p-run disabled>Create PDF</button>
       <button class="util-btn" type="button" data-i2p-clear>Clear list</button>
@@ -6750,6 +6754,7 @@ function renderImagesToPdf() {
   const listEl = utilityBody.querySelector("[data-i2p-list]");
   const sizeEl = utilityBody.querySelector("[data-i2p-size]");
   const marginEl = utilityBody.querySelector("[data-i2p-margin]");
+  const nameEl = utilityBody.querySelector("[data-i2p-name]");
   const statusEl = utilityBody.querySelector("[data-i2p-status]");
   const runBtn = utilityBody.querySelector("[data-i2p-run]");
   let items = [];
@@ -6803,6 +6808,10 @@ function renderImagesToPdf() {
       row.append(actions);
       listEl.append(row);
     });
+    if (items.length && nameEl && !nameEl.value.trim()) {
+      const base = (items[0].name || "images").replace(/\.[a-z0-9]{2,5}$/i, "");
+      nameEl.placeholder = `${base}.pdf`;
+    }
     runBtn.disabled = items.length === 0;
     if (!items.length) {
       statusEl.textContent = "Add at least one image.";
@@ -6887,7 +6896,10 @@ function renderImagesToPdf() {
     const url = URL.createObjectURL(pdf);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "images.pdf";
+    const typedName = (nameEl && nameEl.value ? nameEl.value : "").trim();
+    link.download = typedName
+      ? (/\.[a-z0-9]{2,5}$/i.test(typedName) ? typedName : `${typedName}.pdf`)
+      : "images.pdf";
     link.click();
     URL.revokeObjectURL(url);
     statusEl.textContent = `${pages.length} page PDF created (${(pdf.size / 1024).toFixed(0)} KB).`;
